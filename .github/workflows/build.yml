@@ -36,6 +36,7 @@ jobs:
       - name: Package Windows Executables (NSIS & Portable)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_TLS_REJECT_UNAUTHORIZED: 0
         run: npx electron-builder --win nsis portable --publish never
 
       - name: Create GitHub Release and Upload Artifacts
