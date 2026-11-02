@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Application & Print Styles */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 20mm !important;
+  }
+
+  html, body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: "Times New Roman", Times, "Liberation Serif", Arial, sans-serif;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app navigation and chrome */
+  .print\:hidden,
+  [data-html2canvas-ignore="true"],
+  .page-marker,
+  nav,
+  aside,
+  header {
+    display: none !important;
+  }
+
+  /* Word / Office Multi-page printing rules */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  thead {
+    display: table-header-group !important;
+  }
+  tfoot {
+    display: table-footer-group !important;
+  }
+  .signature-block, .avoid-break, .signatures-table, .approval-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    break-inside: avoid-page !important;
+  }
+  h1, h2, h3, h4, .doc-header {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+  p, div {
+    orphans: 3 !important;
+    widows: 3 !important;
+  }
+}

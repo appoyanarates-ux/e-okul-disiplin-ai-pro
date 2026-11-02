@@ -1,0 +1,111 @@
+{
+  "name": "e-okul-disiplin-ai-pro",
+  "productName": "E-Okul Disiplin AI Pro",
+  "version": "1.0.0",
+  "description": "E-Okul Disiplin AI Pro - Okul Disiplin Süreçleri ve Evrak Yönetim Sistemi - By Abdullah Yanarateş",
+  "author": {
+    "name": "Abdullah Yanarateş"
+  },
+  "copyright": "Copyright © 2026 Abdullah Yanarateş",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abdullahyanarates/e-okul-disiplin-ai-pro.git"
+  },
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:3000 && electron .\"",
+    "electron:build": "npm run build && cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 electron-builder --win --publish never",
+    "electron:dist": "npm run build && cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 electron-builder --win nsis portable --publish never",
+    "dist": "npm run electron:dist"
+  },
+  "dependencies": {
+    "@google/genai": "^1.38.0",
+    "docx": "^9.15.1",
+    "express": "^5.2.1",
+    "html-to-docx": "^1.8.0",
+    "html2canvas": "1.4.1",
+    "jspdf": "2.5.1",
+    "lucide-react": "^0.563.0",
+    "pdfjs-dist": "^6.4.299",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.0",
+    "recharts": "^3.7.0",
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.6.2",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "png-to-ico": "^3.0.2",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.15",
+    "typescript": "~5.8.2",
+    "typescript-eslint": "^8.57.1",
+    "vite": "^6.2.0",
+    "wait-on": "^9.5.1"
+  },
+  "build": {
+    "appId": "com.abdullahyanarates.eokuldisiplinaipro",
+    "productName": "E-Okul Disiplin AI Pro",
+    "copyright": "Copyright © 2026 Abdullah Yanarateş",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "legalTrademarks": "By Abdullah Yanarateş"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "E-Okul Disiplin AI Pro",
+      "artifactName": "E-Okul-Disiplin-AI-Pro-Setup.${ext}",
+      "uninstallDisplayName": "E-Okul Disiplin AI Pro - By Abdullah Yanarateş",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "E-Okul-Disiplin-AI-Pro-Portable.${ext}"
+    }
+  }
+}

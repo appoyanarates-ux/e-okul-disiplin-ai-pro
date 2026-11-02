@@ -1,0 +1,54 @@
+name: Windows Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build & Package Windows x64 (Setup & Portable)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Package Windows Executables (NSIS & Portable)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis portable --publish never
+
+      - name: Create GitHub Release and Upload Artifacts
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "E-Okul Disiplin AI Pro ${{ github.ref_name }} - By Abdullah Yanarateş"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release/E-Okul-Disiplin-AI-Pro-Setup.exe
+            release/E-Okul-Disiplin-AI-Pro-Portable.exe
+            release/latest.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

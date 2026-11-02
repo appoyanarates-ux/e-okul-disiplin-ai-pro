@@ -1,0 +1,8 @@
+{
+  "name": "e-Okul Disiplin Ai Pro",
+  "description": "Okul disiplin süreçlerini yönetmek, olayları kaydetmek ve yapay zeka desteği ile yönetmeliklere uygun kararlar almak için geliştirilmiş modern bir web uygulaması.",
+  "requestFramePermissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
