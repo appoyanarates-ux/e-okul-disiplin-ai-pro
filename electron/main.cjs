@@ -151,7 +151,7 @@ function createWindow() {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'Hakkında - E-Okul Disiplin AI Pro',
-              message: 'E-OKUL DİSİPLİN AI PRO\nSürüm 1.0.1 (Windows x64)',
+              message: 'E-OKUL DİSİPLİN AI PRO\nSürüm 1.0.2 (Windows x64)',
               detail: 'Okul disiplin süreçlerini yönetmek, olayları kaydetmek, kararları düzenlemek ve resmi belgeler oluşturmak için geliştirilmiş masaüstü yazılımı.\n\nProjenin Sahibi ve Geliştiricisi: By Abdullah Yanarateş\nPlatform: Windows 10 / Windows 11\nİletişim: appo.yanarates@gmail.com',
               buttons: ['Tamam']
             });
@@ -196,8 +196,30 @@ ipcMain.handle('print-to-pdf', async (event, options = {}) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return { success: false, error: 'Pencere bulunamadı.' };
 
+  let printWin = null;
   try {
-    const pdfBuffer = await win.webContents.printToPDF({
+    let targetWebContents = win.webContents;
+
+    if (options.html) {
+      printWin = new BrowserWindow({
+        show: false,
+        width: 1200,
+        height: 1600,
+        backgroundColor: '#ffffff',
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: true
+        }
+      });
+
+      await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(options.html)}`);
+      // Wait for DOM and fonts layout to stabilize
+      await new Promise(resolve => setTimeout(resolve, 300));
+      targetWebContents = printWin.webContents;
+    }
+
+    const pdfBuffer = await targetWebContents.printToPDF({
       landscape: !!options.landscape,
       displayHeaderFooter: false,
       printBackground: true,
@@ -205,14 +227,19 @@ ipcMain.handle('print-to-pdf', async (event, options = {}) => {
       preferCSSPageSize: true,
       margins: options.margins || {
         marginType: 'custom',
-        top: 0.3,
-        bottom: 0.3,
-        left: 0.3,
-        right: 0.3
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0
       }
     });
 
-    if (options.saveDialog) {
+    if (printWin && !printWin.isDestroyed()) {
+      try { printWin.destroy(); } catch {}
+      printWin = null;
+    }
+
+    if (options.saveDialog !== false) {
       const { canceled, filePath } = await dialog.showSaveDialog(win, {
         title: options.title || 'PDF Olarak Kaydet',
         defaultPath: options.defaultPath || 'Belge.pdf',
@@ -230,6 +257,9 @@ ipcMain.handle('print-to-pdf', async (event, options = {}) => {
     // Return as Uint8Array
     return { success: true, data: new Uint8Array(pdfBuffer) };
   } catch (err) {
+    if (printWin && !printWin.isDestroyed()) {
+      try { printWin.destroy(); } catch {}
+    }
     console.error('print-to-pdf error:', err);
     return { success: false, error: err.message };
   }
@@ -239,6 +269,47 @@ ipcMain.handle('print-to-pdf', async (event, options = {}) => {
 ipcMain.handle('print-direct', async (event, options = {}) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return { success: false, error: 'Pencere bulunamadı.' };
+
+  if (options.html) {
+    let printWin = null;
+    try {
+      printWin = new BrowserWindow({
+        show: false,
+        width: 1200,
+        height: 1600,
+        backgroundColor: '#ffffff',
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: true
+        }
+      });
+
+      await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(options.html)}`);
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      return await new Promise((resolve) => {
+        printWin.webContents.print({
+          silent: !!options.silent,
+          printBackground: true,
+          deviceName: options.deviceName || '',
+          copies: options.copies || 1,
+          landscape: !!options.landscape,
+          pageSize: options.pageSize || 'A4'
+        }, (success, failureReason) => {
+          if (printWin && !printWin.isDestroyed()) {
+            try { printWin.destroy(); } catch {}
+          }
+          resolve({ success, error: failureReason });
+        });
+      });
+    } catch (err) {
+      if (printWin && !printWin.isDestroyed()) {
+        try { printWin.destroy(); } catch {}
+      }
+      return { success: false, error: err.message };
+    }
+  }
 
   return new Promise((resolve) => {
     win.webContents.print({
@@ -251,6 +322,17 @@ ipcMain.handle('print-direct', async (event, options = {}) => {
     }, (success, failureReason) => {
       resolve({ success, error: failureReason });
     });
+  });
+});
+
+// IPC: Native Windows Show Save Dialog
+ipcMain.handle('show-save-dialog', async (event, options = {}) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return { canceled: true };
+  return dialog.showSaveDialog(win, {
+    title: options.title || 'Dosyayı Kaydet',
+    defaultPath: options.defaultPath || '',
+    filters: options.filters || [{ name: 'Tüm Dosyalar', extensions: ['*'] }]
   });
 });
 

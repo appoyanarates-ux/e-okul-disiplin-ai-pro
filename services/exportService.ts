@@ -14,7 +14,8 @@ import {
   createParentNoticeDoc,
   createPenaltyRemovalDoc,
   createMeetingSummonsDoc,
-  createStatisticsDoc
+  createStatisticsDoc,
+  renderDocDefToHtml
 } from './documentEngine';
 import { generateDocxBlob, generateDocxBuffer } from './docxGenerator';
 
@@ -57,13 +58,54 @@ export const downloadDocx = async (docDef: DocumentDefinition, filenamePrefix?: 
   }
 };
 
-// Helper to trigger PDF save via Electron Chromium printToPDF or fallback
+// Print HTML via invisible iframe with @media print rules (pure vector output, no canvas)
+export const printHtmlViaIframe = (html: string) => {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = '210mm';
+  iframe.style.height = '297mm';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!iframeDoc) return;
+
+  const scriptTag = `
+    <script>
+      window.onload = function() {
+        window.focus();
+        setTimeout(function() {
+          window.print();
+          setTimeout(function() {
+            if (window.frameElement) {
+              window.parent.document.body.removeChild(window.frameElement);
+            }
+          }, 300);
+        }, 250);
+      };
+    </script>
+  `;
+
+  const injectedHtml = html.includes('</body>') 
+    ? html.replace('</body>', `${scriptTag}</body>`)
+    : `${html}${scriptTag}`;
+
+  iframeDoc.open();
+  iframeDoc.write(injectedHtml);
+  iframeDoc.close();
+};
+
+// Helper to trigger PDF save via Electron Chromium printToPDF / showSaveDialog IPC or CSS @media print fallback
 export const downloadPdf = async (docDef: DocumentDefinition, filenamePrefix?: string) => {
   const cleanTitle = (filenamePrefix || docDef.title).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, '_');
   const filename = `${cleanTitle}.pdf`;
+  const html = renderDocDefToHtml(docDef);
 
   if (window.electronAPI) {
     await window.electronAPI.printToPdf({
+      html,
       landscape: docDef.orientation === 'landscape',
       pageSize: 'A4',
       saveDialog: true,
@@ -71,8 +113,8 @@ export const downloadPdf = async (docDef: DocumentDefinition, filenamePrefix?: s
       title: 'PDF Olarak Kaydet'
     });
   } else {
-    // Web fallback
-    triggerSafePrint();
+    // Web fallback: Use clean iframe with @media print (native vector print dialog / Save as PDF)
+    printHtmlViaIframe(html);
   }
 };
 
@@ -327,8 +369,16 @@ export const exportDecisionToPDF = async (
 };
 
 // Safe print trigger
-export const triggerSafePrint = () => {
+export const triggerSafePrint = (html?: string) => {
   try {
+    if (html) {
+      if (window.electronAPI) {
+        window.electronAPI.printDirect({ html });
+        return;
+      }
+      printHtmlViaIframe(html);
+      return;
+    }
     if (window.electronAPI) {
       window.electronAPI.printDirect();
     } else {

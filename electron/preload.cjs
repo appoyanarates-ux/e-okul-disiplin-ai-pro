@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   isElectron: true,
   platform: process.platform,
-  version: '1.0.1',
+  version: '1.0.2',
   author: 'Abdullah Yanarateş',
   appName: 'E-Okul Disiplin AI Pro',
 
@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Save File Dialog and write to disk
   saveFile: (options) => ipcRenderer.invoke('save-file', options),
+
+  // Native showSaveDialog IPC
+  showSaveDialog: (options) => ipcRenderer.invoke('show-save-dialog', options),
 
   // Open File Dialog and read from disk
   openFileDialog: (options) => ipcRenderer.invoke('open-file-dialog', options),

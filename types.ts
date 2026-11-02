@@ -204,9 +204,25 @@ declare global {
       version: string;
       author: string;
       appName: string;
-      printToPdf: (options?: any) => Promise<{ success: boolean; data?: Uint8Array; filePath?: string; canceled?: boolean; error?: string }>;
-      printDirect: (options?: any) => Promise<{ success: boolean; error?: string }>;
+      printToPdf: (options?: {
+        html?: string;
+        landscape?: boolean;
+        pageSize?: string;
+        saveDialog?: boolean;
+        defaultPath?: string;
+        title?: string;
+        margins?: { marginType?: string; top?: number; bottom?: number; left?: number; right?: number };
+      }) => Promise<{ success: boolean; data?: Uint8Array; filePath?: string; canceled?: boolean; error?: string }>;
+      printDirect: (options?: {
+        html?: string;
+        silent?: boolean;
+        landscape?: boolean;
+        pageSize?: string;
+        deviceName?: string;
+        copies?: number;
+      }) => Promise<{ success: boolean; error?: string }>;
       saveFile: (options: { defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }>; data: Uint8Array | string }) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+      showSaveDialog: (options?: { title?: string; defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ canceled: boolean; filePath?: string }>;
       openFileDialog: (options?: any) => Promise<{ canceled: boolean; filePaths: string[]; content?: string; buffer?: Uint8Array; error?: string }>;
       getUserDataPath: () => Promise<string>;
       readAppData: () => Promise<{ success: boolean; data?: any; error?: string }>;

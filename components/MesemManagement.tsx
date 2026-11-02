@@ -6,7 +6,7 @@ import {
   ClipboardPaste, HelpCircle, Printer, Users, FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { exportHtmlToWord } from '../services/exportService';
+import { exportHtmlToWord, printHtmlViaIframe } from '../services/exportService';
 import { Student } from '../types';
 import { useStudents } from '../context/StudentContext';
 import { useIncidents } from '../context/IncidentContext';
@@ -425,22 +425,9 @@ const MesemManagement: React.FC = () => {
     setShowNotificationModal(true);
   };
 
-  const handlePrintNotice = () => {
-    if (!notifStudent) return;
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.left = '-9999px';
-    iframe.style.top = '0';
-    iframe.style.width = '210mm';
-    iframe.style.height = '297mm';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!iframeDoc) return;
-
-    const printHtml = `
-      <!DOCTYPE html>
+  const getMesemNoticeHtml = () => {
+    if (!notifStudent) return '';
+    return `<!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
@@ -452,6 +439,15 @@ const MesemManagement: React.FC = () => {
               margin-bottom: 25mm !important;
               margin-left: 25mm !important;
               margin-right: 25mm !important;
+            }
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin-top: 25mm !important;
+                margin-bottom: 25mm !important;
+                margin-left: 25mm !important;
+                margin-right: 25mm !important;
+              }
             }
             html, body {
               margin: 0 !important;
@@ -542,26 +538,42 @@ const MesemManagement: React.FC = () => {
               </tr>
             </table>
           </div>
-          <script>
-            window.onload = function() {
-              window.focus();
-              setTimeout(function() {
-                window.print();
-                setTimeout(function() {
-                  if (window.frameElement) {
-                    window.parent.document.body.removeChild(window.frameElement);
-                  }
-                }, 200);
-              }, 250);
-            };
-          </script>
         </body>
-      </html>
-    `;
+      </html>`;
+  };
 
-    iframeDoc.open();
-    iframeDoc.write(printHtml);
-    iframeDoc.close();
+  const handlePrintNotice = () => {
+    const html = getMesemNoticeHtml();
+    if (!html) return;
+    if (window.electronAPI) {
+      try {
+        window.electronAPI.printDirect({ html });
+        return;
+      } catch (e) {
+        printHtmlViaIframe(html);
+      }
+    } else {
+      printHtmlViaIframe(html);
+    }
+  };
+
+  const handleDownloadPdfNotice = async () => {
+    const html = getMesemNoticeHtml();
+    if (!html || !notifStudent) return;
+    const filename = `MESEM_Isletme_Yazisi_${notifStudent.number}_${notifStudent.name.replace(/\s+/g, '_')}.pdf`;
+
+    if (window.electronAPI) {
+      await window.electronAPI.printToPdf({
+        html,
+        landscape: false,
+        pageSize: 'A4',
+        saveDialog: true,
+        defaultPath: filename,
+        title: 'PDF Olarak Kaydet'
+      });
+    } else {
+      printHtmlViaIframe(html);
+    }
   };
 
   const handleDownloadWordNotice = async () => {
@@ -2061,9 +2073,16 @@ const MesemManagement: React.FC = () => {
                 <button
                   onClick={handleDownloadWordNotice}
                   className="px-3.5 py-1.5 bg-blue-900 hover:bg-blue-800 text-blue-200 border border-blue-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all"
-                  title="Word (.doc) formatında Office kenar boşluklarıyla indir"
+                  title="Word (.docx) formatında Office kenar boşluklarıyla indir"
                 >
                   <FileText className="w-4 h-4" /> Word (.docx) İndir
+                </button>
+                <button
+                  onClick={handleDownloadPdfNotice}
+                  className="px-3.5 py-1.5 bg-red-700 hover:bg-red-600 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                  title="Chromium vektörel PDF olarak kaydet"
+                >
+                  <Download className="w-4 h-4" /> PDF Kaydet
                 </button>
                 <button
                   onClick={handlePrintNotice}

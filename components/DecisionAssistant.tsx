@@ -11,9 +11,7 @@ import { Incident, Student, InvolvedStudent, BoardMember, MarginType, PAGE_MARGI
 import { useStudents } from '../context/StudentContext';
 import { useIncidents } from '../context/IncidentContext';
 import { useSettings } from '../context/SettingsContext';
-import { jsPDF } from "jspdf";
-import html2canvas from 'html2canvas';
-import { exportHtmlToWord } from '../services/exportService';
+import { exportHtmlToWord, printHtmlViaIframe } from '../services/exportService';
 
 const getOneDegreeHeavierPenalty = (penalty: string, schoolType: string): string => {
   const p = penalty.toUpperCase().trim();
@@ -880,13 +878,12 @@ const DecisionAssistant = () => {
     }
   };
 
-  const handleDownloadPdf = async () => {
-    const docElements = document.querySelectorAll('.document-page');
+  const buildFullDocumentHtml = (): { html: string; filename: string } | null => {
     const aiReport = document.getElementById('ai-report-preview');
-    
-    if (docElements.length === 0 && !aiReport) {
-        alert("İndirilecek belge bulunamadı.");
-        return;
+    const docDomElements = document.querySelectorAll('.document-page');
+
+    if (docDomElements.length === 0 && !aiReport) {
+      return null;
     }
 
     let filename = `evraklar_${new Date().toISOString().split('T')[0]}`;
@@ -894,230 +891,73 @@ const DecisionAssistant = () => {
       const currentStudent = students.find(s => s.id === selectedStudentId);
       filename = getFilenameFromDoc(undefined, currentStudent?.name, 'analysis', false);
     } else if (generatedDocs.length > 0) {
+      const isBulk = generatedDocs.length > 1;
       const singleDoc = generatedDocs[0];
-      filename = getFilenameFromDoc(singleDoc?.type, singleDoc?.studentName, activeTab, generatedDocs.length > 1);
+      filename = getFilenameFromDoc(singleDoc?.type, singleDoc?.studentName, activeTab, isBulk);
     }
 
-    // In Electron, use native Chromium printToPDF with true vector quality and zero font degradation!
-    if (window.electronAPI) {
-      setIsPdfGenerating(true);
-      try {
-        await window.electronAPI.printToPdf({
-          landscape: false,
-          pageSize: 'A4',
-          saveDialog: true,
-          defaultPath: `${filename}.pdf`,
-          title: 'PDF Olarak Kaydet'
-        });
-      } catch (err: any) {
-        alert('PDF oluşturulamadı: ' + err.message);
-      } finally {
-        setIsPdfGenerating(false);
-      }
-      return;
-    }
-    
-    setIsPdfGenerating(true);
-    try {
-        const doc = new jsPDF('p', 'mm', 'a4');
-        
-        const sliceCanvasToPdf = async (canvas: HTMLCanvasElement, pdfDoc: jsPDF) => {
-            const canvasWidth = canvas.width;
-            const canvasHeight = canvas.height;
-            const pxScale = canvasWidth / 210; // Pixels per millimeter
-            
-            // If fitToPage is enabled or canvas fits on 1 page (within 8% margin threshold)
-            const isSinglePageFit = fitToPage || (canvasHeight <= (297 - (activeMargin.top + activeMargin.bottom)) * pxScale * 1.05);
-            
-            if (isSinglePageFit) {
-                const naturalHeightMM = canvasHeight / pxScale;
-                const availableHeightMM = 297 - (activeMargin.top + activeMargin.bottom);
-                const scaleFactor = Math.min(1, availableHeightMM / naturalHeightMM);
-                const finalHeightMM = naturalHeightMM * scaleFactor;
-                const finalWidthMM = 210 * scaleFactor;
-                const leftPos = (210 - finalWidthMM) / 2;
-                const topPos = scaleFactor < 1 ? Math.max(activeMargin.top, (297 - finalHeightMM) / 2) : 0;
-                
-                pdfDoc.addImage(canvas.toDataURL('image/png'), 'PNG', leftPos, topPos, finalWidthMM, finalHeightMM);
-                return;
-            }
-
-            const pageHeightPx = Math.floor(297 * pxScale);
-            let currentY = 0;
-            let pageCount = 0;
-            
-            while (currentY < canvasHeight) {
-                if (pageCount > 0) {
-                    pdfDoc.addPage();
-                }
-                
-                const currentSliceHeight = Math.min(pageHeightPx, canvasHeight - currentY);
-                if (currentSliceHeight <= 0) break;
-                
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = canvasWidth;
-                tempCanvas.height = currentSliceHeight;
-                
-                const tempCtx = tempCanvas.getContext('2d');
-                if (tempCtx) {
-                    tempCtx.drawImage(
-                        canvas,
-                        0, currentY, canvasWidth, currentSliceHeight,
-                        0, 0, canvasWidth, currentSliceHeight
-                    );
-                }
-                
-                const imgData = tempCanvas.toDataURL('image/png');
-                const imgHeightMM = currentSliceHeight / pxScale;
-                
-                pdfDoc.addImage(imgData, 'PNG', 0, 0, 210, imgHeightMM);
-                
-                currentY += currentSliceHeight;
-                pageCount++;
-            }
-        };
-
-        if (aiReport) {
-            const canvas = await html2canvas(aiReport, {
-                scale: 2, 
-                useCORS: true,
-                logging: false,
-                windowHeight: aiReport.scrollHeight,
-                windowWidth: aiReport.scrollWidth,
-                onclone: (clonedDoc) => {
-                    const clonedEl = clonedDoc.getElementById('ai-report-preview');
-                    if (clonedEl) {
-                        clonedEl.style.transform = 'none';
-                        clonedEl.style.transformOrigin = 'unset';
-                        clonedEl.style.setProperty('padding', `${activeMargin.top}mm ${activeMargin.right}mm ${activeMargin.bottom}mm ${activeMargin.left}mm`, 'important');
-                        const pTags = clonedEl.querySelectorAll('p, div, td, span');
-                        pTags.forEach(p => {
-                            const el = p as HTMLElement;
-                            if (el.style.textAlign === 'justify') {
-                                el.style.textAlign = 'left';
-                            }
-                            el.style.letterSpacing = 'normal';
-                            el.style.wordSpacing = 'normal';
-                        });
-                    }
-                }
-            });
-            await sliceCanvasToPdf(canvas, doc);
-        } else {
-            for (let i = 0; i < docElements.length; i++) {
-                const element = docElements[i] as HTMLElement;
-                const canvas = await html2canvas(element, {
-                    scale: 2, 
-                    useCORS: true,
-                    logging: false,
-                    windowHeight: element.scrollHeight,
-                    windowWidth: element.scrollWidth,
-                    onclone: (clonedDoc) => {
-                        const clonedPages = clonedDoc.querySelectorAll('.document-page');
-                        clonedPages.forEach(p => {
-                            const el = p as HTMLElement;
-                            el.style.transform = 'none';
-                            el.style.transformOrigin = 'unset';
-                            el.style.setProperty('padding', `${activeMargin.top}mm ${activeMargin.right}mm ${activeMargin.bottom}mm ${activeMargin.left}mm`, 'important');
-                            const innerEls = el.querySelectorAll('*');
-                            innerEls.forEach(inner => {
-                                const innerHtml = inner as HTMLElement;
-                                if (innerHtml.style.textAlign === 'justify') {
-                                    innerHtml.style.setProperty('text-align', 'left', 'important');
-                                }
-                                innerHtml.style.setProperty('letter-spacing', 'normal', 'important');
-                                innerHtml.style.setProperty('word-spacing', 'normal', 'important');
-                            });
-                        });
-                    }
-                });
-                
-                if (i > 0) doc.addPage();
-                await sliceCanvasToPdf(canvas, doc);
-            }
-        }
-
-        let filename = `evraklar_${new Date().toISOString().split('T')[0]}`;
-        if (aiReport) {
-            const currentStudent = students.find(s => s.id === selectedStudentId);
-            filename = getFilenameFromDoc(undefined, currentStudent?.name, 'analysis', false);
-        } else {
-            const isBulk = generatedDocs.length > 1;
-            const singleDoc = generatedDocs[0];
-            const docType = singleDoc?.type;
-            const studentName = singleDoc?.studentName;
-            
-            filename = getFilenameFromDoc(docType, studentName, activeTab, isBulk);
-        }
-        doc.save(`${filename}.pdf`);
-    } catch (err) {
-        console.error(err);
-        alert("PDF oluşturulurken bir hata oluştu.");
-    } finally {
-        setIsPdfGenerating(false);
-    }
-  };
-
-  const handlePrint = () => {
-    const aiReport = document.getElementById('ai-report-preview');
-    const docDomElements = document.querySelectorAll('.document-page');
-    
-    if (docDomElements.length === 0 && !aiReport) {
-        alert("Yazdırılacak belge bulunamadı.");
-        return;
-    }
-    
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.left = '-9999px';
-    iframe.style.top = '0';
-    iframe.style.width = '210mm';
-    iframe.style.height = '297mm';
-    iframe.style.border = '0';
-    iframe.style.zIndex = '9999';
-    document.body.appendChild(iframe);
-    
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!iframeDoc) return;
-    
     let printHtml = '';
     if (activeTab === 'analysis' && aiReport) {
-        const reportContent = aiReport.querySelector('.whitespace-pre-wrap')?.innerHTML || aiResult;
-        printHtml = `
-            <div class="document-entry">
-                <div class="doc-header" style="text-align:center; font-weight:bold; border-bottom:2px solid black; padding-bottom:8px; margin-bottom:18px; font-size:12pt; letter-spacing:0.5px;">
-                    YAPAY ZEKA ANALİZ VE MEVZUAT RAPORU
-                </div>
-                <div class="doc-content" style="font-size:${docFontSize}pt; line-height:1.6; text-align:justify; white-space:pre-wrap;">
-                    ${reportContent}
-                </div>
-                <div style="margin-top:24px; text-align:center; font-size:9pt; color:#666; border-top:1px solid #ccc; padding-top:8px;">
-                    *** Yapay Zeka (AI) tarafından bilgi amaçlı oluşturulmuştur. ***
-                </div>
-            </div>
-        `;
+      const reportContent = aiReport.querySelector('.whitespace-pre-wrap')?.innerHTML || aiResult;
+      printHtml = `
+        <div class="document-entry">
+          <div class="doc-header" style="text-align:center; font-weight:bold; border-bottom:2px solid black; padding-bottom:8px; margin-bottom:18px; font-size:12pt; letter-spacing:0.5px;">
+            YAPAY ZEKA ANALİZ VE MEVZUAT RAPORU
+          </div>
+          <div class="doc-content" style="font-size:${docFontSize}pt; line-height:1.6; text-align:justify; white-space:pre-wrap;">
+            ${reportContent}
+          </div>
+          <div style="margin-top:24px; text-align:center; font-size:9pt; color:#666; border-top:1px solid #ccc; padding-top:8px;">
+            *** Yapay Zeka (AI) tarafından bilgi amaçlı oluşturulmuştur. ***
+          </div>
+        </div>
+      `;
     } else {
-        generatedDocs.forEach((doc, idx) => {
-            let bodyHtml = doc.body;
-            const liveEditable = docDomElements[idx]?.querySelector('[contenteditable]');
-            if (liveEditable) {
-                bodyHtml = liveEditable.innerHTML;
-            }
-            
-            printHtml += `
-                <div class="document-entry">
-                    ${doc.header ? `<div class="doc-header" style="text-align:center; font-weight:bold; margin-bottom:12px; font-size:11pt; line-height:1.3;">${doc.header}</div>` : ''}
-                    <div class="doc-content ${fitToPage ? 'print-fit-page' : ''}" style="font-size:${docFontSize}pt;">
-                        ${bodyHtml}
-                    </div>
-                </div>
-            `;
-        });
+      generatedDocs.forEach((doc, idx) => {
+        let bodyHtml = doc.body;
+        const liveEditable = docDomElements[idx]?.querySelector('[contenteditable]');
+        if (liveEditable) {
+          bodyHtml = liveEditable.innerHTML;
+        }
+
+        printHtml += `
+          <div class="document-entry">
+            ${doc.header ? `<div class="doc-header" style="text-align:center; font-weight:bold; margin-bottom:12px; font-size:11pt; line-height:1.3;">${doc.header}</div>` : ''}
+            <div class="doc-content ${fitToPage ? 'print-fit-page' : ''}" style="font-size:${docFontSize}pt;">
+              ${bodyHtml}
+            </div>
+          </div>
+        `;
+      });
     }
-    
-    const extraStyles = `
-      <style>
-        /* Word / Excel Sayfa Düzeni Standart Kenar Boşlukları Kuralı */
+
+    const cssFitPage = `
+      @page {
+        margin-top: 10mm !important;
+        margin-bottom: 10mm !important;
+        margin-left: 12mm !important;
+        margin-right: 12mm !important;
+      }
+      .print-fit-page {
+        zoom: 0.92 !important;
+        transform-origin: top center !important;
+      }
+    `;
+
+    const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>${filename}</title>
+    <style>
+      @page {
+        size: A4 portrait;
+        margin-top: ${activeMargin.top}mm !important;
+        margin-bottom: ${activeMargin.bottom}mm !important;
+        margin-left: ${activeMargin.left}mm !important;
+        margin-right: ${activeMargin.right}mm !important;
+      }
+      @media print {
         @page {
           size: A4 portrait;
           margin-top: ${activeMargin.top}mm !important;
@@ -1125,126 +965,141 @@ const DecisionAssistant = () => {
           margin-left: ${activeMargin.left}mm !important;
           margin-right: ${activeMargin.right}mm !important;
         }
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-family: "Times New Roman", Times, "Liberation Serif", serif;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-container {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .document-entry {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+      .document-entry:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+      .doc-content {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      }
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      thead {
+        display: table-header-group !important;
+      }
+      tfoot {
+        display: table-footer-group !important;
+      }
+      .signature-block, .avoid-break, .signatures-table, .approval-block {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        break-inside: avoid-page !important;
+      }
+      h1, h2, h3, h4, .doc-header {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+      p, div {
+        orphans: 3 !important;
+        widows: 3 !important;
+      }
+      .print\\:hidden, .print-hide, .page-marker, [data-html2canvas-ignore="true"] {
+        display: none !important;
+      }
+      ${fitToPage ? cssFitPage : ''}
+    </style>
+  </head>
+  <body class="bg-white">
+    <div class="print-container">
+      ${printHtml}
+    </div>
+  </body>
+</html>`;
 
-        /* Sıfır kök boşluk - @page doğrudan tüm sayfaların kenar boşluklarını yönetir */
-        html, body {
-          margin: 0 !important;
-          padding: 0 !important;
-          width: 100% !important;
-          background: white !important;
-          color: black !important;
-          font-family: "Times New Roman", Times, "Liberation Serif", serif;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
+    return { html, filename };
+  };
 
-        .print-container {
-          width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
+  const handleDownloadPdf = async () => {
+    const docData = buildFullDocumentHtml();
+    if (!docData) {
+      alert("İndirilecek belge bulunamadı.");
+      return;
+    }
 
-        /* Çoklu belge ayrımı: Her evrak yeni bir A4 sayfasında başlar */
-        .document-entry {
-          width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          box-sizing: border-box !important;
-          page-break-after: always !important;
-          break-after: page !important;
-        }
-        .document-entry:last-child {
-          page-break-after: auto !important;
-          break-after: auto !important;
-        }
+    const { html, filename } = docData;
+    setIsPdfGenerating(true);
+    try {
+      if (window.electronAPI) {
+        // Chromium vector printToPDF with native Save Dialog (zero rasterization, selectable text)
+        const result = await window.electronAPI.printToPdf({
+          html,
+          landscape: false,
+          pageSize: 'A4',
+          saveDialog: true,
+          defaultPath: `${filename}.pdf`,
+          title: 'PDF Olarak Kaydet'
+        });
 
-        /* Tek veya çok sayfalı evraklarda içeriğin sayfalar arası doğal akışı */
-        .doc-content {
-          width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          box-sizing: border-box !important;
+        if (result.canceled) return;
+        if (!result.success && result.error) {
+          alert('PDF oluşturulamadı: ' + result.error);
         }
-        .doc-content * {
-          box-sizing: border-box !important;
-        }
+      } else {
+        // Web fallback: Render via iframe with pure CSS @media print
+        printHtmlViaIframe(html);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('PDF oluşturulurken bir hata oluştu: ' + (err.message || err));
+    } finally {
+      setIsPdfGenerating(false);
+    }
+  };
 
-        /* Tablo ve hücre sayfalama kuralları (Word & Excel standartları) */
-        table {
-          width: 100% !important;
-          border-collapse: collapse !important;
-        }
-        tr {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-        thead {
-          display: table-header-group !important;
-        }
-        tfoot {
-          display: table-footer-group !important;
-        }
+  const handlePrint = async () => {
+    const docData = buildFullDocumentHtml();
+    if (!docData) {
+      alert("Yazdırılacak belge bulunamadı.");
+      return;
+    }
 
-        /* Tarih, imza, onay ve tutanak blokları sayfa ortasından bölünmez */
-        .signature-block, .avoid-break, .signatures-table, .approval-block {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-          break-inside: avoid-page !important;
-        }
-
-        /* Başlıklar sayfa sonunda tek başına kalmaz */
-        h1, h2, h3, h4, .doc-header {
-          page-break-after: avoid !important;
-          break-after: avoid !important;
-        }
-
-        /* Paragraf yetim/dul satır koruması */
-        p, div {
-          orphans: 3 !important;
-          widows: 3 !important;
-        }
-
-        /* Ekran işaretçilerini ve butonları gizle */
-        [data-html2canvas-ignore="true"], .print\\:hidden, .print-hide, .page-marker {
-          display: none !important;
-        }
-
-        ${fitToPage ? cssFitPage : ''}
-      </style>
-    `;
-
-    const docHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>e-Okul Disiplin Belgesi (Office Kuralı)</title>
-          ${extraStyles}
-        </head>
-        <body class="bg-white">
-          <div class="print-container">
-            ${printHtml}
-          </div>
-          <script>
-            window.onload = function() {
-              window.focus();
-              setTimeout(function() {
-                window.print();
-                setTimeout(function() {
-                  if (window.frameElement) {
-                    window.parent.document.body.removeChild(window.frameElement);
-                  }
-                }, 200);
-              }, 250);
-            };
-          </script>
-        </body>
-      </html>
-    `;
-    
-    iframeDoc.open();
-    iframeDoc.write(docHtml);
-    iframeDoc.close();
+    const { html } = docData;
+    if (window.electronAPI) {
+      try {
+        await window.electronAPI.printDirect({
+          html,
+          landscape: false,
+          pageSize: 'A4'
+        });
+      } catch (err) {
+        printHtmlViaIframe(html);
+      }
+    } else {
+      printHtmlViaIframe(html);
+    }
   };
 
   const handleDocUpdate = (value: string, index: number = 0) => {

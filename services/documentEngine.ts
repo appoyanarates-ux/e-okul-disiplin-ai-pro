@@ -768,3 +768,202 @@ export const createStatisticsDoc = (
     footerNote: "E-Okul Disiplin AI Pro - By Abdullah Yanarateş"
   };
 };
+
+/**
+ * Converts a DocumentDefinition into a standalone, pure vector HTML string
+ * with exact @page rules and CSS @media print styles for Chromium printToPDF.
+ */
+export const renderDocDefToHtml = (
+  docDef: DocumentDefinition,
+  options: {
+    margins?: { top: number; bottom: number; left: number; right: number };
+    fontSize?: number;
+  } = {}
+): string => {
+  const isLandscape = docDef.orientation === 'landscape';
+  const margins = options.margins || { top: 20, bottom: 20, left: 20, right: 20 };
+  const fontSize = options.fontSize || docDef.fontSize || 10.5;
+
+  let sectionsHtml = '';
+  docDef.sections.forEach(section => {
+    sectionsHtml += '<div style="margin-bottom: 14px;">';
+    if (section.title) {
+      sectionsHtml += `<div style="font-weight: bold; font-size: 11pt; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 4px; margin-bottom: 8px;">${section.title}</div>`;
+    }
+
+    if (section.type === 'paragraph' && section.text) {
+      const align = section.align || 'justify';
+      const weight = section.bold ? 'font-weight: bold;' : '';
+      sectionsHtml += `<div style="text-align: ${align}; ${weight} font-size: ${fontSize}pt; line-height: 1.5; white-space: pre-line; margin-bottom: 10px;">${section.text}</div>`;
+    } else if (section.type === 'keyValueGrid' && section.items) {
+      sectionsHtml += '<table style="width: 100%; border-collapse: collapse; margin: 10px 0; border: 1px solid #000; font-size: 9.5pt;"><tbody>';
+      for (let i = 0; i < section.items.length; i += 2) {
+        const item1 = section.items[i];
+        const item2 = section.items[i + 1];
+        sectionsHtml += '<tr>';
+        sectionsHtml += `<td style="width: 25%; font-weight: bold; background-color: #f8fafc; padding: 6px 8px; border: 1px solid #000;">${item1.label}</td>`;
+        sectionsHtml += `<td style="width: 25%; padding: 6px 8px; border: 1px solid #000;">${item1.value || '-'}</td>`;
+        sectionsHtml += `<td style="width: 25%; font-weight: bold; background-color: #f8fafc; padding: 6px 8px; border: 1px solid #000;">${item2 ? item2.label : ''}</td>`;
+        sectionsHtml += `<td style="width: 25%; padding: 6px 8px; border: 1px solid #000;">${item2 ? (item2.value || '-') : ''}</td>`;
+        sectionsHtml += '</tr>';
+      }
+      sectionsHtml += '</tbody></table>';
+    } else if (section.type === 'table' && section.headers && section.rows) {
+      sectionsHtml += '<table style="width: 100%; border-collapse: collapse; margin: 10px 0; border: 1px solid #000; font-size: 9pt;">';
+      sectionsHtml += '<thead><tr style="background-color: #f1f5f9;">';
+      section.headers.forEach((h, hIdx) => {
+        const width = section.colWidths?.[hIdx] ? `width: ${section.colWidths[hIdx]}%;` : '';
+        sectionsHtml += `<th style="padding: 6px 8px; border: 1px solid #000; text-align: left; font-weight: bold; ${width}">${h}</th>`;
+      });
+      sectionsHtml += '</tr></thead><tbody>';
+      section.rows.forEach((row, rIdx) => {
+        const bg = rIdx % 2 === 1 ? 'background-color: #fafafa;' : 'background-color: #ffffff;';
+        sectionsHtml += `<tr style="${bg}">`;
+        row.forEach(cell => {
+          sectionsHtml += `<td style="padding: 5px 8px; border: 1px solid #000; vertical-align: top;">${cell}</td>`;
+        });
+        sectionsHtml += '</tr>';
+      });
+      sectionsHtml += '</tbody></table>';
+    } else if (section.type === 'bulletList' && section.bullets) {
+      sectionsHtml += '<ul style="margin: 8px 0; padding-left: 24px;">';
+      section.bullets.forEach(b => {
+        sectionsHtml += `<li style="margin-bottom: 4px; font-size: ${fontSize}pt; line-height: 1.4;">${b}</li>`;
+      });
+      sectionsHtml += '</ul>';
+    } else if (section.type === 'notice' && section.text) {
+      sectionsHtml += `<div style="padding: 8px 12px; background-color: #f8fafc; border-left: 4px solid #1e293b; font-style: italic; font-size: 9.5pt; margin: 10px 0;">${section.text}</div>`;
+    }
+    sectionsHtml += '</div>';
+  });
+
+  let signaturesHtml = '';
+  if (docDef.signatures && docDef.signatures.length > 0) {
+    const colCount = Math.min(docDef.signatures.length, 4);
+    const colWidth = Math.floor(100 / colCount);
+    signaturesHtml += '<table style="width: 100%; border-collapse: collapse; border: none; margin-top: 35px; page-break-inside: avoid; break-inside: avoid;">';
+    signaturesHtml += '<tr style="border: none;">';
+    docDef.signatures.forEach(sig => {
+      signaturesHtml += `
+        <td style="width: ${colWidth}%; border: none; text-align: center; vertical-align: top; padding: 0 10px;">
+          <div style="font-weight: bold; font-size: 9.5pt; text-transform: uppercase;">${sig.title}</div>
+          <div style="height: 45px; display: flex; align-items: center; justify-content: center; font-style: italic; color: #94a3b8; font-size: 8.5pt;">(İmza / Mühür)</div>
+          <div style="font-size: 9.5pt; font-weight: 600;">${sig.name || 'Yetkili'}</div>
+          ${sig.duty ? `<div style="font-size: 8.5pt; color: #475569;">${sig.duty}</div>` : ''}
+        </td>
+      `;
+    });
+    signaturesHtml += '</tr></table>';
+  }
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${docDef.title}</title>
+  <style>
+    @page {
+      size: A4 ${isLandscape ? 'landscape' : 'portrait'};
+      margin-top: ${margins.top}mm !important;
+      margin-bottom: ${margins.bottom}mm !important;
+      margin-left: ${margins.left}mm !important;
+      margin-right: ${margins.right}mm !important;
+    }
+    @media print {
+      @page {
+        size: A4 ${isLandscape ? 'landscape' : 'portrait'};
+        margin-top: ${margins.top}mm !important;
+        margin-bottom: ${margins.bottom}mm !important;
+        margin-left: ${margins.left}mm !important;
+        margin-right: ${margins.right}mm !important;
+      }
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-family: "Times New Roman", Times, "Liberation Serif", serif;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .print-doc-container {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
+    }
+    table {
+      border-collapse: collapse !important;
+    }
+    tr {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    thead {
+      display: table-header-group !important;
+    }
+    tfoot {
+      display: table-footer-group !important;
+    }
+    .avoid-break, .signature-block {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      break-inside: avoid-page !important;
+    }
+    h1, h2, h3, h4, .doc-header {
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+    p, div {
+      orphans: 3 !important;
+      widows: 3 !important;
+    }
+    .print-hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body class="bg-white">
+  <div class="print-doc-container">
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 16px;">
+      <div style="font-weight: bold; font-size: 11pt; text-transform: uppercase; white-space: pre-line; line-height: 1.3;">
+        ${docDef.institutionName}
+      </div>
+      ${docDef.academicYear ? `<div style="font-size: 9.5pt; color: #475569; font-style: italic; margin-top: 3px;">${docDef.academicYear}</div>` : ''}
+    </div>
+
+    <!-- Title -->
+    <div style="text-align: center; margin-bottom: 18px;">
+      <h1 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin: 0; padding: 0;">
+        ${docDef.title}
+      </h1>
+      ${docDef.subtitle ? `<div style="font-size: 9.5pt; color: #475569; font-style: italic; margin-top: 3px;">${docDef.subtitle}</div>` : ''}
+    </div>
+
+    <!-- Code & Date -->
+    ${(docDef.code || docDef.date) ? `
+      <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 16px; font-size: 9.5pt; font-weight: bold;">
+        <span>${docDef.code ? `Sayı / Kod: ${docDef.code}` : ''}</span>
+        <span>${docDef.date ? `Tarih: ${docDef.date}` : ''}</span>
+      </div>
+    ` : ''}
+
+    <!-- Sections -->
+    ${sectionsHtml}
+
+    <!-- Signatures -->
+    ${signaturesHtml}
+
+    <!-- Footer Note -->
+    ${docDef.footerNote ? `
+      <div style="margin-top: 30px; padding-top: 8px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 8pt; color: #94a3b8;">
+        <span>${docDef.footerNote}</span>
+        <span>Resmi Belge Çıktısı</span>
+      </div>
+    ` : ''}
+  </div>
+</body>
+</html>`;
+};

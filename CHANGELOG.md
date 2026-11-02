@@ -6,6 +6,15 @@ Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
 ---
 
+## [1.0.2] - 2026-11-02
+
+### 🖨️ Saf Vektörel PDF ve Chromium printToPDF / showSaveDialog Mimarisi
+- **Resim Dönüştürücüler (`html2canvas`) Kaldırıldı:** DOM'u pikselleştirip canvas/PNG olarak PDF'e basan rasterize yöntemler tamamen temizlendi; metinleri kopyalanabilir, seçilebilir ve sıfır kalite kaybıyla işlenen saf vektörel mimariye geçildi.
+- **Electron Chromium `printToPDF` & `showSaveDialog` IPC Altyapısı:** Belge HTML'leri arka planda izole Chromium pencerelerinde `@page` ve CSS kurallarıyla render edilerek yerel Windows "Farklı Kaydet" penceresiyle diske yazdırıldı.
+- **Kapsamlı CSS `@media print` Kuralları:** Tüm menüler, butonlar, yan çubuklar ve modal katmanları yazdırma çıktılarından tamamen izole edildi; tablo ve imza blokları sayfa bölünmelerine karşı güvenceye alındı.
+
+---
+
 ## [1.0.1] - 2026-11-02
 
 ### ⚡ Düzeltmeler ve Güncelleme Bildirim Sistemi

@@ -8,9 +8,7 @@ import {
 import { useIncidents } from '../context/IncidentContext';
 import { useStudents } from '../context/StudentContext';
 import { useSettings } from '../context/SettingsContext';
-import { jsPDF } from "jspdf";
-import html2canvas from 'html2canvas';
-import { exportHtmlToWord } from '../services/exportService';
+import { exportHtmlToWord, printHtmlViaIframe } from '../services/exportService';
 import { MarginType, PAGE_MARGINS, Student } from '../types';
 
 const PenaltyRemoval = () => {
@@ -763,35 +761,46 @@ const PenaltyRemoval = () => {
 
 
   // --- UTILS & EXPORT (WORD, PDF, PRINT) ---
-  const handlePrint = () => {
+  const buildFullDocumentHtml = (): { html: string; filename: string } | null => {
     const docElement = document.getElementById('document-preview');
     if (!docElement && !generatedDoc) {
-      alert("Yazdırılacak belge bulunamadı.");
-      return;
+      return null;
     }
 
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.left = '-9999px';
-    iframe.style.top = '0';
-    iframe.style.width = '210mm';
-    iframe.style.height = '297mm';
-    iframe.style.border = '0';
-    iframe.style.zIndex = '9999';
-    document.body.appendChild(iframe);
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!iframeDoc) return;
-
+    const filename = `Ceza_Kaldirma_Karari_${selectedStudentIds[0] || 'Evrak'}`;
     let bodyHtml = generatedDoc?.body || '';
     const liveEditable = docElement?.querySelector('[contenteditable]');
     if (liveEditable) {
       bodyHtml = liveEditable.innerHTML;
     }
 
-    const extraStyles = `
-      <style>
-        /* Standart Word / Office Kenar Boşlukları Kuralı */
+    const cssFitPage = `
+      @page {
+        margin-top: 10mm !important;
+        margin-bottom: 10mm !important;
+        margin-left: 12mm !important;
+        margin-right: 12mm !important;
+      }
+      .print-fit-page {
+        zoom: 0.92 !important;
+        transform-origin: top center !important;
+      }
+    `;
+
+    const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>${filename}</title>
+    <style>
+      @page {
+        size: A4 portrait;
+        margin-top: ${activeMargin.top}mm !important;
+        margin-bottom: ${activeMargin.bottom}mm !important;
+        margin-left: ${activeMargin.left}mm !important;
+        margin-right: ${activeMargin.right}mm !important;
+      }
+      @media print {
         @page {
           size: A4 portrait;
           margin-top: ${activeMargin.top}mm !important;
@@ -799,116 +808,102 @@ const PenaltyRemoval = () => {
           margin-left: ${activeMargin.left}mm !important;
           margin-right: ${activeMargin.right}mm !important;
         }
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-family: "Times New Roman", Times, "Liberation Serif", serif;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-container {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .document-entry {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      }
+      .doc-content {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      }
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      thead {
+        display: table-header-group !important;
+      }
+      tfoot {
+        display: table-footer-group !important;
+      }
+      .signature-block, .avoid-break, .signatures-table, .approval-block {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        break-inside: avoid-page !important;
+      }
+      h1, h2, h3, h4 {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+      p, div {
+        orphans: 3 !important;
+        widows: 3 !important;
+      }
+      .print\\:hidden, .print-hide, .page-marker, [data-html2canvas-ignore="true"] {
+        display: none !important;
+      }
+      ${fitToPage ? cssFitPage : ''}
+    </style>
+  </head>
+  <body class="bg-white">
+    <div class="print-container">
+      <div class="document-entry">
+        <div class="doc-content ${fitToPage ? 'print-fit-page' : ''}" style="font-size:${docFontSize}pt;">
+          ${bodyHtml}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`;
 
-        /* Sıfır kök boşluk - @page doğrudan her sayfanın (1, 2, 3...) kenar boşluğunu kesin yönetir */
-        html, body {
-          margin: 0 !important;
-          padding: 0 !important;
-          width: 100% !important;
-          background: white !important;
-          color: black !important;
-          font-family: "Times New Roman", Times, "Liberation Serif", serif;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
+    return { html, filename };
+  };
 
-        .print-container {
-          width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
+  const handlePrint = async () => {
+    const docData = buildFullDocumentHtml();
+    if (!docData) {
+      alert("Yazdırılacak belge bulunamadı.");
+      return;
+    }
 
-        .document-entry {
-          width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          box-sizing: border-box !important;
-        }
-
-        .doc-content {
-          width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          box-sizing: border-box !important;
-        }
-
-        /* Tablo ve hücre sayfalama kuralları (Word & Excel standartları) */
-        table {
-          width: 100% !important;
-          border-collapse: collapse !important;
-        }
-        tr {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-        thead {
-          display: table-header-group !important;
-        }
-        tfoot {
-          display: table-footer-group !important;
-        }
-
-        /* Tarih, imza, onay ve tutanak blokları sayfa ortasından bölünmez */
-        .signature-block, .avoid-break, .signatures-table, .approval-block {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-          break-inside: avoid-page !important;
-        }
-
-        h1, h2, h3, h4 {
-          page-break-after: avoid !important;
-          break-after: avoid !important;
-        }
-
-        p, div {
-          orphans: 3 !important;
-          widows: 3 !important;
-        }
-
-        [data-html2canvas-ignore="true"], .print\\:hidden, .print-hide, .page-marker {
-          display: none !important;
-        }
-
-        ${fitToPage ? cssFitPage : ''}
-      </style>
-    `;
-
-    const docHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Ceza Kaldırma Kararı (Office Kuralı)</title>
-          ${extraStyles}
-        </head>
-        <body class="bg-white">
-          <div class="print-container">
-            <div class="document-entry">
-              <div class="doc-content ${fitToPage ? 'print-fit-page' : ''}" style="font-size:${docFontSize}pt;">
-                ${bodyHtml}
-              </div>
-            </div>
-          </div>
-          <script>
-            window.onload = function() {
-              window.focus();
-              setTimeout(function() {
-                window.print();
-                setTimeout(function() {
-                  if (window.frameElement) {
-                    window.parent.document.body.removeChild(window.frameElement);
-                  }
-                }, 200);
-              }, 250);
-            };
-          </script>
-        </body>
-      </html>
-    `;
-
-    iframeDoc.open();
-    iframeDoc.write(docHtml);
-    iframeDoc.close();
+    const { html } = docData;
+    if (window.electronAPI) {
+      try {
+        await window.electronAPI.printDirect({
+          html,
+          landscape: false,
+          pageSize: 'A4'
+        });
+      } catch (err) {
+        printHtmlViaIframe(html);
+      }
+    } else {
+      printHtmlViaIframe(html);
+    }
   };
 
   const handleDownloadWord = async () => {
@@ -934,94 +929,39 @@ const PenaltyRemoval = () => {
   };
 
   const handleDownloadPdf = async () => {
-    const docElement = document.getElementById('document-preview');
-    if (!docElement) return;
+    const docData = buildFullDocumentHtml();
+    if (!docData) {
+      alert("İndirilecek belge bulunamadı.");
+      return;
+    }
 
-    const filename = `Ceza_Kaldirma_Karari_${selectedStudentIds[0] || 'Evrak'}`;
-
-    if (window.electronAPI) {
-      setIsPdfGenerating(true);
-      try {
-        await window.electronAPI.printToPdf({
+    const { html, filename } = docData;
+    setIsPdfGenerating(true);
+    try {
+      if (window.electronAPI) {
+        // Native Chromium printToPDF with showSaveDialog IPC
+        const result = await window.electronAPI.printToPdf({
+          html,
           landscape: false,
           pageSize: 'A4',
           saveDialog: true,
           defaultPath: `${filename}.pdf`,
           title: 'PDF Olarak Kaydet'
         });
-      } catch (err: any) {
-        alert('PDF oluşturulamadı: ' + err.message);
-      } finally {
-        setIsPdfGenerating(false);
-      }
-      return;
-    }
 
-    setIsPdfGenerating(true);
-    try {
-        const doc = new jsPDF('p', 'mm', 'a4');
-        const canvas = await html2canvas(docElement, { 
-          scale: 2,
-          useCORS: true,
-          logging: false
-        });
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const pxScale = canvasWidth / 210;
-        
-        const topMargin = activeMargin.top;
-        const bottomMargin = activeMargin.bottom;
-        const leftMargin = activeMargin.left;
-        const rightMargin = activeMargin.right;
-
-        // If fitToPage is enabled or canvas fits on 1 page
-        const isSinglePageFit = fitToPage || (canvasHeight <= (297 - (topMargin + bottomMargin)) * pxScale * 1.05);
-        if (isSinglePageFit) {
-            const availableHeightMM = 297 - (topMargin + bottomMargin);
-            const naturalHeightMM = canvasHeight / pxScale;
-            const scaleFactor = Math.min(1, availableHeightMM / naturalHeightMM);
-            const finalHeightMM = naturalHeightMM * scaleFactor;
-            const finalWidthMM = (210 - (leftMargin + rightMargin)) * scaleFactor;
-            const finalLeftMargin = leftMargin + ((210 - (leftMargin + rightMargin) - finalWidthMM) / 2);
-            doc.addImage(canvas.toDataURL('image/png'), 'PNG', finalLeftMargin, topMargin, finalWidthMM, finalHeightMM);
-        } else {
-            const contentWidth = 210 - (leftMargin + rightMargin);
-            const contentHeight = 297 - (topMargin + bottomMargin);
-            const sliceHeightPx = Math.floor(contentHeight * pxScale);
-            let currentY = 0;
-            let pageCount = 0;
-
-            while (currentY < canvasHeight) {
-                if (pageCount > 0) {
-                    doc.addPage();
-                }
-                const currentSliceHeight = Math.min(sliceHeightPx, canvasHeight - currentY);
-                if (currentSliceHeight <= 0) break;
-
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = canvasWidth;
-                tempCanvas.height = currentSliceHeight;
-                const tempCtx = tempCanvas.getContext('2d');
-                if (tempCtx) {
-                    tempCtx.drawImage(
-                        canvas,
-                        0, currentY, canvasWidth, currentSliceHeight,
-                        0, 0, canvasWidth, currentSliceHeight
-                    );
-                }
-                const imgData = tempCanvas.toDataURL('image/png');
-                const imgHeightMM = currentSliceHeight / pxScale;
-                doc.addImage(imgData, 'PNG', leftMargin, topMargin, contentWidth, imgHeightMM);
-
-                currentY += currentSliceHeight;
-                pageCount++;
-            }
+        if (result.canceled) return;
+        if (!result.success && result.error) {
+          alert('PDF oluşturulamadı: ' + result.error);
         }
-        doc.save(`Ceza_Kaldirma_Evrak_${selectedStudentIds[0] || 'Toplu'}.pdf`);
-    } catch (err) {
-        console.error(err);
+      } else {
+        // Web fallback: CSS @media print
+        printHtmlViaIframe(html);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('PDF oluşturulurken bir hata oluştu: ' + (err.message || err));
     } finally {
-        setIsPdfGenerating(false);
+      setIsPdfGenerating(false);
     }
   };
 

@@ -11,8 +11,9 @@ import {
   Loader2,
   FileCheck
 } from 'lucide-react';
-import { DocumentDefinition } from '../services/documentEngine';
+import { DocumentDefinition, renderDocDefToHtml } from '../services/documentEngine';
 import { generateDocxBlob, generateDocxBuffer } from '../services/docxGenerator';
+import { printHtmlViaIframe } from '../services/exportService';
 
 interface DocumentViewerModalProps {
   document: DocumentDefinition;
@@ -42,19 +43,31 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
     marginSize === 'narrow' ? 'p-6' : 
     marginSize === 'wide' ? 'p-14' : 'p-10';
 
+  const getMarginsMm = () => {
+    if (marginSize === 'narrow') return { top: 12, bottom: 12, left: 12, right: 12 };
+    if (marginSize === 'wide') return { top: 25, bottom: 25, left: 25, right: 25 };
+    return { top: 20, bottom: 20, left: 20, right: 20 };
+  };
+
+  const getCleanDocumentHtml = () => {
+    const activeDocDef = { ...docDef, orientation };
+    return renderDocDefToHtml(activeDocDef, { margins: getMarginsMm() });
+  };
+
   const handlePrint = async () => {
+    const html = getCleanDocumentHtml();
     if (window.electronAPI) {
       try {
         await window.electronAPI.printDirect({
+          html,
           landscape: isLandscape,
           pageSize: 'A4'
         });
       } catch (err) {
-        console.warn('Electron print fallback to window.print', err);
-        window.print();
+        printHtmlViaIframe(html);
       }
     } else {
-      window.print();
+      printHtmlViaIframe(html);
     }
   };
 
@@ -62,13 +75,17 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
     setIsExportingPdf(true);
     setStatusMessage('PDF oluşturuluyor...');
     try {
+      const html = getCleanDocumentHtml();
+      const defaultFilename = `${docDef.title.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, '_')}.pdf`;
+
       if (window.electronAPI) {
-        // Use Chromium webContents.printToPDF via IPC
+        // Use Chromium printToPDF with showSaveDialog IPC
         const result = await window.electronAPI.printToPdf({
+          html,
           landscape: isLandscape,
           pageSize: 'A4',
           saveDialog: true,
-          defaultPath: `${docDef.title.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, '_')}.pdf`,
+          defaultPath: defaultFilename,
           title: 'PDF Olarak Kaydet'
         });
 
@@ -81,8 +98,8 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
           alert('PDF kaydedilirken hata oluştu: ' + result.error);
         }
       } else {
-        // Web fallback: trigger browser print dialog to save as PDF
-        window.print();
+        // Web fallback: CSS @media print iframe
+        printHtmlViaIframe(html);
         setStatusMessage(null);
       }
     } catch (err: any) {
