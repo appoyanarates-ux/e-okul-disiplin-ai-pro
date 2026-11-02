@@ -151,7 +151,7 @@ function createWindow() {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'Hakkında - E-Okul Disiplin AI Pro',
-              message: 'E-OKUL DİSİPLİN AI PRO\nSürüm 1.0.0 (Windows x64)',
+              message: 'E-OKUL DİSİPLİN AI PRO\nSürüm 1.0.1 (Windows x64)',
               detail: 'Okul disiplin süreçlerini yönetmek, olayları kaydetmek, kararları düzenlemek ve resmi belgeler oluşturmak için geliştirilmiş masaüstü yazılımı.\n\nProjenin Sahibi ve Geliştiricisi: By Abdullah Yanarateş\nPlatform: Windows 10 / Windows 11\nİletişim: appo.yanarates@gmail.com',
               buttons: ['Tamam']
             });
@@ -403,6 +403,118 @@ ipcMain.handle('create-backup-now', async (event, { data, note }) => {
 ipcMain.handle('open-external-url', async (event, url) => {
   if (url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:'))) {
     shell.openExternal(url);
+  }
+});
+
+// Helper for download streaming with redirect support
+function downloadFileWithProgress(fileUrl, targetPath, onProgress) {
+  const https = require('https');
+  const http = require('http');
+
+  return new Promise((resolve, reject) => {
+    const protocol = fileUrl.startsWith('https') ? https : http;
+    const request = protocol.get(fileUrl, { headers: { 'User-Agent': 'E-Okul-Disiplin-AI-Pro-Updater' } }, (res) => {
+      // Follow HTTP redirects (GitHub releases redirect to AWS S3 objects)
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return downloadFileWithProgress(res.headers.location, targetPath, onProgress)
+          .then(resolve)
+          .catch(reject);
+      }
+
+      if (res.statusCode !== 200) {
+        return reject(new Error(`İndirme başarısız: HTTP ${res.statusCode}`));
+      }
+
+      const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
+      let downloadedBytes = 0;
+      let lastReportTime = Date.now();
+      let lastDownloaded = 0;
+
+      const fileStream = fs.createWriteStream(targetPath);
+
+      res.on('data', (chunk) => {
+        downloadedBytes += chunk.length;
+        const now = Date.now();
+        if (now - lastReportTime > 200 || downloadedBytes === totalBytes) {
+          const delta = downloadedBytes - lastDownloaded;
+          const timeDelta = (now - lastReportTime) / 1000;
+          const speed = timeDelta > 0 ? delta / timeDelta : 0;
+          const percent = totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0;
+
+          onProgress({
+            percent,
+            transferred: downloadedBytes,
+            total: totalBytes,
+            speed
+          });
+
+          lastReportTime = now;
+          lastDownloaded = downloadedBytes;
+        }
+      });
+
+      res.pipe(fileStream);
+
+      fileStream.on('finish', () => {
+        fileStream.close();
+        resolve(targetPath);
+      });
+
+      fileStream.on('error', (err) => {
+        fs.unlink(targetPath, () => {});
+        reject(err);
+      });
+    });
+
+    request.on('error', (err) => {
+      fs.unlink(targetPath, () => {});
+      reject(err);
+    });
+  });
+}
+
+// IPC: Download Update
+ipcMain.handle('download-update', async (event, { url, filename }) => {
+  try {
+    const tempDir = app.getPath('temp');
+    const safeName = (filename || 'E-Okul-Disiplin-AI-Pro-Setup.exe').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const targetPath = path.join(tempDir, safeName);
+
+    await downloadFileWithProgress(url, targetPath, (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-download-progress', progress);
+      }
+    });
+
+    return { success: true, filePath: targetPath };
+  } catch (err) {
+    console.error('Update download error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// IPC: Quit and Install
+ipcMain.handle('quit-and-install', async (event, filePath) => {
+  try {
+    const { spawn } = require('child_process');
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'Kurulum dosyası bulunamadı.' };
+    }
+
+    const child = spawn(filePath, [], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
+
+    setTimeout(() => {
+      app.quit();
+    }, 600);
+
+    return { success: true };
+  } catch (err) {
+    console.error('Quit and install error:', err);
+    return { success: false, error: err.message };
   }
 });
 

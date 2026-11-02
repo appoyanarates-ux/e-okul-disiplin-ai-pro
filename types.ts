@@ -195,3 +195,29 @@ export const PAGE_MARGINS: Record<MarginType, PageMargin> = {
     description: 'Üst: 1.0 cm • Alt: 1.0 cm • Sol: 1.2 cm • Sağ: 1.2 cm (Tek Sayfaya Sığdırma)'
   }
 };
+
+declare global {
+  interface Window {
+    electronAPI?: {
+      isElectron: boolean;
+      platform: string;
+      version: string;
+      author: string;
+      appName: string;
+      printToPdf: (options?: any) => Promise<{ success: boolean; data?: Uint8Array; filePath?: string; canceled?: boolean; error?: string }>;
+      printDirect: (options?: any) => Promise<{ success: boolean; error?: string }>;
+      saveFile: (options: { defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }>; data: Uint8Array | string }) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+      openFileDialog: (options?: any) => Promise<{ canceled: boolean; filePaths: string[]; content?: string; buffer?: Uint8Array; error?: string }>;
+      getUserDataPath: () => Promise<string>;
+      readAppData: () => Promise<{ success: boolean; data?: any; error?: string }>;
+      writeAppData: (data: any) => Promise<{ success: boolean; error?: string }>;
+      listBackups: () => Promise<{ success: boolean; backups?: Array<{ name: string; date: string; size: number }>; error?: string }>;
+      restoreBackup: (fileName: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+      createBackupNow: (data: any, note?: string) => Promise<{ success: boolean; filename?: string; targetPath?: string; error?: string }>;
+      openExternal: (url: string) => Promise<void>;
+      downloadUpdate: (options: { url: string; filename?: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      quitAndInstall: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+      onUpdateProgress: (callback: (data: { percent: number; transferred: number; total: number; speed: number }) => void) => () => void;
+    };
+  }
+}

@@ -20,29 +20,7 @@ interface DocumentViewerModalProps {
   onClose: () => void;
 }
 
-// Window Electron API type augmentation
-declare global {
-  interface Window {
-    electronAPI?: {
-      isElectron: boolean;
-      platform: string;
-      version: string;
-      author: string;
-      appName: string;
-      printToPdf: (options?: any) => Promise<{ success: boolean; data?: Uint8Array; filePath?: string; canceled?: boolean; error?: string }>;
-      printDirect: (options?: any) => Promise<{ success: boolean; error?: string }>;
-      saveFile: (options: any) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
-      openFileDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[]; content?: string; buffer?: Uint8Array; error?: string }>;
-      getUserDataPath: () => Promise<string>;
-      readAppData: () => Promise<{ success: boolean; data: any; error?: string }>;
-      writeAppData: (data: any) => Promise<{ success: boolean; error?: string }>;
-      listBackups: () => Promise<{ success: boolean; backups: any[]; error?: string }>;
-      restoreBackup: (fileName: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-      createBackupNow: (data: any, note?: string) => Promise<any>;
-      openExternal: (url: string) => Promise<void>;
-    };
-  }
-}
+
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   document: docDef,

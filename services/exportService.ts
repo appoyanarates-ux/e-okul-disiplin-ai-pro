@@ -343,3 +343,104 @@ export const triggerSafePrint = () => {
     }
   }
 };
+
+/**
+ * Cleanly exports an HTML string as a Microsoft Word document (.doc) with
+ * UTF-8 BOM, print layout XML, and full Turkish Unicode character support.
+ * Does not depend on Node built-ins or packages that break browser bundles.
+ */
+export const exportHtmlToWord = async (
+  htmlBody: string,
+  filenamePrefix: string,
+  options: {
+    fontSize?: number;
+    margins?: { top: number; bottom: number; left: number; right: number };
+    landscape?: boolean;
+  } = {}
+) => {
+  const cleanTitle = filenamePrefix.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ_ -]/g, '_');
+  const filename = `${cleanTitle}.doc`;
+  const fontSize = options.fontSize || 10.5;
+  const isLandscape = Boolean(options.landscape);
+
+  const wordHtml = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>${cleanTitle}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    @page Section1 {
+      size: ${isLandscape ? '29.7cm 21.0cm' : '21.0cm 29.7cm'};
+      margin: 1.8cm 1.8cm 1.8cm 1.8cm;
+      mso-header-margin: 36.0pt;
+      mso-footer-margin: 36.0pt;
+      mso-paper-source: 0;
+    }
+    div.Section1 {
+      page: Section1;
+    }
+    body {
+      font-family: 'Times New Roman', 'DejaVu Sans', serif;
+      font-size: ${fontSize}pt;
+      line-height: 1.25;
+      color: #000;
+      background: #fff;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 6pt 0;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 4pt 6pt;
+      font-size: ${fontSize}pt;
+    }
+    p {
+      margin: 4pt 0;
+    }
+    b, strong {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="Section1">
+    ${htmlBody}
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob(['\ufeff' + wordHtml], { type: 'application/msword;charset=utf-8' });
+
+  if (window.electronAPI) {
+    const arrayBuf = await blob.arrayBuffer();
+    await window.electronAPI.saveFile({
+      defaultPath: filename,
+      filters: [
+        { name: 'Microsoft Word Belgesi (*.doc)', extensions: ['doc', 'docx'] }
+      ],
+      data: new Uint8Array(arrayBuf)
+    });
+  } else {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+};

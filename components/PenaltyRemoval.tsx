@@ -10,7 +10,7 @@ import { useStudents } from '../context/StudentContext';
 import { useSettings } from '../context/SettingsContext';
 import { jsPDF } from "jspdf";
 import html2canvas from 'html2canvas';
-import htmlToDocx from 'html-to-docx';
+import { exportHtmlToWord } from '../services/exportService';
 import { MarginType, PAGE_MARGINS, Student } from '../types';
 
 const PenaltyRemoval = () => {
@@ -923,39 +923,12 @@ const PenaltyRemoval = () => {
     const filename = `Ceza_Kaldirma_Karari_${selectedStudentIds[0] || 'Evrak'}`;
 
     try {
-      const docxData = await htmlToDocx(bodyHtml, null, {
-        table: { row: { cantSplit: true } },
-        footer: true,
-        pageNumber: true,
-        font: 'Times New Roman',
+      await exportHtmlToWord(bodyHtml, filename, {
         fontSize: docFontSize,
-        margins: {
-          top: Math.round(activeMargin.top * 56.7),
-          bottom: Math.round(activeMargin.bottom * 56.7),
-          left: Math.round(activeMargin.left * 56.7),
-          right: Math.round(activeMargin.right * 56.7)
-        }
+        margins: activeMargin
       });
-
-      if (window.electronAPI) {
-        await window.electronAPI.saveFile({
-          defaultPath: `${filename}.docx`,
-          filters: [{ name: 'Microsoft Word Belgesi (*.docx)', extensions: ['docx'] }],
-          data: docxData
-        });
-      } else {
-        const blob = new Blob([docxData], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${filename}.docx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
     } catch (docxErr) {
-      console.error('Docx generation error:', docxErr);
+      console.error('Word export error:', docxErr);
       alert('Word belgesi oluşturulurken bir hata meydana geldi: ' + docxErr);
     }
   };

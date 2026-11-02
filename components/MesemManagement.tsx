@@ -6,7 +6,7 @@ import {
   ClipboardPaste, HelpCircle, Printer, Users, FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import htmlToDocx from 'html-to-docx';
+import { exportHtmlToWord } from '../services/exportService';
 import { Student } from '../types';
 import { useStudents } from '../context/StudentContext';
 import { useIncidents } from '../context/IncidentContext';
@@ -602,31 +602,11 @@ const MesemManagement: React.FC = () => {
     `;
 
     try {
-      const docxData = await htmlToDocx(wordHtml, null, {
-        font: 'Times New Roman',
-        fontSize: 11,
-        margins: { top: 1440, bottom: 1440, left: 1440, right: 1440 }
+      await exportHtmlToWord(wordHtml, filename, {
+        fontSize: 11
       });
-
-      if (window.electronAPI) {
-        await window.electronAPI.saveFile({
-          defaultPath: `${filename}.docx`,
-          filters: [{ name: 'Microsoft Word Belgesi (*.docx)', extensions: ['docx'] }],
-          data: docxData
-        });
-      } else {
-        const blob = new Blob([docxData], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${filename}.docx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
     } catch (docxErr) {
-      console.error('Docx generation error:', docxErr);
+      console.error('Word export error:', docxErr);
       alert('Word belgesi oluşturulurken bir hata meydana geldi.');
     }
   };

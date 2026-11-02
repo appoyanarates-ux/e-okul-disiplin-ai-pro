@@ -12,13 +12,16 @@ import {
   Database,
   ExternalLink,
   CheckCircle,
-  FileText
+  FileText,
+  RefreshCw
 } from 'lucide-react';
+import { UpdateNotificationModal } from './UpdateNotificationModal';
 
 const About = () => {
   const [userDataPath, setUserDataPath] = useState<string>('C:\\Users\\...\\AppData\\Roaming\\e-okul-disiplin-ai-pro');
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
   const [isElectron, setIsElectron] = useState<boolean>(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -177,6 +180,21 @@ const About = () => {
               Uygulama güncellendiğinde veya yeniden kurulduğunda verileriniz bu güvenli klasörde korunur.
             </p>
           </div>
+
+          <div className="pt-1">
+            <button
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Yazılım Güncellemelerini Denetle
+            </button>
+          </div>
+
+          <UpdateNotificationModal
+            isOpenManually={isUpdateModalOpen}
+            onCloseManual={() => setIsUpdateModalOpen(false)}
+          />
         </div>
 
       </div>

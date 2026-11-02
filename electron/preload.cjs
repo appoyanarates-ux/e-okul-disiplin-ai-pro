@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   isElectron: true,
   platform: process.platform,
-  version: '1.0.0',
+  version: '1.0.1',
   author: 'Abdullah Yanarateş',
   appName: 'E-Okul Disiplin AI Pro',
 
@@ -34,4 +34,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Safe external URL launcher (default OS browser)
   openExternal: (url) => ipcRenderer.invoke('open-external-url', url),
+
+  // Auto-Update APIs
+  downloadUpdate: (options) => ipcRenderer.invoke('download-update', options),
+  quitAndInstall: (filePath) => ipcRenderer.invoke('quit-and-install', filePath),
+  onUpdateProgress: (callback) => {
+    const listener = (event, data) => callback(data);
+    ipcRenderer.on('update-download-progress', listener);
+    return () => ipcRenderer.removeListener('update-download-progress', listener);
+  },
 });

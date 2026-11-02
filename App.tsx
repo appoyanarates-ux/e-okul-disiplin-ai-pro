@@ -21,6 +21,8 @@ import { SettingsProvider } from './context/SettingsContext';
 import { IncidentProvider } from './context/IncidentContext';
 import { initPersistenceSync } from './services/persistenceSync';
 
+import { UpdateNotificationModal } from './components/UpdateNotificationModal';
+
 const App = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -33,6 +35,7 @@ const App = () => {
       <IncidentProvider>
         <SettingsProvider>
           <HashRouter>
+            <UpdateNotificationModal />
             <div className="flex bg-[#f3f4f6] min-h-screen font-sans">
               {/* Mobile Header */}
               <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-30 shadow-md">

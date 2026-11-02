@@ -6,6 +6,24 @@ Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
 ---
 
+## [1.0.1] - 2026-11-02
+
+### ⚡ Düzeltmeler ve Güncelleme Bildirim Sistemi
+
+#### 🛠️ Beyaz Ekran Hatası Düzeltildi
+- Render sürecinde tarayıcı uyumsuz Node modüllerinin (`events`, `xmlbuilder2`) sebep olduğu `Uncaught TypeError: Class extends value undefined` başlatma hatası tespit edildi ve kökten giderildi.
+- Word dışa aktarma motoru optimize edilerek %100 saf istemci uyumlu `exportHtmlToWord` ve OpenXML `docxGenerator` yapısına geçirildi.
+- Paket boyutu 4.5 MB'tan 3.2 MB'a düşürüldü; uygulama açılış süresi hızlandırıldı.
+
+#### 🔄 Otomatik Güncelleme Bildirimi ve Canlı İlerleme Çubuğu
+- Önceki sürümü yüklemiş olan kullanıcılar için uygulama açılışında otomatik güncelleme kontrolü eklendi (`UpdateNotificationModal`).
+- Yeni bir sürüm yayımlandığında ekranın üstünde dikkat çekici bildirim çubuğu gösterilir.
+- Kullanıcı tek tıkla güncellemeyi başlatabilir; canlı indirme yüzdesi (%XX), aktarılan megabayt ve indirme hızı anlık olarak izlenir.
+- İndirme tamamlandığında "Şimdi Yeniden Başlat ve Yükle" butonu ile mevcut veriler (öğrenci, olay, okul ayarları) korunarak otomatik yükseltme gerçekleştirilir.
+- "Hakkında" bölümüne manuel "Yazılım Güncellemelerini Denetle" butonu eklendi.
+
+---
+
 ## [1.0.0] - 2026-11-02
 
 ### 🚀 İlk Masaüstü Sürümü (Windows 10 / Windows 11 x64)
