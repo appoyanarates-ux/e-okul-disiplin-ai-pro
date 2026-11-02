@@ -263,13 +263,31 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
 
                   {/* Download Error */}
                   {downloadError && (
-                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div>
-                        <b>İndirme Hatası:</b> {downloadError}
-                        <p className="mt-1">
-                          Doğrudan GitHub üzerinden indirmek için aşağıdaki bağlantıyı kullanabilirsiniz.
-                        </p>
+                    <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="space-y-2 flex-1">
+                        <div>
+                          <b className="text-amber-800">İndirme Uyarısı (Ağ / Güvenlik Sertifikası):</b>
+                          <div className="text-amber-700 mt-0.5 font-mono text-[11px]">{downloadError}</div>
+                          <p className="mt-1 text-slate-600 leading-relaxed">
+                            Okul veya MEB ağlarında ara sertifika filtreleri nedeniyle uygulama içi indirme engellenebilir. Kurulum dosyasını doğrudan internet tarayıcınızdan indirebilirsiniz.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = updateInfo.setupAsset?.browser_download_url || updateInfo.downloadUrl;
+                            if (window.electronAPI?.openExternal) {
+                              window.electronAPI.openExternal(url);
+                            } else {
+                              window.open(url, '_blank');
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors shadow-xs"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Tarayıcıda Doğrudan İndir (.exe)
+                        </button>
                       </div>
                     </div>
                   )}

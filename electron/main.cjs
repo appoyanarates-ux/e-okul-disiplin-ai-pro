@@ -1,6 +1,13 @@
+// Disable strict TLS check for MEB (Ministry of National Education) and corporate self-signed proxy certificates
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// Ignore certificate errors for school/corporate networks with custom root certificates
+app.commandLine.appendSwitch('ignore-certificate-errors');
+app.commandLine.appendSwitch('allow-insecure-localhost', 'true');
 
 // Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -488,14 +495,25 @@ ipcMain.handle('open-external-url', async (event, url) => {
   }
 });
 
-// Helper for download streaming with redirect support
+// Helper for download streaming with redirect support and self-signed cert handling (MEB / school networks)
 function downloadFileWithProgress(fileUrl, targetPath, onProgress) {
   const https = require('https');
   const http = require('http');
 
   return new Promise((resolve, reject) => {
-    const protocol = fileUrl.startsWith('https') ? https : http;
-    const request = protocol.get(fileUrl, { headers: { 'User-Agent': 'E-Okul-Disiplin-AI-Pro-Updater' } }, (res) => {
+    const isHttps = fileUrl.startsWith('https');
+    const protocol = isHttps ? https : http;
+    const httpsAgent = isHttps ? new https.Agent({ rejectUnauthorized: false }) : undefined;
+
+    const requestOptions = {
+      agent: httpsAgent,
+      rejectUnauthorized: false,
+      headers: {
+        'User-Agent': 'E-Okul-Disiplin-AI-Pro-Updater'
+      }
+    };
+
+    const request = protocol.get(fileUrl, requestOptions, (res) => {
       // Follow HTTP redirects (GitHub releases redirect to AWS S3 objects)
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         return downloadFileWithProgress(res.headers.location, targetPath, onProgress)
@@ -613,4 +631,10 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Trust self-signed certificates from MEB / school enterprise proxies
+app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+  event.preventDefault();
+  callback(true);
 });
