@@ -4,6 +4,14 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.0.3] - 2026-11-03
+
+### 🤖 Google Gemini Free Tier API Desteği ve Çoklu Model Fallback Mimarisi
+- **Geçersiz Model Adı Düzeltildi:** Hatalı olan `gemini-3.8-flash` referansı kaldırılarak Google Gemini Free & Paid Tier için resmi desteklenen güncel ve kararlı modeller tanımlandı (`gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-1.5-flash`, `gemini-2.5-flash-lite`).
+- **503 High Demand / UNAVAILABLE Koruması:** Google'ın ücretsiz API anahtarlarında anlık model yoğunluğunda verdiği 503 hatası ("This model is currently experiencing high demand") algılanarak otomatik olarak sıradaki hafif ve hızlı modellere geçiş sağlandı.
+- **Akıllı API Key Doğrulama:** Test işlemi tek bir modelle sınırlı kalmayıp sıralı olarak yedek modelleri de deneyecek şekilde esnetildi; 503 veya 429 gibi anlık sunucu/kota durumlarında anahtarın geçerli olduğu teyit edilerek kullanıcının kaydetmesine izin verildi.
+- **MEB ve Kurumsal Güvenlik Sertifikası Köprüsü:** Okul ve MEB (Fatih Projesi) ağlarındaki self-signed proxy sertifikası kaynaklı indirme kısıtlamaları için `NODE_TLS_REJECT_UNAUTHORIZED=0` ve özel bağlantı köprüsü kalıcı hale getirildi.
+
 ---
 
 ## [1.0.2] - 2026-11-02

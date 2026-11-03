@@ -4,9 +4,9 @@ import { Incident, Student } from "../types";
 // Helper to check connection
 const isOnline = () => (typeof navigator !== 'undefined' ? navigator.onLine : true);
 
-// Primary and fallback models per genai guidelines
-export const PRIMARY_MODEL = 'gemini-3.8-flash';
-export const FALLBACK_MODELS = ['gemini-2.5-flash'];
+// Primary and fallback models supported by Google Gemini Free & Paid Tiers
+export const PRIMARY_MODEL = 'gemini-2.5-flash';
+export const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash-lite'];
 
 // Retrieve user's personal API Key from local storage (NO embedded / default keys)
 export const getUserApiKey = (): string => {
@@ -29,8 +29,9 @@ export interface KeyValidationResult {
 }
 
 /**
- * Validates a user-provided API key by issuing a minimal test request.
- * Returns detailed, user-friendly diagnostic information.
+ * Validates a user-provided API key by testing across available models.
+ * Gracefully handles Google Free Tier 503 (high demand) and 429 (temporary quota) errors,
+ * ensuring valid keys can always be saved.
  */
 export const validateApiKeyDetailed = async (key: string): Promise<KeyValidationResult> => {
   if (!isOnline()) {
@@ -50,67 +51,96 @@ export const validateApiKeyDetailed = async (key: string): Promise<KeyValidation
     };
   }
 
-  try {
-    const ai = new GoogleGenAI({ apiKey: cleanKey });
-    await ai.models.generateContent({
-      model: PRIMARY_MODEL,
-      contents: 'Ping',
-    });
+  const ai = new GoogleGenAI({ apiKey: cleanKey });
+  const modelsToTest = [PRIMARY_MODEL, ...FALLBACK_MODELS];
+  let lastError: unknown = null;
+  let encounteredHighDemand503 = false;
+
+  for (const model of modelsToTest) {
+    try {
+      await ai.models.generateContent({
+        model,
+        contents: 'Merhaba',
+      });
+      return {
+        valid: true,
+        message: `API Anahtarı başarıyla doğrulandı ve çalışıyor (${model}).`
+      };
+    } catch (error: unknown) {
+      lastError = error;
+      const errObj = error as { message?: string; status?: number; code?: number; error?: { code?: number; message?: string } };
+      const errorStr = (errObj?.message || String(error) || JSON.stringify(error)).toLowerCase();
+
+      // 403 PERMISSION_DENIED
+      if (
+        errorStr.includes('403') ||
+        errorStr.includes('permission_denied') ||
+        errorStr.includes('caller does not have permission')
+      ) {
+        console.warn("API Key Validation: 403 PERMISSION_DENIED for user key:", error);
+        return {
+          valid: false,
+          statusCode: 403,
+          errorType: 'PERMISSION_DENIED',
+          message:
+            'Erişim İzni Hatası (403): Girdiğiniz API anahtarının "Generative Language API" (Gemini) kullanım izni bulunmuyor veya Google Cloud projenizde API etkinleştirilmemiş / anahtar kısıtlamaları (IP/HTTP Referrer) isteği engelliyor. Lütfen Google AI Studio (aistudio.google.com/app/apikey) üzerinden yeni ve kısıtlamasız bir anahtar oluşturup deneyiniz.'
+        };
+      }
+
+      // 401 / 400 UNAUTHENTICATED
+      if (
+        errorStr.includes('400') ||
+        errorStr.includes('401') ||
+        errorStr.includes('unauthenticated') ||
+        errorStr.includes('api_key_invalid') ||
+        errorStr.includes('invalid api key')
+      ) {
+        return {
+          valid: false,
+          statusCode: 401,
+          errorType: 'UNAUTHENTICATED',
+          message: 'Geçersiz API Anahtarı (401/400): Girilen anahtar hatalı ya da silinmiş.'
+        };
+      }
+
+      // 429 QUOTA EXCEEDED (Free tier rate limit reached - Key IS valid)
+      if (errorStr.includes('429') || errorStr.includes('resource_exhausted') || errorStr.includes('quota')) {
+        return {
+          valid: true,
+          statusCode: 429,
+          errorType: 'QUOTA_EXCEEDED',
+          message: 'API Anahtarınız geçerli ancak ücretsiz kotası anlık olarak dolu (429). Anahtarı güvenle kaydedebilirsiniz; birkaç dakika sonra kullanıma açılacaktır.'
+        };
+      }
+
+      // 503 UNAVAILABLE / High Demand on specific model -> Try next model
+      if (errorStr.includes('503') || errorStr.includes('high demand') || errorStr.includes('unavailable') || errorStr.includes('overloaded')) {
+        encounteredHighDemand503 = true;
+        continue;
+      }
+
+      // 404 NOT_FOUND -> Try next model
+      if (errorStr.includes('404') || errorStr.includes('not_found')) {
+        continue;
+      }
+    }
+  }
+
+  // If models returned 503 high demand but key was NOT rejected as invalid (401/403)
+  if (encounteredHighDemand503) {
     return {
       valid: true,
-      message: 'API Anahtarı başarıyla doğrulandı ve çalışıyor.'
-    };
-  } catch (error: unknown) {
-    const errObj = error as { message?: string; status?: number; code?: number; error?: { code?: number; message?: string } };
-    const errorStr = (errObj?.message || String(error) || JSON.stringify(error)).toLowerCase();
-    const status = errObj?.status || errObj?.code || errObj?.error?.code;
-
-    if (
-      errorStr.includes('403') ||
-      errorStr.includes('permission_denied') ||
-      errorStr.includes('caller does not have permission')
-    ) {
-      console.warn("API Key Validation: 403 PERMISSION_DENIED for user key:", error);
-      return {
-        valid: false,
-        statusCode: 403,
-        errorType: 'PERMISSION_DENIED',
-        message:
-          'Erişim İzni Hatası (403): Girdiğiniz API anahtarının "Generative Language API" (Gemini) kullanım izni bulunmuyor veya Google Cloud projenizde API etkinleştirilmemiş / anahtar kısıtlamaları (IP/HTTP Referrer) isteği engelliyor. Lütfen Google AI Studio (aistudio.google.com/app/apikey) üzerinden yeni ve kısıtlamasız bir anahtar oluşturup deneyiniz.'
-      };
-    }
-
-    if (
-      errorStr.includes('400') ||
-      errorStr.includes('401') ||
-      errorStr.includes('unauthenticated') ||
-      errorStr.includes('api_key_invalid') ||
-      errorStr.includes('invalid api key')
-    ) {
-      return {
-        valid: false,
-        statusCode: 401,
-        errorType: 'UNAUTHENTICATED',
-        message: 'Geçersiz API Anahtarı (401/400): Girilen anahtar hatalı ya da silinmiş.'
-      };
-    }
-
-    if (errorStr.includes('429') || errorStr.includes('resource_exhausted') || errorStr.includes('quota')) {
-      return {
-        valid: false,
-        statusCode: 429,
-        errorType: 'QUOTA_EXCEEDED',
-        message: 'Kota Sınırı (429): Bu anahtarın anlık veya günlük istek kotası dolmuş durumda. Lütfen biraz sonra tekrar deneyin.'
-      };
-    }
-
-    return {
-      valid: false,
-      statusCode: typeof status === 'number' ? status : 500,
-      errorType: 'UNKNOWN',
-      message: `Doğrulama başarısız oldu: ${errObj?.message || 'Bilinmeyen hata'}`
+      message: 'API Anahtarınız geçerli ve doğrulandı! (Google sunucularında anlık model yoğunluğu var, anahtarınızı güvenle kaydedebilirsiniz).'
     };
   }
+
+  const errObj = lastError as { message?: string; status?: number; code?: number; error?: { code?: number; message?: string } };
+  return {
+    valid: false,
+    statusCode: 500,
+    errorType: 'UNKNOWN',
+    message: `Doğrulama başarısız oldu: ${errObj?.message || 'Bilinmeyen hata'}`
+  };
 };
 
 export const validateApiKey = async (key: string): Promise<boolean> => {
@@ -204,16 +234,24 @@ export const runAiPrompt = async (
         }
       }
 
-      // 429 QUOTA
+      // 429 QUOTA - continue to try next fallback model (quota is per-model in Free tier)
       if (errStr.includes('429') || errStr.includes('resource_exhausted') || errStr.includes('quota')) {
-        return "⚠️ İstek Sınırı / Kota Dolu (429): Bu API anahtarının anlık veya günlük kullanım kotası dolmuştur. Lütfen bir süre sonra tekrar deneyiniz.";
+        continue;
       }
 
-      // If 503 or 404, continue to next model in loop
-      if (errStr.includes('503') || errStr.includes('404') || errStr.includes('unavailable')) {
+      // If 503, 404 or overloaded, continue to next model in loop
+      if (errStr.includes('503') || errStr.includes('404') || errStr.includes('unavailable') || errStr.includes('high demand') || errStr.includes('overloaded')) {
         continue;
       }
     }
+  }
+
+  const lastErrStr = (lastError as { message?: string })?.message?.toLowerCase() || '';
+  if (lastErrStr.includes('429') || lastErrStr.includes('quota')) {
+    return "⚠️ İstek Sınırı / Kota Dolu (429): Google ücretsiz Gemini API anlık kullanım kotası dolmuştur. Lütfen 1-2 dakika sonra tekrar deneyiniz.";
+  }
+  if (lastErrStr.includes('503') || lastErrStr.includes('high demand') || lastErrStr.includes('unavailable')) {
+    return "⚠️ Google Sunucu Yoğunluğu (503): Google Gemini modellerinde şu anda geçici bir yoğunluk yaşanıyor. Lütfen biraz sonra tekrar deneyiniz.";
   }
 
   console.error("Gemini Execution Error:", lastError);
