@@ -91,9 +91,47 @@ export const toTurkishUpper = (str: string): string => {
   return str.toLocaleUpperCase('tr-TR').trim();
 };
 
+// Normalize numeric strings: remove trailing .0 from Excel e.g. "71.0" -> "71", "17012964572.0" -> "17012964572"
+export const cleanNumberStr = (val: unknown): string => {
+  if (val === null || val === undefined) return '';
+  let s = cleanStr(val);
+  s = s.replace(/\.0+$/, '');
+  return s;
+};
+
+// Check if a line or cell looks like an e-Okul label header
+export const isHeaderLabel = (str: unknown): boolean => {
+  const cl = cleanTurkish(str).replace(/[:\s]/g, '');
+  if (!cl) return false;
+  const labels = [
+    'okulno', 'ogrencino', 'adi', 'soyadi', 'babaadi', 'anneadi',
+    'dogumyeri', 'dogumtarihi', 'dogumyeritarihi', 'nufuskimlikbilgileri',
+    'tckimlikno', 'ciltno', 'ili', 'ilcesi', 'ailesirano', 'sirano',
+    'bireysirano', 'mahallekoy', 'vernufusidaresi', 'cuzkayno', 'verilistarihi',
+    'okulbilgileri', 'yenikayitnakil', 'kabuledsinif', 'kabuledilensinif',
+    'sinif', 'sinifi', 'getogrbelgesi', 'sinavlisinavsiz', 'tarihnumarasi',
+    'yatiligunduzlu', 'veliadisoyadi', 'veliadi', 'burslulukdurumu',
+    'nakilgelmiseokulutarihi', 'adresi', 'ogrencininbasaridurumu', 'kunyedefteri'
+  ];
+  return labels.some(l => cl === l || cl.startsWith(l));
+};
+
+// Lookahead helper: Get next non-empty, non-header line value
+export const getNextValue = (lines: string[], startIdx: number, maxLookahead = 3): string | null => {
+  for (let i = startIdx + 1; i < Math.min(lines.length, startIdx + 1 + maxLookahead); i++) {
+    const l = cleanStr(lines[i]);
+    if (!l) continue;
+    if (isHeaderLabel(l)) return null;
+    return l;
+  }
+  return null;
+};
+
 // Check if string is an 11-digit Turkish TC Kimlik No
 export const is11DigitTc = (val: string): boolean => {
-  const digits = val.replace(/\D/g, '');
+  if (!val) return false;
+  const cleaned = cleanNumberStr(val);
+  const digits = cleaned.replace(/\D/g, '');
   return digits.length === 11 && digits[0] !== '0';
 };
 
@@ -162,8 +200,8 @@ export const countExtractedFields = (s: Partial<Student>): number => {
 /**
  * Universal Single Student Block Parser:
  * Capable of parsing:
- * 1. e-Okul Künye Defteri PDF (where labels are followed by a list of values, as in user's 13-page PDF)
- * 2. e-Okul Künye Defteri Excel (.xlsx/.xls with columns A-H as in user's image.png)
+ * 1. e-Okul Künye Defteri PDF (where labels are followed by a list of values, or on separate lines)
+ * 2. e-Okul Künye Defteri Excel (.xlsx/.xls/.csv, supporting 1, 2, or more side-by-side student cards)
  * 3. Direct copied/pasted text from Excel or PDF
  */
 export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]): Partial<Student> => {
@@ -174,8 +212,8 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     scholarshipStatus: 'BURSSUZ'
   };
 
-  // 1. TC Kimlik No (11 digits anywhere in block)
-  const tcMatch = text.match(/\b([1-9]\d{10})\b/);
+  // 1. TC Kimlik No (11 digits anywhere in block, handling trailing .0)
+  const tcMatch = text.match(/\b([1-9]\d{10})(?:\.0+)?\b/);
   if (tcMatch) student.tcNo = tcMatch[1];
 
   // 2. Kabul Edilen Sınıf / Sınıfı
@@ -186,100 +224,212 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     student.grade = normalizeGrade(gradeMatch[0]);
   }
 
-  // 3. Scan lines for Same-line / Tab-delimited Key-Value pairs
+  // 3. Scan lines for Same-line / Tab-delimited / Lookahead Key-Value pairs
   let firstName = '';
   let lastName = '';
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const cl = cleanTurkish(line);
     const parts = line.split('\t').map(p => cleanStr(p)).filter(Boolean);
 
     // Okul No
-    if (!student.number && (cl.includes('okul no') || cl.includes('öğrenci no'))) {
-      const m = line.match(/(?:okul|öğrenci)\s*no\s*[:\s\t]+(\d+)/i) || line.match(/[:\s\t]+(\d+)/);
-      if (m) student.number = m[1];
-      else if (parts.length >= 2 && /^\d+$/.test(parts[1])) student.number = parts[1];
+    if (!student.number && (cl.includes('okul no') || cl.includes('öğrenci no') || cl.startsWith('no:'))) {
+      const m = line.match(/(?:okul|öğrenci)?\s*no\s*[:\s\t]+(\d+(?:\.0+)?)/i);
+      if (m) {
+        student.number = cleanNumberStr(m[1]);
+      } else if (parts.length >= 2) {
+        const candidate = cleanNumberStr(parts[1]);
+        if (/^\d+$/.test(candidate)) student.number = candidate;
+      }
+      if (!student.number) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal) {
+          const cand = cleanNumberStr(nextVal);
+          if (/^\d+$/.test(cand)) student.number = cand;
+        }
+      }
     }
 
     // Adı
-    if (!firstName && (cl.startsWith('adı:') || cl.startsWith('adi:') || cl === 'adı' || cl === 'adi')) {
+    if (!firstName && (cl.startsWith('adı:') || cl.startsWith('adi:') || cl === 'adı' || cl === 'adi' || cl.startsWith('adı ') || cl.startsWith('adi '))) {
       const m = line.match(/(?:adı|adi)[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+)$/i);
-      if (m && !cleanTurkish(m[1]).includes('soyad')) firstName = m[1].trim();
-      else if (parts.length >= 2) firstName = parts[1];
+      if (m && !cleanTurkish(m[1]).includes('soyad')) {
+        firstName = m[1].trim();
+      } else if (parts.length >= 2 && !cleanTurkish(parts[1]).includes('soyad')) {
+        firstName = parts[1];
+      }
+      if (!firstName) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
+          firstName = nextVal.trim();
+        }
+      }
     }
 
     // Soyadı
-    if (!lastName && (cl.startsWith('soyadı:') || cl.startsWith('soyadi:') || cl === 'soyadı' || cl === 'soyadi')) {
+    if (!lastName && (cl.startsWith('soyadı:') || cl.startsWith('soyadi:') || cl === 'soyadı' || cl === 'soyadi' || cl.startsWith('soyadı ') || cl.startsWith('soyadi '))) {
       const m = line.match(/(?:soyadı|soyadi)[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+)$/i);
-      if (m) lastName = m[1].trim();
-      else if (parts.length >= 2) lastName = parts[1];
+      if (m) {
+        lastName = m[1].trim();
+      } else if (parts.length >= 2) {
+        lastName = parts[1];
+      }
+      if (!lastName) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
+          lastName = nextVal.trim();
+        }
+      }
     }
 
     // Baba Adı
     if (!student.fatherName && cl.includes('baba adı')) {
       const m = line.match(/baba\s*adı[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+)$/i);
-      if (m) student.fatherName = m[1].trim();
-      else if (parts.length >= 2) student.fatherName = parts[1];
+      if (m) {
+        student.fatherName = m[1].trim();
+      } else if (parts.length >= 2) {
+        student.fatherName = parts[1];
+      }
+      if (!student.fatherName) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
+          student.fatherName = nextVal.trim();
+        }
+      }
     }
 
     // Anne Adı
     if (!student.motherName && cl.includes('anne adı')) {
       const m = line.match(/anne\s*adı[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+)$/i);
-      if (m) student.motherName = m[1].trim();
-      else if (parts.length >= 2) student.motherName = parts[1];
+      if (m) {
+        student.motherName = m[1].trim();
+      } else if (parts.length >= 2) {
+        student.motherName = parts[1];
+      }
+      if (!student.motherName) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
+          student.motherName = nextVal.trim();
+        }
+      }
     }
 
     // Doğum Yeri / Tarihi
     if (!student.birthPlaceDate && cl.includes('doğum yeri')) {
       const afterColon = line.split(/[:\t]+/);
       const filtered = afterColon.filter(p => cleanStr(p) && !cleanTurkish(p).includes('doğum') && !cleanTurkish(p).includes('dogum'));
-      if (filtered.length > 0) student.birthPlaceDate = filtered.join(' - ');
+      if (filtered.length > 0) {
+        student.birthPlaceDate = filtered.join(' - ');
+      } else {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal)) {
+          student.birthPlaceDate = nextVal;
+        }
+      }
     }
 
-    // Nüfus İli / İlçesi / Mahalle
-    if (!student.province && (cl.startsWith('ili:') || cl.startsWith('il:'))) {
-      const m = line.match(/(?:ili|il)[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?=\s+(?:aile|cilt|sıra|$))/i);
-      if (m) student.province = m[1].trim();
-      else if (parts.length >= 2) student.province = parts[1];
-    }
-    if (!student.district && (cl.startsWith('ilçesi:') || cl.startsWith('ilcesi:'))) {
-      const m = line.match(/(?:ilçesi|ilcesi)[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?=\s+(?:sıra|cilt|$))/i);
-      if (m) student.district = m[1].trim();
-      else if (parts.length >= 2) student.district = parts[1];
-    }
-    if (!student.neighborhood && cl.startsWith('mahalle')) {
-      const m = line.match(/mahalle.*?[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s0-9]+?)(?=\s+(?:ver\.|$))/i);
-      if (m) student.neighborhood = m[1].trim();
-      else if (parts.length >= 2) student.neighborhood = parts[1];
+    // T.C. Kimlik No (Line specific fallback)
+    if (!student.tcNo && (cl.includes('t.c. kimlik no') || cl.includes('tc kimlik no'))) {
+      const m = line.match(/(\d{11})(?:\.0+)?/);
+      if (m && is11DigitTc(m[1])) {
+        student.tcNo = m[1];
+      } else {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal) {
+          const cand = cleanNumberStr(nextVal).replace(/\D/g, '');
+          if (is11DigitTc(cand)) student.tcNo = cand;
+        }
+      }
     }
 
-    // Cilt / Aile / Birey Sıra No
+    // Cilt No
     if (!student.volumeNo && (cl.includes('cilt no') || cl.includes('cilt:'))) {
-      const m = line.match(/cilt\s*(?:no)?[:\s\t]+(\d+)/i);
-      if (m) student.volumeNo = m[1];
+      const m = line.match(/cilt\s*(?:no)?[:\s\t]+(\d+(?:\.0+)?)/i);
+      if (m) {
+        student.volumeNo = cleanNumberStr(m[1]);
+      } else {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && /^\d+(?:\.0+)?$/.test(nextVal)) student.volumeNo = cleanNumberStr(nextVal);
+      }
     }
     
-    // Aile Sıra No (Must be preceded by 'aile')
+    // Aile Sıra No
     if (!student.familyOrderNo && (cl.includes('aile sıra') || cl.includes('aile sira'))) {
-      const m = line.match(/aile\s*(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+)/i);
-      if (m) student.familyOrderNo = m[1];
+      const m = line.match(/aile\s*(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+(?:\.0+)?)/i);
+      if (m) {
+        student.familyOrderNo = cleanNumberStr(m[1]);
+      } else {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && /^\d+(?:\.0+)?$/.test(nextVal)) student.familyOrderNo = cleanNumberStr(nextVal);
+      }
     }
 
     // Sıra No / Birey Sıra No (Must NOT capture the number belonging to Aile Sıra No)
     if (!student.orderNo) {
-      // 1. Check for explicit "birey sıra no"
-      const bireyMatch = line.match(/birey\s*(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+)/i);
+      const bireyMatch = line.match(/birey\s*(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+(?:\.0+)?)/i);
       if (bireyMatch) {
-        student.orderNo = bireyMatch[1];
+        student.orderNo = cleanNumberStr(bireyMatch[1]);
       } else {
-        // 2. Scan all "sıra no" occurrences on this line and accept only the one NOT preceded by "aile"
-        const regex = /(?:(aile\s*)?(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+))/gi;
+        const regex = /(?:(aile\s*)?(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+(?:\.0+)?))/gi;
         let match;
         while ((match = regex.exec(line)) !== null) {
           if (!match[1]) {
-            student.orderNo = match[2];
+            student.orderNo = cleanNumberStr(match[2]);
             break;
           }
+        }
+      }
+      if (!student.orderNo && (cl === 'sıra no:' || cl === 'sira no:' || cl === 'sıra no' || cl === 'sira no')) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && /^\d+(?:\.0+)?$/.test(nextVal)) student.orderNo = cleanNumberStr(nextVal);
+      }
+    }
+
+    // Nüfus İli
+    if (!student.province && (cl.startsWith('ili:') || cl.startsWith('il:') || cl === 'ili' || cl === 'il')) {
+      const m = line.match(/(?:ili|il)[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?=\s+(?:aile|cilt|sıra|$))/i);
+      if (m) {
+        student.province = m[1].trim();
+      } else if (parts.length >= 2) {
+        student.province = parts[1];
+      }
+      if (!student.province) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
+          student.province = nextVal.trim();
+        }
+      }
+    }
+
+    // Nüfus İlçesi
+    if (!student.district && (cl.startsWith('ilçesi:') || cl.startsWith('ilcesi:') || cl === 'ilçesi' || cl === 'ilcesi')) {
+      const m = line.match(/(?:ilçesi|ilcesi)[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?=\s+(?:sıra|cilt|$))/i);
+      if (m) {
+        student.district = m[1].trim();
+      } else if (parts.length >= 2) {
+        student.district = parts[1];
+      }
+      if (!student.district) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
+          student.district = nextVal.trim();
+        }
+      }
+    }
+
+    // Mahalle / Köy
+    if (!student.neighborhood && cl.startsWith('mahalle')) {
+      const m = line.match(/mahalle.*?[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s0-9]+?)(?=\s+(?:ver\.|$))/i);
+      if (m) {
+        student.neighborhood = m[1].trim();
+      } else if (parts.length >= 2) {
+        student.neighborhood = parts[1];
+      }
+      if (!student.neighborhood) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal)) {
+          student.neighborhood = nextVal.trim();
         }
       }
     }
@@ -287,8 +437,17 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     // Veli Adı, Soyadı
     if (!student.parentName && cl.includes('veli adı')) {
       const m = line.match(/veli\s*adı.*?[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?=\s+(?:bursluluk|$))/i);
-      if (m) student.parentName = m[1].trim();
-      else if (parts.length >= 2) student.parentName = parts[1];
+      if (m) {
+        student.parentName = m[1].trim();
+      } else if (parts.length >= 2) {
+        student.parentName = parts[1];
+      }
+      if (!student.parentName) {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
+          student.parentName = nextVal.trim();
+        }
+      }
     }
 
     // Telefon
@@ -303,21 +462,32 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
       if (m && m[1].trim()) student.address = m[1].trim();
       else if (parts.length >= 2) student.address = parts[1];
     }
+
+    // Kabul Ed. Sınıf (if not yet found)
+    if (!student.grade && (cl.includes('kabul ed') || cl.includes('sınıf /'))) {
+      const m = line.match(/(\d{1,2}\s*\.?\s*Sınıf.*?Şubesi|\d{1,2}\s*[/ -]\s*[A-Za-z0-9]+)/i);
+      if (m) {
+        student.grade = normalizeGrade(m[1]);
+      } else {
+        const nextVal = getNextValue(lines, i);
+        if (nextVal) {
+          student.grade = normalizeGrade(nextVal);
+        }
+      }
+    }
   }
 
   // 4. Sequential Stacked Labels Detection (User's PDF e-Okul format)
-  // If number or name was not resolved on the same line, resolve via sequential label-to-value matching
+  // If number or name was not resolved, resolve via sequential label-to-value matching
   if (!student.number || !firstName) {
-    const okulIdx = lines.findIndex(l => cleanTurkish(l).startsWith('okul no'));
-    const nufusIdx = lines.findIndex(l => cleanTurkish(l).includes('nufus kimlik') || cleanTurkish(l).includes('t.c. kimlik'));
-
+    const okulIdx = lines.findIndex(l => cleanTurkish(l).startsWith('okul no') || cleanTurkish(l).includes('ogrenci no'));
     if (okulIdx !== -1) {
-      const endIdx = nufusIdx !== -1 && nufusIdx > okulIdx ? nufusIdx : Math.min(lines.length, okulIdx + 20);
-      const sub = lines.slice(okulIdx, endIdx);
-      const vals = sub.filter(l => !l.endsWith(':') && !cleanTurkish(l).includes('okul no'));
+      const sub = lines.slice(okulIdx, Math.min(lines.length, okulIdx + 25));
+      const vals = sub.filter(l => !isHeaderLabel(l));
 
       if (vals.length >= 3) {
-        if (!student.number && /^\d+$/.test(vals[0])) student.number = vals[0];
+        const nCand = cleanNumberStr(vals[0]);
+        if (!student.number && /^\d+$/.test(nCand)) student.number = nCand;
         if (!firstName) firstName = vals[1];
         if (!lastName) lastName = vals[2];
         if (!student.fatherName && vals[3]) student.fatherName = vals[3];
@@ -338,16 +508,15 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     if (nufusIdx !== -1) {
       const okulBilgiIdx = lines.findIndex(l => cleanTurkish(l).includes('okul bilgi'));
       const nufusLines = lines.slice(nufusIdx + 1, okulBilgiIdx !== -1 ? okulBilgiIdx : lines.length);
-      const vals = nufusLines.filter(l => !l.endsWith(':') && !cleanTurkish(l).includes('nufus'));
+      const vals = nufusLines.filter(l => !isHeaderLabel(l));
 
-      // Format in PDF: ['74632043414', 'OSMANİYE', 'KADİRLİ', 'YOĞUNOLUK', '81', '88', '15']
       if (vals.length >= 4) {
-        if (!student.tcNo && is11DigitTc(vals[0])) student.tcNo = vals[0];
+        if (!student.tcNo && is11DigitTc(vals[0])) student.tcNo = cleanNumberStr(vals[0]);
         if (!student.province) student.province = vals[1];
         if (!student.district) student.district = vals[2];
         if (!student.neighborhood) student.neighborhood = vals[3];
       }
-      const nums = vals.filter(v => /^\d+$/.test(v));
+      const nums = vals.map(v => cleanNumberStr(v)).filter(v => /^\d+$/.test(v));
       if (nums.length >= 4) {
         if (!student.volumeNo) student.volumeNo = nums[1];
         if (!student.familyOrderNo) student.familyOrderNo = nums[2];
@@ -364,9 +533,8 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     if (okulBilgiIdx !== -1) {
       const okulLines = lines.slice(okulBilgiIdx + 1);
       const vals = okulLines.filter(
-        l => !l.endsWith(':') && !cleanTurkish(l).includes('basari') && !cleanTurkish(l).includes('ogrenci')
+        l => !isHeaderLabel(l) && !cleanTurkish(l).includes('basari') && !cleanTurkish(l).includes('ogrenci')
       );
-      // Look for parent name matching student's surname
       for (const v of vals) {
         if (lastName && v.includes(lastName) && !v.includes(firstName)) {
           student.parentName = v;
@@ -381,16 +549,26 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
   student.scholarshipStatus = text.includes('BURSLU') && !text.includes('BURSSUZ') ? 'BURSLU' : 'BURSSUZ';
   student.registrationType = text.includes('NAKİL') ? 'NAKİL' : 'YENİ KAYIT';
 
-  // If rawRows are passed (from Excel table), extract from 2D coordinates
+  // 2D rawRows extraction if available (Excel grid coordinates)
   if (rawRows && rawRows.length > 0) {
     for (const r of rawRows) {
       if (!Array.isArray(r)) continue;
       for (let c = 0; c < r.length; c++) {
         const cell = cleanTurkish(r[c]);
+        // Okul No cell
+        if (!student.number && (cell.startsWith('okul no') || cell.includes('ogrenci no'))) {
+          for (let n = c + 1; n < Math.min(c + 5, r.length); n++) {
+            const v = cleanNumberStr(r[n]);
+            if (v && /^\d+$/.test(v)) {
+              student.number = v;
+              break;
+            }
+          }
+        }
         // T.C. Kimlik No cell
         if (!student.tcNo && (cell.includes('tc kimlik') || cell.includes('t.c. kimlik'))) {
           for (let n = c + 1; n < r.length; n++) {
-            const v = cleanStr(r[n]).replace(/\D/g, '');
+            const v = cleanNumberStr(r[n]).replace(/\D/g, '');
             if (is11DigitTc(v)) {
               student.tcNo = v;
               break;
@@ -410,7 +588,7 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
         // Cilt No cell
         if (!student.volumeNo && (cell === 'cilt no' || cell === 'cilt no:' || cell === 'cilt:')) {
           for (let n = c + 1; n < Math.min(c + 4, r.length); n++) {
-            const v = cleanStr(r[n]).replace(/\D/g, '');
+            const v = cleanNumberStr(r[n]).replace(/\D/g, '');
             if (v && v.length <= 6) {
               student.volumeNo = v;
               break;
@@ -420,7 +598,7 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
         // Aile Sıra No cell
         if (cell.includes('aile sıra') || cell.includes('aile sira')) {
           for (let n = c + 1; n < Math.min(c + 4, r.length); n++) {
-            const v = cleanStr(r[n]).replace(/\D/g, '');
+            const v = cleanNumberStr(r[n]).replace(/\D/g, '');
             if (v && v.length <= 8) {
               student.familyOrderNo = v;
               break;
@@ -430,7 +608,7 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
         // Sıra No / Birey Sıra No cell (Distinct from Aile Sıra No!)
         if (!cell.includes('aile') && (cell === 'sıra no' || cell === 'sıra no:' || cell === 'sira no' || cell === 'sira no:' || cell.includes('birey sıra') || cell.includes('birey sira'))) {
           for (let n = c + 1; n < Math.min(c + 4, r.length); n++) {
-            const v = cleanStr(r[n]).replace(/\D/g, '');
+            const v = cleanNumberStr(r[n]).replace(/\D/g, '');
             if (v && v.length <= 8) {
               student.orderNo = v;
               break;
@@ -447,7 +625,7 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     let match;
     while ((match = regex.exec(text)) !== null) {
       if (!match[1] && match[2] !== student.familyOrderNo) {
-        student.orderNo = match[2];
+        student.orderNo = cleanNumberStr(match[2]);
         break;
       }
     }
@@ -458,64 +636,118 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
 
 /**
  * Robust Card-Style e-Okul Künye Defteri Excel Parser
- * Finds all student blocks and extracts all identity & school fields.
+ * Automatically detects 1, 2, or more side-by-side student cards across columns
+ * as well as vertically stacked student cards down rows.
  */
 export const parseCardExcel = (jsonData: unknown[][]): ParsedStudentWithStats[] => {
   const results: ParsedStudentWithStats[] = [];
   if (!jsonData || jsonData.length === 0) return results;
 
-  // Locate student boundary rows
-  const startRowIndices: number[] = [];
+  // 1. Detect side-by-side columns (multiple student cards placed horizontally)
+  const okulCols = new Set<number>();
   for (let r = 0; r < jsonData.length; r++) {
     const row = jsonData[r];
-    if (!row || !Array.isArray(row)) continue;
-    const rowStr = row.map(c => cleanTurkish(c)).join(' ');
-
-    if (rowStr.startsWith('okul no') || rowStr.includes('okul no:') || rowStr.includes('ogrenci no:')) {
-      startRowIndices.push(r);
-    }
-  }
-
-  // If no "Okul No" row found, fallback to scanning blocks separated by "T.C. MİLLİ EĞİTİM BAKANLIĞI" or "KÜNYE"
-  if (startRowIndices.length === 0) {
-    for (let r = 0; r < jsonData.length; r++) {
-      const row = jsonData[r];
-      if (!row || !Array.isArray(row)) continue;
-      const rowStr = row.map(c => cleanTurkish(c)).join(' ');
-      if (rowStr.includes('kunye defteri') || (rowStr.includes('tc kimlik') && r < 5)) {
-        startRowIndices.push(r);
+    if (!Array.isArray(row)) continue;
+    for (let c = 0; c < row.length; c++) {
+      const val = cleanTurkish(row[c]);
+      if (val.startsWith('okul no') || val.includes('okul no:') || val.includes('ogrenci no:')) {
+        okulCols.add(c);
       }
     }
   }
 
-  if (startRowIndices.length === 0) {
-    // If only one student block on the entire sheet without clear start header
-    startRowIndices.push(0);
+  // Fallback to checking "T.C. Kimlik" or "Künye" columns if no "Okul No" detected
+  if (okulCols.size === 0) {
+    for (let r = 0; r < jsonData.length; r++) {
+      const row = jsonData[r];
+      if (!Array.isArray(row)) continue;
+      for (let c = 0; c < row.length; c++) {
+        const val = cleanTurkish(row[c]);
+        if (val.includes('tc kimlik') || val.includes('t.c. kimlik') || val.includes('kunye defteri')) {
+          okulCols.add(c);
+        }
+      }
+    }
   }
 
-  // Parse each student block
-  for (let k = 0; k < startRowIndices.length; k++) {
-    const startRow = startRowIndices[k];
-    const endRow = k + 1 < startRowIndices.length ? startRowIndices[k + 1] : jsonData.length;
-    const studentRows = jsonData.slice(startRow, endRow);
+  const sortedCols = Array.from(okulCols).sort((a, b) => a - b);
+  // Filter columns that are very close to each other (e.g. within 4 columns) to avoid duplicate bands
+  const filteredCols: number[] = [];
+  for (const col of sortedCols) {
+    if (filteredCols.length === 0 || col - filteredCols[filteredCols.length - 1] > 4) {
+      filteredCols.push(col);
+    }
+  }
 
-    const stringLines = studentRows.map(row => 
-      Array.isArray(row) ? row.map(c => cleanStr(c)).filter(Boolean).join('\t') : ''
-    ).filter(Boolean);
+  const columnBands: Array<{ startCol: number; endCol?: number }> = [];
+  if (filteredCols.length > 1) {
+    for (let i = 0; i < filteredCols.length; i++) {
+      const startCol = filteredCols[i];
+      const endCol = i + 1 < filteredCols.length ? filteredCols[i + 1] : undefined;
+      columnBands.push({ startCol, endCol });
+    }
+  } else {
+    columnBands.push({ startCol: 0, endCol: undefined });
+  }
 
-    const student = parseSingleStudentBlock(stringLines, studentRows);
+  // 2. Parse each column band independently
+  for (const band of columnBands) {
+    const subGrid = jsonData.map(row => {
+      if (!Array.isArray(row)) return [];
+      return band.endCol !== undefined ? row.slice(band.startCol, band.endCol) : row.slice(band.startCol);
+    });
 
-    if (student.number || student.name || student.tcNo) {
-      const fullStudent: ParsedStudentWithStats = {
-        id: Math.random().toString(36).substring(2, 11),
-        number: student.number || '',
-        name: student.name || '',
-        grade: student.grade || '',
-        ...student,
-        _extractedFieldCount: countExtractedFields(student),
-        _sourceFormat: 'card'
-      };
-      results.push(fullStudent);
+    // Locate student boundary rows in this subGrid
+    const startRowIndices: number[] = [];
+    for (let r = 0; r < subGrid.length; r++) {
+      const row = subGrid[r];
+      if (!Array.isArray(row)) continue;
+      const rowStr = row.map(c => cleanTurkish(c)).join(' ');
+
+      if (rowStr.startsWith('okul no') || rowStr.includes('okul no:') || rowStr.includes('ogrenci no:')) {
+        startRowIndices.push(r);
+      }
+    }
+
+    if (startRowIndices.length === 0) {
+      for (let r = 0; r < subGrid.length; r++) {
+        const row = subGrid[r];
+        if (!Array.isArray(row)) continue;
+        const rowStr = row.map(c => cleanTurkish(c)).join(' ');
+        if (rowStr.includes('kunye defteri') || (rowStr.includes('tc kimlik') && r < 5)) {
+          startRowIndices.push(r);
+        }
+      }
+    }
+
+    if (startRowIndices.length === 0) {
+      startRowIndices.push(0);
+    }
+
+    // Parse each student block in this band
+    for (let k = 0; k < startRowIndices.length; k++) {
+      const startRow = startRowIndices[k];
+      const endRow = k + 1 < startRowIndices.length ? startRowIndices[k + 1] : subGrid.length;
+      const studentRows = subGrid.slice(startRow, endRow);
+
+      const stringLines = studentRows.map(row => 
+        Array.isArray(row) ? row.map(c => cleanStr(c)).filter(Boolean).join('\t') : ''
+      ).filter(Boolean);
+
+      const student = parseSingleStudentBlock(stringLines, studentRows);
+
+      if (student.number || student.name || student.tcNo) {
+        const fullStudent: ParsedStudentWithStats = {
+          id: Math.random().toString(36).substring(2, 11),
+          number: student.number || '',
+          name: student.name || '',
+          grade: student.grade || '',
+          ...student,
+          _extractedFieldCount: countExtractedFields(student),
+          _sourceFormat: 'card'
+        };
+        results.push(fullStudent);
+      }
     }
   }
 
@@ -638,7 +870,7 @@ export const parseTabularExcel = (
       continue;
     }
 
-    const rawNo = effectiveMapping.number !== undefined ? cleanStr(row[effectiveMapping.number]) : '';
+    const rawNo = effectiveMapping.number !== undefined ? cleanNumberStr(row[effectiveMapping.number]) : '';
     let fullName = '';
 
     if (effectiveMapping.fullName !== undefined && cleanStr(row[effectiveMapping.fullName])) {
@@ -664,7 +896,7 @@ export const parseTabularExcel = (
     };
 
     if (effectiveMapping.tcNo !== undefined && cleanStr(row[effectiveMapping.tcNo])) {
-      const tc = cleanStr(row[effectiveMapping.tcNo]).replace(/\D/g, '');
+      const tc = cleanNumberStr(row[effectiveMapping.tcNo]).replace(/\D/g, '');
       if (is11DigitTc(tc)) student.tcNo = tc;
     }
 
@@ -699,15 +931,15 @@ export const parseTabularExcel = (
     }
 
     if (effectiveMapping.volumeNo !== undefined && cleanStr(row[effectiveMapping.volumeNo])) {
-      student.volumeNo = cleanStr(row[effectiveMapping.volumeNo]);
+      student.volumeNo = cleanNumberStr(row[effectiveMapping.volumeNo]);
     }
 
     if (effectiveMapping.familyOrderNo !== undefined && cleanStr(row[effectiveMapping.familyOrderNo])) {
-      student.familyOrderNo = cleanStr(row[effectiveMapping.familyOrderNo]);
+      student.familyOrderNo = cleanNumberStr(row[effectiveMapping.familyOrderNo]);
     }
 
     if (effectiveMapping.orderNo !== undefined && cleanStr(row[effectiveMapping.orderNo])) {
-      student.orderNo = cleanStr(row[effectiveMapping.orderNo]);
+      student.orderNo = cleanNumberStr(row[effectiveMapping.orderNo]);
     }
 
     if (effectiveMapping.province !== undefined && cleanStr(row[effectiveMapping.province])) {
@@ -733,7 +965,11 @@ export const parseTabularExcel = (
 };
 
 /**
- * Extract clean line-by-line text from PDF pages using pdfjs-dist
+ * Extract clean text streams from PDF pages using pdfjs-dist.
+ * Supports:
+ * - Single student per page
+ * - Side-by-side (2-column) student layout on the same page
+ * - Vertically stacked students on the same page
  */
 export const extractTextFromPdf = async (arrayBuffer: ArrayBuffer): Promise<string[]> => {
   const loadingTask = pdfjsLib.getDocument({
@@ -746,50 +982,96 @@ export const extractTextFromPdf = async (arrayBuffer: ArrayBuffer): Promise<stri
 
   for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
     const page = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 1.0 });
     const textContent = await page.getTextContent();
     const items = textContent.items as Array<{ str: string; transform: number[] }>;
 
-    // Group items into visual lines
-    const lineBuckets: Map<number, Array<{ str: string; x: number }>> = new Map();
+    if (!items || items.length === 0) continue;
+
+    const pageWidth = viewport.width;
+    const midX = pageWidth / 2;
+
+    // Detect if page has side-by-side (2-column) student cards
+    let hasLeftMarker = false;
+    let hasRightMarker = false;
 
     for (const item of items) {
       if (!item.str || !item.str.trim()) continue;
-      const y = Math.round(item.transform[5]);
       const x = item.transform[4];
+      const cl = cleanTurkish(item.str);
+      const isMarker =
+        cl.includes('okul no') ||
+        cl.includes('ogrenci no') ||
+        cl.includes('kunye defteri') ||
+        cl.includes('kabul ed') ||
+        cl.includes('nufus kimlik') ||
+        /\b[1-9]\d{10}\b/.test(item.str);
 
-      let foundBucketY: number | null = null;
-      for (const bucketY of lineBuckets.keys()) {
-        if (Math.abs(bucketY - y) <= 4) {
-          foundBucketY = bucketY;
-          break;
+      if (isMarker) {
+        if (x < midX - 20) hasLeftMarker = true;
+        if (x > midX - 20) hasRightMarker = true;
+      }
+    }
+
+    const isSideBySide = hasLeftMarker && hasRightMarker;
+
+    const columnGroups: Array<Array<{ str: string; transform: number[] }>> = [];
+    if (isSideBySide) {
+      const leftItems = items.filter(it => it.transform[4] < midX);
+      const rightItems = items.filter(it => it.transform[4] >= midX);
+      if (leftItems.length > 0) columnGroups.push(leftItems);
+      if (rightItems.length > 0) columnGroups.push(rightItems);
+    } else {
+      columnGroups.push(items);
+    }
+
+    // Process each column independently
+    for (const colItems of columnGroups) {
+      const lineBuckets: Map<number, Array<{ str: string; x: number }>> = new Map();
+
+      for (const item of colItems) {
+        if (!item.str || !item.str.trim()) continue;
+        const y = Math.round(item.transform[5]);
+        const x = item.transform[4];
+
+        let foundBucketY: number | null = null;
+        for (const bucketY of lineBuckets.keys()) {
+          // 6 points vertical tolerance to capture table cells on same baseline
+          if (Math.abs(bucketY - y) <= 6) {
+            foundBucketY = bucketY;
+            break;
+          }
+        }
+
+        if (foundBucketY !== null) {
+          lineBuckets.get(foundBucketY)!.push({ str: item.str, x });
+        } else {
+          lineBuckets.set(y, [{ str: item.str, x }]);
         }
       }
 
-      if (foundBucketY !== null) {
-        lineBuckets.get(foundBucketY)!.push({ str: item.str, x });
-      } else {
-        lineBuckets.set(y, [{ str: item.str, x }]);
+      const sortedY = Array.from(lineBuckets.keys()).sort((a, b) => b - a);
+      const colLines: string[] = [];
+
+      for (const y of sortedY) {
+        const itemsInLine = lineBuckets.get(y)!;
+        itemsInLine.sort((a, b) => a.x - b.x);
+        // Separate cells on the same line with tab to preserve column boundaries
+        const lineStr = itemsInLine.map(it => it.str.trim()).filter(Boolean).join('\t');
+        if (lineStr) colLines.push(lineStr);
+      }
+
+      if (colLines.length > 0) {
+        pageTexts.push(colLines.join('\n'));
       }
     }
-
-    const sortedY = Array.from(lineBuckets.keys()).sort((a, b) => b - a);
-    const pageLines: string[] = [];
-
-    for (const y of sortedY) {
-      const itemsInLine = lineBuckets.get(y)!;
-      itemsInLine.sort((a, b) => a.x - b.x);
-      const lineStr = itemsInLine.map(it => it.str).join(' ').trim();
-      if (lineStr) pageLines.push(lineStr);
-    }
-
-    pageTexts.push(pageLines.join('\n'));
   }
 
   return pageTexts;
 };
 
 /**
- * Parse e-Okul PDF text content (Handles all 13-page Künye Defteri forms perfectly!)
+ * Parse e-Okul PDF text content (Handles Künye Defteri forms, 1-card, 2-card side-by-side, and tabular lists)
  */
 export const parsePdfContent = (pageTexts: string[]): { students: ParsedStudentWithStats[]; format: 'pdf-card' | 'pdf-table' } => {
   const fullText = pageTexts.join('\n\n--- PAGE BREAK ---\n\n');
@@ -799,27 +1081,48 @@ export const parsePdfContent = (pageTexts: string[]): { students: ParsedStudentW
     lowerFull.includes('kunye defteri') ||
     lowerFull.includes('kabul ed') ||
     lowerFull.includes('nufus kimlik') ||
-    lowerFull.includes('okul no:');
+    lowerFull.includes('okul no') ||
+    lowerFull.includes('ogrenci no');
 
   if (isCardStyle) {
     const students: ParsedStudentWithStats[] = [];
 
-    // Each page in e-Okul Künye Defteri represents a distinct student record!
-    for (const pageText of pageTexts) {
-      const lines = pageText.split('\n').map(l => cleanStr(l)).filter(Boolean);
+    // Each textBlock corresponds to a page or a column on a side-by-side page
+    for (const textBlock of pageTexts) {
+      const lines = textBlock.split('\n').map(l => cleanStr(l)).filter(Boolean);
       if (lines.length === 0) continue;
 
-      const student = parseSingleStudentBlock(lines);
-      if (student.number || student.name || student.tcNo) {
-        students.push({
-          id: Math.random().toString(36).substring(2, 11),
-          number: student.number || '',
-          name: student.name || '',
-          grade: student.grade || '',
-          ...student,
-          _extractedFieldCount: countExtractedFields(student),
-          _sourceFormat: 'pdf-card'
-        });
+      // Find all student starts within this textBlock
+      const startIndices: number[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const cl = cleanTurkish(lines[i]);
+        if (cl.startsWith('okul no') || cl.includes('okul no:') || cl.includes('ogrenci no:') || cl.includes('kunye defteri')) {
+          startIndices.push(i);
+        }
+      }
+
+      // If no explicit header line found, fallback to start 0
+      if (startIndices.length === 0) {
+        startIndices.push(0);
+      }
+
+      for (let k = 0; k < startIndices.length; k++) {
+        const start = startIndices[k];
+        const end = k + 1 < startIndices.length ? startIndices[k + 1] : lines.length;
+        const subLines = lines.slice(start, end);
+
+        const student = parseSingleStudentBlock(subLines);
+        if (student.number || student.name || student.tcNo) {
+          students.push({
+            id: Math.random().toString(36).substring(2, 11),
+            number: student.number || '',
+            name: student.name || '',
+            grade: student.grade || '',
+            ...student,
+            _extractedFieldCount: countExtractedFields(student),
+            _sourceFormat: 'pdf-card'
+          });
+        }
       }
     }
 
@@ -830,14 +1133,35 @@ export const parsePdfContent = (pageTexts: string[]): { students: ParsedStudentW
     for (const pageText of pageTexts) {
       const lines = pageText.split('\n').map(l => cleanStr(l)).filter(Boolean);
       for (const line of lines) {
+        const cl = cleanTurkish(line);
+        if (cl.includes('ogrenci sayisi') || cl.includes('toplam') || cl.includes('sayfa :') || cl.includes('sinif listesi')) {
+          continue;
+        }
+
+        // 1. Flexible match with School No + 11-digit TC + Name
         const matchWithTc = line.match(
-          /^(?:(?:\d{1,3})\s+)?(\d{1,6})\s+([1-9]\d{10})\s+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?:\s+(\d{1,2}[/ -][A-Za-z0-9]+))?(?:\s+([A-Za-zÇĞİÖŞÜçğıöşü]+))?(?:\s+([A-Za-zÇĞİÖŞÜçğıöşü]+))?$/i
+          /^(?:(?:\d{1,3})[\t\s]+)?(\d{1,6})[\t\s]+([1-9]\d{10})[\t\s]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?:[\t\s]+(\d{1,2}[/ -][A-Za-z0-9]+))?(?:[\t\s]+([A-Za-zÇĞİÖŞÜçğıöşü]+))?(?:[\t\s]+([A-Za-zÇĞİÖŞÜçğıöşü]+))?$/i
+        ) || line.match(
+          /^(?:(?:\d{1,3})[\t\s]+)?([1-9]\d{10})[\t\s]+(\d{1,6})[\t\s]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?:[\t\s]+(\d{1,2}[/ -][A-Za-z0-9]+))?/i
         );
+
         if (matchWithTc) {
-          const [, no, tc, name, grade, father, mother] = matchWithTc;
+          let no = matchWithTc[1];
+          let tc = matchWithTc[2];
+          // Handle reversed TC / No pattern
+          if (is11DigitTc(no)) {
+            const temp = no;
+            no = tc;
+            tc = temp;
+          }
+          const name = matchWithTc[3];
+          const grade = matchWithTc[4];
+          const father = matchWithTc[5];
+          const mother = matchWithTc[6];
+
           const s: ParsedStudentWithStats = {
             id: Math.random().toString(36).substring(2, 11),
-            number: no,
+            number: cleanNumberStr(no),
             tcNo: tc,
             name: name.trim(),
             grade: grade ? normalizeGrade(grade) : '',

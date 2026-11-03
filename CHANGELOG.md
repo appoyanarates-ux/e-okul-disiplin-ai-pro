@@ -4,6 +4,22 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.0.5] - 2026-11-03
+
+### 📑 Esnek e-Okul PDF ve Çok Sütunlu Excel Künye Defteri Ayrıştırıcı Motoru
+- **Yan Yana 2'li (Çok Sütunlu) Öğrenci Desteği:**
+  - PDF belgelerinde tek sayfada yatay olarak yan yana yer alan 2 sütunlu künye kartları otomatik tespit edilip sol ve sağ sütunlar birbirine karışmadan bağımsız olarak ayrıştırıldı.
+  - Excel sayfalarında yatayda yan yana sıralanmış 2'li (veya daha fazla) öğrenci künye blokları (`columnBands`) otomatik taranarak her öğrenci eksiksiz sisteme aktarıldı.
+- **Akıllı Satır ve İleriye Bakış (Lookahead) Çözümlemesi:**
+  - PDF raporlarında etiketlerin (`Okul No:`, `Adı:`, `T.C. Kimlik No:`) ve değerlerin farklı tablolarda/satırlarda yer aldığı durumlarda otomatik ileriye bakış (`getNextValue`) ile tüm kimlik ve okul bilgileri eksiksiz eşleştirildi.
+  - Dikey satır baselines toleransı optimize edilerek hücre bölünmeleri önlendi.
+- **Excel Sayısal Ondalık (.0) Biçim Koruması:**
+  - Excel ve CSV dışa aktarımlarında tamsayıların sonuna eklenen `.0` uzantıları (`71.0`, `17012964572.0`, `31.0`) otomatik temizlenerek T.C. Kimlik No doğrulamasının (`is11DigitTc`) ve Okul Numaralarının bozulması kökten engellendi.
+- **Eksiksiz Alan Aktarımı:**
+  - Okul No, Adı Soyadı, Sınıfı, T.C. Kimlik No, Anne/Baba Adı, Doğum Yeri ve Tarihi, Nüfus İli, İlçesi, Mahallesi, Cilt No, Aile Sıra No, Birey Sıra No, Veli Adı Soyadı ve İletişim bilgileri tam uyumla aktarılmaktadır.
+
+---
+
 ## [1.0.4] - 2026-11-03
 
 ### 📄 Resmi Yazışma Standardı: Sabit 12 Punto ve Times New Roman Tipografisi
