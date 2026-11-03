@@ -375,7 +375,27 @@ const DecisionAssistant = () => {
   const [marginPreset, setMarginPreset] = useState<MarginType>('normal');
   const [showMarginMenu, setShowMarginMenu] = useState(false);
   const [fitToPage, setFitToPage] = useState(false);
-  const [docFontSize, setDocFontSize] = useState(15);
+  // Default font size: 12pt (Times New Roman official correspondence standard)
+  const [docFontSize, setDocFontSizeState] = useState<number>(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('decision_assistant_font_size');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 8 && parsed <= 24) return parsed;
+      }
+    }
+    return 12; // Sabit 12 punto
+  });
+
+  const setDocFontSize = (valOrUpdater: number | ((prev: number) => number)) => {
+    setDocFontSizeState(prev => {
+      const nextVal = typeof valOrUpdater === 'function' ? valOrUpdater(prev) : valOrUpdater;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('decision_assistant_font_size', String(nextVal));
+      }
+      return nextVal;
+    });
+  };
 
   const toggleFitToPage = () => {
     if (fitToPage) {
@@ -857,7 +877,7 @@ const DecisionAssistant = () => {
         }
         return `
           <div style="${idx < generatedDocs.length - 1 ? 'page-break-after:always;' : ''}">
-            ${doc.header ? `<div style="text-align:center; font-weight:bold; margin-bottom:12pt; font-size:11pt; line-height:1.3;">${doc.header}</div>` : ''}
+            ${doc.header ? `<div style="text-align:center; font-weight:bold; margin-bottom:12pt; font-size:12pt; line-height:1.3; font-family:'Times New Roman', serif;">${doc.header}</div>` : ''}
             <div style="font-size:${docFontSize}pt; font-family:'Times New Roman', serif;">
               ${bodyHtml}
             </div>
@@ -922,8 +942,8 @@ const DecisionAssistant = () => {
 
         printHtml += `
           <div class="document-entry">
-            ${doc.header ? `<div class="doc-header" style="text-align:center; font-weight:bold; margin-bottom:12px; font-size:11pt; line-height:1.3;">${doc.header}</div>` : ''}
-            <div class="doc-content ${fitToPage ? 'print-fit-page' : ''}" style="font-size:${docFontSize}pt;">
+            ${doc.header ? `<div class="doc-header" style="text-align:center; font-weight:bold; margin-bottom:12px; font-size:12pt; line-height:1.3; font-family:'Times New Roman', serif;">${doc.header}</div>` : ''}
+            <div class="doc-content ${fitToPage ? 'print-fit-page' : ''}" style="font-size:${docFontSize}pt; font-family:'Times New Roman', serif; line-height:1.4;">
               ${bodyHtml}
             </div>
           </div>
@@ -1289,7 +1309,8 @@ const DecisionAssistant = () => {
                          paddingBottom: `${activeMargin.bottom}mm`,
                          paddingLeft: `${activeMargin.left}mm`,
                          paddingRight: `${activeMargin.right}mm`,
-                         fontSize: `${docFontSize}px`,
+                         fontSize: `${docFontSize}pt`,
+                         fontFamily: '"Times New Roman", Times, "Liberation Serif", serif',
                          transform: `scale(${zoom})`, 
                          transformOrigin: 'top center',
                          transition: 'transform 0.2s ease-out'
@@ -1391,7 +1412,8 @@ const DecisionAssistant = () => {
                                 paddingBottom: `${activeMargin.bottom}mm`,
                                 paddingLeft: `${activeMargin.left}mm`,
                                 paddingRight: `${activeMargin.right}mm`,
-                                fontSize: `${docFontSize}px` 
+                                fontSize: `${docFontSize}pt`,
+                                fontFamily: '"Times New Roman", Times, "Liberation Serif", serif'
                             }}
                         >
                             {/* Render Page Markers Layer */}
@@ -1407,7 +1429,8 @@ const DecisionAssistant = () => {
                                 contentEditable
                                 suppressContentEditableWarning
                                 onBlur={(e) => handleDocUpdate(e.currentTarget.innerHTML, index)}
-                                className={`outline-none hover:bg-yellow-50/10 focus:bg-yellow-100/20 transition-colors rounded px-1 h-auto cursor-text border border-transparent focus:border-yellow-200 relative z-0 ${fitToPage ? 'text-[9.5pt] min-h-0 leading-normal' : 'text-[11pt] min-h-[180mm] leading-normal'}`}
+                                className={`outline-none hover:bg-yellow-50/10 focus:bg-yellow-100/20 transition-colors rounded px-1 h-auto cursor-text border border-transparent focus:border-yellow-200 relative z-0 font-serif ${fitToPage ? 'text-[10pt] min-h-0 leading-normal' : 'text-[12pt] min-h-[180mm] leading-normal'}`}
+                                style={{ fontFamily: '"Times New Roman", Times, "Liberation Serif", serif', fontSize: `${docFontSize}pt` }}
                                 dangerouslySetInnerHTML={{ __html: doc.body }}
                             />
                         </div>

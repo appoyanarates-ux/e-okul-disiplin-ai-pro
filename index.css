@@ -127,3 +127,8 @@
     widows: 3 !important;
   }
 }
+
+/* Official Document Typography: Times New Roman standard */
+.document-page, .doc-content, .print-doc-container {
+  font-family: "Times New Roman", Times, "Liberation Serif", serif !important;
+}

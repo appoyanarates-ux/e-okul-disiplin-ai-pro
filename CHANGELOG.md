@@ -4,6 +4,15 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.0.4] - 2026-11-03
+
+### 📄 Resmi Yazışma Standardı: Sabit 12 Punto ve Times New Roman Tipografisi
+- **12 Punto Standartlaşması:** Karar ve Evraklar sayfası, Ceza Kaldırma modülü ve tüm belge önizleme/indirme alanlarında resmi yazışma kurallarına uygun olarak varsayılan yazı boyutu **12 punto (12pt)** olarak ayarlandı.
+- **Kalıcı (Persistent) Punto Ayarı:** Kullanıcının seçtiği punto boyutu tarayıcı hafızasında (`localStorage`) saklanarak oturumlar arasında **sabit** kalması güvenceye alındı.
+- **Times New Roman Tipografi Kilidi:** Canlı belge düzenleyicisi, önizleme ekranı, yazıcı çıktıları (`@media print`), Chromium vektörel PDF çıktısı ve Microsoft Word (`.docx`) dosyalarında font ailesi kalıcı olarak `"Times New Roman", Times, "Liberation Serif", serif` olarak mühürlendi.
+
+---
+
 ## [1.0.3] - 2026-11-03
 
 ### 🤖 Google Gemini Free Tier API Desteği ve Çoklu Model Fallback Mimarisi

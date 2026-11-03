@@ -32,7 +32,7 @@ export interface DocumentDefinition {
   sections: DocumentSection[];
   signatures: DocumentSignature[];
   footerNote?: string;
-  fontSize?: number; // default 10.5
+  fontSize?: number; // default 12 (Times New Roman standard)
 }
 
 // Calculate student behavior score
@@ -782,13 +782,13 @@ export const renderDocDefToHtml = (
 ): string => {
   const isLandscape = docDef.orientation === 'landscape';
   const margins = options.margins || { top: 20, bottom: 20, left: 20, right: 20 };
-  const fontSize = options.fontSize || docDef.fontSize || 10.5;
+  const fontSize = options.fontSize || docDef.fontSize || 12;
 
   let sectionsHtml = '';
   docDef.sections.forEach(section => {
     sectionsHtml += '<div style="margin-bottom: 14px;">';
     if (section.title) {
-      sectionsHtml += `<div style="font-weight: bold; font-size: 11pt; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 4px; margin-bottom: 8px;">${section.title}</div>`;
+      sectionsHtml += `<div style="font-weight: bold; font-size: 12pt; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 4px; margin-bottom: 8px;">${section.title}</div>`;
     }
 
     if (section.type === 'paragraph' && section.text) {

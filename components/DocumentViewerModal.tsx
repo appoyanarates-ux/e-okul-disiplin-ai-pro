@@ -318,11 +318,11 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             )}
 
             {/* Document Content Sections */}
-            <div className="space-y-4 text-xs leading-relaxed">
+            <div className="space-y-4 leading-relaxed font-serif" style={{ fontSize: '12pt' }}>
               {docDef.sections.map((section, idx) => (
                 <div key={idx} className="space-y-2">
                   {section.title && (
-                    <h2 className="font-bold text-xs uppercase tracking-wider text-blue-950 border-b border-slate-300 pb-1">
+                    <h2 className="font-bold text-sm uppercase tracking-wider text-slate-900 border-b border-slate-300 pb-1">
                       {section.title}
                     </h2>
                   )}

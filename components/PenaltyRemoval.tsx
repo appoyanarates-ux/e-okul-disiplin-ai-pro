@@ -28,7 +28,27 @@ const PenaltyRemoval = () => {
   const [marginPreset, setMarginPreset] = useState<MarginType>('normal');
   const [showMarginMenu, setShowMarginMenu] = useState(false);
   const [fitToPage, setFitToPage] = useState(false);
-  const [docFontSize, setDocFontSize] = useState(15);
+  // Default font size: 12pt (Times New Roman official standard)
+  const [docFontSize, setDocFontSizeState] = useState<number>(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('penalty_removal_font_size');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 8 && parsed <= 24) return parsed;
+      }
+    }
+    return 12; // 12 punto
+  });
+
+  const setDocFontSize = (valOrUpdater: number | ((prev: number) => number)) => {
+    setDocFontSizeState(prev => {
+      const nextVal = typeof valOrUpdater === 'function' ? valOrUpdater(prev) : valOrUpdater;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('penalty_removal_font_size', String(nextVal));
+      }
+      return nextVal;
+    });
+  };
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
 
   const toggleFitToPage = () => {
@@ -872,7 +892,7 @@ const PenaltyRemoval = () => {
   <body class="bg-white">
     <div class="print-container">
       <div class="document-entry">
-        <div class="doc-content ${fitToPage ? 'print-fit-page' : ''}" style="font-size:${docFontSize}pt;">
+        <div class="doc-content ${fitToPage ? 'print-fit-page' : ''}" style="font-size:${docFontSize}pt; font-family:'Times New Roman', serif; line-height:1.4;">
           ${bodyHtml}
         </div>
       </div>
@@ -1430,7 +1450,8 @@ const PenaltyRemoval = () => {
                               paddingBottom: `${activeMargin.bottom}mm`,
                               paddingLeft: `${activeMargin.left}mm`,
                               paddingRight: `${activeMargin.right}mm`,
-                              fontSize: `${docFontSize}px` 
+                              fontSize: `${docFontSize}pt`,
+                              fontFamily: '"Times New Roman", Times, "Liberation Serif", serif'
                           }}
                           className={`bg-white text-black font-serif shadow-2xl document-page w-[210mm] min-h-[297mm] h-auto relative ${fitToPage ? 'print-fit-page' : ''}`}
                       >

@@ -319,7 +319,7 @@ function renderSection(section: DocumentSection, children: (Paragraph | Table)[]
               children: [
                 new TextRun({
                   text: pText.trim(),
-                  size: 21, // 10.5pt
+                  size: 24, // 12pt (Times New Roman standard)
                   font: FONT_FAMILY,
                   bold: section.bold || false
                 })
@@ -518,7 +518,7 @@ function renderSection(section: DocumentSection, children: (Paragraph | Table)[]
               children: [
                 new TextRun({
                   text: b,
-                  size: 20,
+                  size: 24, // 12pt (Times New Roman standard)
                   font: FONT_FAMILY
                 })
               ]
