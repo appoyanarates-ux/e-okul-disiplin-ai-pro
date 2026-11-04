@@ -98,6 +98,75 @@ const getStudentBehaviorPoints = (
   return Math.max(0, 100 - deductedPoints);
 };
 
+interface EditableDocumentContentProps {
+  initialHtml: string;
+  docIndex: number;
+  fitToPage: boolean;
+  docFontSize: number;
+  onSave: (container: HTMLElement, docIndex: number) => void;
+  onStartTyping?: () => void;
+}
+
+const EditableDocumentContent: React.FC<EditableDocumentContentProps> = React.memo(({
+  initialHtml,
+  docIndex,
+  fitToPage,
+  docFontSize,
+  onSave,
+  onStartTyping
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
+  const lastLoadedHtmlRef = useRef(initialHtml);
+
+  // Sync initialHtml into DOM when the document template changes (e.g. user selected another form or student)
+  useEffect(() => {
+    if (containerRef.current && (initialHtml !== lastLoadedHtmlRef.current || !containerRef.current.innerHTML)) {
+      containerRef.current.innerHTML = initialHtml;
+      lastLoadedHtmlRef.current = initialHtml;
+    }
+  }, [initialHtml]);
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      if (onStartTyping) onStartTyping();
+    }
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      lastLoadedHtmlRef.current = target.innerHTML;
+      onSave(target, docIndex);
+    }, 1200);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    isTypingRef.current = false;
+    lastLoadedHtmlRef.current = e.currentTarget.innerHTML;
+    onSave(e.currentTarget, docIndex);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={handleInput}
+      onBlur={handleBlur}
+      className={`outline-none hover:bg-yellow-50/10 focus:bg-yellow-100/20 transition-colors rounded px-1 h-auto cursor-text border border-transparent focus:border-yellow-200 relative z-0 font-serif ${fitToPage ? 'text-[10pt] min-h-0 leading-normal' : 'text-[12pt] min-h-[180mm] leading-normal'}`}
+      style={{ fontFamily: '"Times New Roman", Times, "Liberation Serif", serif', fontSize: `${docFontSize}pt` }}
+    />
+  );
+});
+
 const DecisionAssistant = () => {
   const { students, updateStudent } = useStudents();
   const { incidents, updateIncidentStudent, updateIncident } = useIncidents();
@@ -1207,26 +1276,7 @@ const DecisionAssistant = () => {
     return savedLabels;
   };
 
-  const handleDocInput = (container: HTMLElement, docIndex: number) => {
-    setAutoSaveStatus({ state: 'saving' });
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-    }
-    autoSaveTimerRef.current = setTimeout(() => {
-      const savedLabels = syncStatementAndDefenseFields(container, docIndex);
-      let msg = 'Belge üzerindeki değişiklikler otomatik olarak kaydedildi.';
-      if (savedLabels.length > 0) {
-        msg = `${savedLabels.join(' ve ')} başarıyla olaya işlendi ve kaydedildi.`;
-      }
-      triggerAutoSaveToast(msg);
-    }, 800);
-  };
-
-  const handleDocBlur = (container: HTMLElement, docIndex: number) => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
+  const handleDocSave = (container: HTMLElement, docIndex: number) => {
     const updatedHtml = container.innerHTML;
     setGeneratedDocs(prev => {
       const next = [...prev];
@@ -1242,16 +1292,6 @@ const DecisionAssistant = () => {
       msg = `${savedLabels.join(' ve ')} başarıyla olaya işlendi ve kaydedildi.`;
     }
     triggerAutoSaveToast(msg);
-  };
-
-  const handleDocUpdate = (value: string, index: number = 0) => {
-    setGeneratedDocs(prev => {
-        const next = [...prev];
-        if (next[index]) {
-            next[index] = { ...next[index], body: value };
-        }
-        return next;
-    });
   };
 
   const toggleStudentSelection = (id: string) => {
@@ -1563,14 +1603,14 @@ const DecisionAssistant = () => {
                             )}
 
                             {/* Content - HTML Table Supported */}
-                            <div 
-                                contentEditable
-                                suppressContentEditableWarning
-                                onInput={(e) => handleDocInput(e.currentTarget, index)}
-                                onBlur={(e) => handleDocBlur(e.currentTarget, index)}
-                                className={`outline-none hover:bg-yellow-50/10 focus:bg-yellow-100/20 transition-colors rounded px-1 h-auto cursor-text border border-transparent focus:border-yellow-200 relative z-0 font-serif ${fitToPage ? 'text-[10pt] min-h-0 leading-normal' : 'text-[12pt] min-h-[180mm] leading-normal'}`}
-                                style={{ fontFamily: '"Times New Roman", Times, "Liberation Serif", serif', fontSize: `${docFontSize}pt` }}
-                                dangerouslySetInnerHTML={{ __html: doc.body }}
+                            <EditableDocumentContent
+                                key={`${index}-${doc.type || ''}-${doc.studentName || ''}`}
+                                initialHtml={doc.body}
+                                docIndex={index}
+                                fitToPage={fitToPage}
+                                docFontSize={docFontSize}
+                                onStartTyping={() => setAutoSaveStatus({ state: 'saving' })}
+                                onSave={handleDocSave}
                             />
                         </div>
                         

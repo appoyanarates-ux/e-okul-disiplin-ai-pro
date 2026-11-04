@@ -4,6 +4,17 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.0.8] - 2026-11-04
+
+### 🛠️ Ön İzleme Canlı Düzenleyici (ContentEditable) Yenilendi & Yazma Kilidi Çözüldü
+- **Akıllı DOM Senkronizasyonu (`EditableDocumentContent`):**
+  - Ön izleme belgelerinde React sanal DOM uzlaşması (dangerouslySetInnerHTML çakışması) nedeniyle her tuş vuruşunda yazının silinmesine / kilitlenmesine neden olan sorun tamamen giderildi.
+  - Canlı belge düzenleyici, harici re-render'lardan izole edilerek akıcı ve kesintisiz yazma, silme, biçimlendirme ve düzeltme deneyimi sağlandı.
+- **Kararlı Otomatik Kayıt & İmleç Sabitleme:**
+  - Kullanıcı belge üzerinde yazarken veya silerken imleç konumu bozulmaz; duraklamada (debounce) veya odak dışına çıkıldığında (blur) değişiklikler ve öğrenci ifade/savunma verileri anında ve hatasız kaydedilir.
+
+---
+
 ## [1.0.7] - 2026-11-04
 
 ### 📝 Canlı Ön İzleme Üzerinde İfade ve Savunma Girişi & Otomatik Kayıt
