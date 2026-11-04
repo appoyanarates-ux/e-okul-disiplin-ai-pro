@@ -4,6 +4,22 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.0.9] - 2026-11-04
+
+### 🔄 Öğrenci Değişiminde Evrak Verilerinin Korunması & Kalıcı Belge Hafızası
+- **Öğrenciye ve Evraka Özel Kalıcı Hafıza (`customDocuments`):**
+  - Tutanak ve Formlar sayfasında bir öğrenci için hazırlanan veya düzenlenen evraklar (İfade Talebi, Savunma Talebi, Öğrenci İfade Belgesi, Öğrenci Savunma Belgesi, Görüşme Tutanağı, EK-10 vb.) öğrenci bazlı kalıcı olarak kaydedilir.
+  - Başka bir öğrenciye geçilip tekrar eski öğrenciye dönüldüğünde, yazılan metinler, açıklamalar ve yapılan tüm değişiklikler eksiksiz geri yüklenir; hiçbir veri kaybolmaz.
+- **Akıllı Öğrenci Geçişi & Ön İzleme Senkronizasyonu:**
+  - Sol öğrenci listesinden öğrenci tıklandığında ön izleme penceresi derhal o öğrencinin aktif evrakına ve varsa kayıtlı düzenlemelerine geçer.
+  - Kart tıklaması tekil öğrenci geçişini sağlarken, onay kutusu (checkbox) çoklu evrak seçimi için ayrıştırıldı.
+- **Şablona Sıfırlama İmkanı ("Şablona Sıfırla"):**
+  - İstenildiği takdirde öğrenci evrakını ilk orijinal boş MEB şablonuna geri döndürmek için ön izleme başlığına *"Şablona Sıfırla"* butonu eklendi.
+- **Olay Güncelleme Koruması:**
+  - Olaydaki bir öğrencinin verisi kaydedildiğinde tüm öğrenci seçiminin ve evrak listesinin sıfırlanmasına neden olan re-render döngüsü engellendi.
+
+---
+
 ## [1.0.8] - 2026-11-04
 
 ### 🛠️ Ön İzleme Canlı Düzenleyici (ContentEditable) Yenilendi & Yazma Kilidi Çözüldü

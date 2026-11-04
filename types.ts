@@ -58,6 +58,7 @@ export interface Student {
     removedDate?: string;
     removedReason?: string;
   }>;
+  customDocuments?: Record<string, string>; // Olay seçilmediğinde kaydedilen evraklar
 }
 
 export interface InvolvedStudent {
@@ -66,6 +67,7 @@ export interface InvolvedStudent {
   notes?: string; // Öğrenciye özel not
   studentStatement?: string; // Öğrenci İfadesi
   studentDefense?: string; // Öğrenci Savunması
+  customDocuments?: Record<string, string>; // Kaydedilen evrak şablon/içerikleri (docType -> html)
   
   // Karar Bilgileri (Yaptırım)
   decision?: string; // Örn: KINAMA, UYARI, OKULDAN UZAKLAŞTIRMA, CEZA ALMADI

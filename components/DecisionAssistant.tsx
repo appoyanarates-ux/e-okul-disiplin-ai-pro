@@ -653,9 +653,13 @@ const DecisionAssistant = () => {
   const [isGeneratingReason, setIsGeneratingReason] = useState(false);
 
   // --- LOAD DATA EFFECTS ---
+  const prevIncidentIdRef = useRef<string | null>(null);
   
   // 1. Reset specific states when Incident changes
   useEffect(() => {
+    if (prevIncidentIdRef.current === selectedIncidentId) return;
+    prevIncidentIdRef.current = selectedIncidentId;
+
     const incident = incidents.find(i => i.id === selectedIncidentId);
     if (incident && incident.involvedStudents && incident.involvedStudents.length > 0) {
       const firstStudentId = incident.involvedStudents[0].studentId;
@@ -1276,8 +1280,122 @@ const DecisionAssistant = () => {
     return savedLabels;
   };
 
+  // Document Persistence helpers (per student and per docType)
+  const getSavedDocument = (docType?: string, studentId?: string, incidentId?: string): string | null => {
+    if (!docType || !studentId) return null;
+    
+    // 1. Check in incident involvement if incident is selected
+    if (incidentId) {
+      const inc = incidents.find(i => i.id === incidentId);
+      const inv = inc?.involvedStudents?.find(s => s.studentId === studentId);
+      if (inv?.customDocuments && inv.customDocuments[docType]) {
+        return inv.customDocuments[docType];
+      }
+    }
+
+    // 2. Check in student object
+    const stud = students.find(s => s.id === studentId);
+    if (stud?.customDocuments && stud.customDocuments[docType]) {
+      return stud.customDocuments[docType];
+    }
+
+    // 3. Check in localStorage dedicated cache
+    const storageKey = `doc_cache_${incidentId || 'general'}_${studentId}_${docType}`;
+    try {
+      const cached = localStorage.getItem(storageKey);
+      if (cached) return cached;
+    } catch {
+      // ignore
+    }
+
+    return null;
+  };
+
+  const saveCustomDocument = (docType: string, html: string, studentId?: string, incidentId?: string) => {
+    if (!studentId || !docType || !html) return;
+
+    // 1. Save to incident involvement if incident is selected
+    if (incidentId) {
+      const inc = incidents.find(i => i.id === incidentId);
+      const inv = inc?.involvedStudents?.find(s => s.studentId === studentId);
+      const existingDocs = inv?.customDocuments || {};
+      updateIncidentStudent(incidentId, studentId, {
+        customDocuments: { ...existingDocs, [docType]: html }
+      });
+    }
+
+    // 2. Save to student object
+    const stud = students.find(s => s.id === studentId);
+    const studDocs = stud?.customDocuments || {};
+    updateStudent(studentId, {
+      customDocuments: { ...studDocs, [docType]: html }
+    });
+
+    // 3. Save to localStorage cache
+    const storageKey = `doc_cache_${incidentId || 'general'}_${studentId}_${docType}`;
+    try {
+      localStorage.setItem(storageKey, html);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleResetDocumentToTemplate = (docType?: string, studentId?: string, docIndex?: number) => {
+    if (!docType || !studentId) return;
+    const student = (selectedIncident ? incidentStudents : students).find(s => s.id === studentId) || students.find(s => s.id === studentId);
+    const studentName = student?.name || 'Öğrenci';
+    
+    if (window.confirm(`${studentName} için yapılan tüm özel düzenlemeler silinecek ve orijinal MEB şablonuna sıfırlanacaktır. Devam etmek istiyor musunuz?`)) {
+      // 1. Remove from incident involvement
+      if (selectedIncidentId) {
+        const inc = incidents.find(i => i.id === selectedIncidentId);
+        const inv = inc?.involvedStudents?.find(s => s.studentId === studentId);
+        if (inv && inv.customDocuments && inv.customDocuments[docType]) {
+          const nextDocs = { ...inv.customDocuments };
+          delete nextDocs[docType];
+          updateIncidentStudent(selectedIncidentId, studentId, { customDocuments: nextDocs });
+        }
+      }
+
+      // 2. Remove from student
+      const stud = students.find(s => s.id === studentId);
+      if (stud && stud.customDocuments && stud.customDocuments[docType]) {
+        const nextDocs = { ...stud.customDocuments };
+        delete nextDocs[docType];
+        updateStudent(studentId, { customDocuments: nextDocs });
+      }
+
+      // 3. Remove from localStorage cache
+      const storageKey = `doc_cache_${selectedIncidentId || 'general'}_${studentId}_${docType}`;
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+
+      // 4. Force regenerate from template
+      const cleanDoc = generateTemplate(docType, student, true, false, true);
+      if (cleanDoc) {
+        setGeneratedDocs(prev => {
+          const next = [...prev];
+          if (docIndex !== undefined && next[docIndex]) {
+            next[docIndex] = cleanDoc;
+          } else {
+            return [cleanDoc];
+          }
+          return next;
+        });
+        triggerAutoSaveToast('Belge orijinal MEB şablonuna sıfırlandı.');
+      }
+    }
+  };
+
   const handleDocSave = (container: HTMLElement, docIndex: number) => {
     const updatedHtml = container.innerHTML;
+    const currentDoc = generatedDocs[docIndex];
+    const docType = currentDoc?.type || lastGeneratedFormType || '';
+    const studentId = (currentDoc as any)?.studentId || selectedStudentId;
+
     setGeneratedDocs(prev => {
       const next = [...prev];
       if (next[docIndex]) {
@@ -1287,9 +1405,15 @@ const DecisionAssistant = () => {
     });
 
     const savedLabels = syncStatementAndDefenseFields(container, docIndex);
+
+    // Persist document changes
+    if (studentId && docType) {
+      saveCustomDocument(docType, updatedHtml, studentId, selectedIncidentId);
+    }
+
     let msg = 'Belge değişiklikleri otomatik olarak kaydedildi.';
     if (savedLabels.length > 0) {
-      msg = `${savedLabels.join(' ve ')} başarıyla olaya işlendi ve kaydedildi.`;
+      msg = `${savedLabels.join(' ve ')} ve belge içeriği başarıyla kaydedildi.`;
     }
     triggerAutoSaveToast(msg);
   };
@@ -1324,25 +1448,27 @@ const DecisionAssistant = () => {
     }
   };
 
-  const generateBulkDocuments = async (type: string) => {
+  const generateBulkDocuments = (type: string, overrideStudentIds?: string[], forceResetTemplate: boolean = false) => {
     const docs: Array<{ header: string, body: string, type?: string, studentName?: string, studentId?: string }> = [];
     setLastGeneratedFormType(type);
 
     if (isBlankMode) {
-      const doc = generateTemplate(type, undefined, true, true);
+      const doc = generateTemplate(type, undefined, true, true, forceResetTemplate);
       if (doc) docs.push(doc);
     } else {
-      const targetIds = selectedStudentIds.length > 0 ? selectedStudentIds : (selectedStudentId ? [selectedStudentId] : []);
+      const targetIds = overrideStudentIds && overrideStudentIds.length > 0
+        ? overrideStudentIds
+        : (selectedStudentIds.length > 0 ? selectedStudentIds : (selectedStudentId ? [selectedStudentId] : []));
       if (targetIds.length > 0) {
         for (const studentId of targetIds) {
-            const student = students.find(s => s.id === studentId);
+            const student = (selectedIncident ? incidentStudents : students).find(s => s.id === studentId) || students.find(s => s.id === studentId);
             if (student) {
-                const doc = generateTemplate(type, student, true, false);
+                const doc = generateTemplate(type, student, true, false, forceResetTemplate);
                 if (doc) docs.push(doc);
             }
         }
       } else {
-        const doc = generateTemplate(type, undefined, true, false);
+        const doc = generateTemplate(type, undefined, true, false, forceResetTemplate);
         if (doc) docs.push(doc);
       }
     }
@@ -1355,15 +1481,16 @@ const DecisionAssistant = () => {
     }
   };
 
-  // Auto-generate preview on tab switch if empty
+  // Synchronize document preview when student selection or tab changes
   useEffect(() => {
-    if (activeTab === 'forms' && generatedDocs.length === 0) {
-      generateBulkDocuments('statement_request');
-    } else if (activeTab === 'decision' && generatedDocs.length === 0) {
-      generateBulkDocuments('ek10_decision');
+    if (activeTab === 'forms' && selectedStudentId && !isBlankMode) {
+      const formType = lastGeneratedFormType || 'statement_request';
+      generateBulkDocuments(formType, [selectedStudentId]);
+    } else if (activeTab === 'decision' && selectedStudentId && !isBlankMode) {
+      generateBulkDocuments('ek10_decision', [selectedStudentId]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [selectedStudentId, activeTab]);
 
   // Dynamic preview update when date or time changes
   useEffect(() => {
@@ -1553,6 +1680,11 @@ const DecisionAssistant = () => {
                                 <Layout className="w-3.5 h-3.5 text-blue-600" />
                                 <span>{activeMargin.name}</span>
                                 <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono font-normal">A4 Portre</span>
+                                {doc.studentName && (
+                                    <span className="text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded font-bold">
+                                        {doc.studentName}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Auto-Save & Status Badge */}
@@ -1568,6 +1700,17 @@ const DecisionAssistant = () => {
                                         <CheckCircle className="w-3 h-3 text-emerald-600" />
                                         <span>Otomatik Kaydedildi ({autoSaveStatus.timestamp})</span>
                                     </span>
+                                )}
+                                {doc.type && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleResetDocumentToTemplate(doc.type, (doc as any).studentId || selectedStudentId, index)}
+                                        title="Bu evrak için yapılan özel değişiklikleri silip orijinal MEB şablonuna sıfırlar"
+                                        className="text-[10.5px] text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-300 hover:bg-red-50/50 px-2 py-0.5 rounded transition-colors flex items-center gap-1 font-medium ml-1 cursor-pointer"
+                                    >
+                                        <RotateCcw className="w-3 h-3 text-slate-400 group-hover:text-red-500" />
+                                        <span>Şablona Sıfırla</span>
+                                    </button>
                                 )}
                                 <div className="text-[11px] font-mono text-slate-400">
                                     Üst: {activeMargin.top}mm • Alt: {activeMargin.bottom}mm • Sol: {activeMargin.left}mm • Sağ: {activeMargin.right}mm
@@ -1604,7 +1747,7 @@ const DecisionAssistant = () => {
 
                             {/* Content - HTML Table Supported */}
                             <EditableDocumentContent
-                                key={`${index}-${doc.type || ''}-${doc.studentName || ''}`}
+                                key={`${index}-${doc.type || ''}-${(doc as any).studentId || doc.studentName || ''}`}
                                 initialHtml={doc.body}
                                 docIndex={index}
                                 fitToPage={fitToPage}
@@ -1626,7 +1769,13 @@ const DecisionAssistant = () => {
   };
 
   // --- TEMPLATE GENERATOR ---
-  const generateTemplate = (type: string, studentOverride?: Student & { role?: string }, returnOnly: boolean = false, forceBlank: boolean = false) => {
+  const generateTemplate = (
+    type: string, 
+    studentOverride?: Student & { role?: string, studentStatement?: string, studentDefense?: string }, 
+    returnOnly: boolean = false, 
+    forceBlank: boolean = false,
+    forceResetTemplate: boolean = false
+  ) => {
     // -- Data Variables --
     let s = { 
         name: "..............................................", grade: "..........", number: "..........", 
@@ -1658,10 +1807,28 @@ const DecisionAssistant = () => {
         targetStudentId = studentOverride.id;
     }
 
-    const student = studentOverride || students.find(s => s.id === targetStudentId);
+    const student = studentOverride || (selectedIncident ? incidentStudents : students).find(s => s.id === targetStudentId) || students.find(s => s.id === targetStudentId);
     const incident = incidents.find(i => i.id === selectedIncidentId);
 
     const isExplicitBlank = isBlankMode || forceBlank;
+
+    // Check if a customized/saved document exists for this student and document type
+    if (!isExplicitBlank && !forceResetTemplate && targetStudentId) {
+      const savedBody = getSavedDocument(type, targetStudentId, selectedIncidentId);
+      if (savedBody && savedBody.trim().length > 0) {
+        const actualStudentName = student?.name && !student.name.includes('..') ? student.name : '';
+        const docObj = {
+          header: '',
+          body: savedBody,
+          type,
+          studentName: actualStudentName,
+          studentId: targetStudentId || ''
+        };
+        if (returnOnly) return docObj;
+        setGeneratedDocs([docObj]);
+        return docObj;
+      }
+    }
 
     if (!isExplicitBlank) {
         if (student) {
@@ -3437,8 +3604,8 @@ const DecisionAssistant = () => {
                                     <div 
                                         key={s.id} 
                                         onClick={() => {
-                                            toggleStudentSelection(s.id);
                                             setSelectedStudentId(s.id);
+                                            setSelectedStudentIds([s.id]);
                                         }} 
                                         className={`p-2.5 rounded-lg border cursor-pointer hover:bg-white flex items-center gap-2.5 text-xs transition-all ${
                                             isSelected 
@@ -3448,7 +3615,14 @@ const DecisionAssistant = () => {
                                                     : 'border-transparent hover:border-slate-200'
                                         }`}
                                     >
-                                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300'}`}>
+                                        <div 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleStudentSelection(s.id);
+                                            }}
+                                            title="Toplu evrak hazırlamak için çoklu seç"
+                                            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 hover:border-blue-400'}`}
+                                        >
                                             {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -3699,10 +3873,8 @@ const DecisionAssistant = () => {
                                     <div 
                                         key={s.id} 
                                         onClick={() => { 
-                                            if (!selectedStudentIds.includes(s.id)) { 
-                                                setSelectedStudentIds(prev => [...prev, s.id]); 
-                                            } 
                                             setSelectedStudentId(s.id); 
+                                            setSelectedStudentIds([s.id]); 
                                         }} 
                                         className={`p-2.5 border rounded-lg cursor-pointer hover:bg-slate-50 transition-all flex flex-col gap-1.5 ${
                                             isSelected 

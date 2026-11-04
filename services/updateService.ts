@@ -5,7 +5,7 @@ export const getAppVersion = (): string => {
   if (typeof window !== 'undefined' && window.electronAPI?.version) {
     return window.electronAPI.version;
   }
-  return '1.0.8';
+  return '1.0.9';
 };
 
 export const GITHUB_REPO = 'appoyanarates-ux/e-okul-disiplin-ai-pro';
