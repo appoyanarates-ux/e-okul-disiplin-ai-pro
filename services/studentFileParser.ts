@@ -1,18 +1,5 @@
 import * as XLSX from 'xlsx';
-import * as pdfjsLib from 'pdfjs-dist';
 import { Student } from '../types';
-
-// Configure PDF.js worker
-if (typeof window !== 'undefined') {
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url
-    ).toString();
-  } catch {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-  }
-}
 
 export interface StudentColumnMapping {
   number?: number;
@@ -965,223 +952,7 @@ export const parseTabularExcel = (
 };
 
 /**
- * Extract clean text streams from PDF pages using pdfjs-dist.
- * Supports:
- * - Single student per page
- * - Side-by-side (2-column) student layout on the same page
- * - Vertically stacked students on the same page
- */
-export const extractTextFromPdf = async (arrayBuffer: ArrayBuffer): Promise<string[]> => {
-  const loadingTask = pdfjsLib.getDocument({
-    data: new Uint8Array(arrayBuffer),
-    useSystemFonts: true,
-  });
-
-  const pdfDoc = await loadingTask.promise;
-  const pageTexts: string[] = [];
-
-  for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-    const page = await pdfDoc.getPage(pageNum);
-    const viewport = page.getViewport({ scale: 1.0 });
-    const textContent = await page.getTextContent();
-    const items = textContent.items as Array<{ str: string; transform: number[] }>;
-
-    if (!items || items.length === 0) continue;
-
-    const pageWidth = viewport.width;
-    const midX = pageWidth / 2;
-
-    // Detect if page has side-by-side (2-column) student cards
-    let hasLeftMarker = false;
-    let hasRightMarker = false;
-
-    for (const item of items) {
-      if (!item.str || !item.str.trim()) continue;
-      const x = item.transform[4];
-      const cl = cleanTurkish(item.str);
-      const isMarker =
-        cl.includes('okul no') ||
-        cl.includes('ogrenci no') ||
-        cl.includes('kunye defteri') ||
-        cl.includes('kabul ed') ||
-        cl.includes('nufus kimlik') ||
-        /\b[1-9]\d{10}\b/.test(item.str);
-
-      if (isMarker) {
-        if (x < midX - 20) hasLeftMarker = true;
-        if (x > midX - 20) hasRightMarker = true;
-      }
-    }
-
-    const isSideBySide = hasLeftMarker && hasRightMarker;
-
-    const columnGroups: Array<Array<{ str: string; transform: number[] }>> = [];
-    if (isSideBySide) {
-      const leftItems = items.filter(it => it.transform[4] < midX);
-      const rightItems = items.filter(it => it.transform[4] >= midX);
-      if (leftItems.length > 0) columnGroups.push(leftItems);
-      if (rightItems.length > 0) columnGroups.push(rightItems);
-    } else {
-      columnGroups.push(items);
-    }
-
-    // Process each column independently
-    for (const colItems of columnGroups) {
-      const lineBuckets: Map<number, Array<{ str: string; x: number }>> = new Map();
-
-      for (const item of colItems) {
-        if (!item.str || !item.str.trim()) continue;
-        const y = Math.round(item.transform[5]);
-        const x = item.transform[4];
-
-        let foundBucketY: number | null = null;
-        for (const bucketY of lineBuckets.keys()) {
-          // 6 points vertical tolerance to capture table cells on same baseline
-          if (Math.abs(bucketY - y) <= 6) {
-            foundBucketY = bucketY;
-            break;
-          }
-        }
-
-        if (foundBucketY !== null) {
-          lineBuckets.get(foundBucketY)!.push({ str: item.str, x });
-        } else {
-          lineBuckets.set(y, [{ str: item.str, x }]);
-        }
-      }
-
-      const sortedY = Array.from(lineBuckets.keys()).sort((a, b) => b - a);
-      const colLines: string[] = [];
-
-      for (const y of sortedY) {
-        const itemsInLine = lineBuckets.get(y)!;
-        itemsInLine.sort((a, b) => a.x - b.x);
-        // Separate cells on the same line with tab to preserve column boundaries
-        const lineStr = itemsInLine.map(it => it.str.trim()).filter(Boolean).join('\t');
-        if (lineStr) colLines.push(lineStr);
-      }
-
-      if (colLines.length > 0) {
-        pageTexts.push(colLines.join('\n'));
-      }
-    }
-  }
-
-  return pageTexts;
-};
-
-/**
- * Parse e-Okul PDF text content (Handles Künye Defteri forms, 1-card, 2-card side-by-side, and tabular lists)
- */
-export const parsePdfContent = (pageTexts: string[]): { students: ParsedStudentWithStats[]; format: 'pdf-card' | 'pdf-table' } => {
-  const fullText = pageTexts.join('\n\n--- PAGE BREAK ---\n\n');
-  const lowerFull = cleanTurkish(fullText);
-
-  const isCardStyle =
-    lowerFull.includes('kunye defteri') ||
-    lowerFull.includes('kabul ed') ||
-    lowerFull.includes('nufus kimlik') ||
-    lowerFull.includes('okul no') ||
-    lowerFull.includes('ogrenci no');
-
-  if (isCardStyle) {
-    const students: ParsedStudentWithStats[] = [];
-
-    // Each textBlock corresponds to a page or a column on a side-by-side page
-    for (const textBlock of pageTexts) {
-      const lines = textBlock.split('\n').map(l => cleanStr(l)).filter(Boolean);
-      if (lines.length === 0) continue;
-
-      // Find all student starts within this textBlock
-      const startIndices: number[] = [];
-      for (let i = 0; i < lines.length; i++) {
-        const cl = cleanTurkish(lines[i]);
-        if (cl.startsWith('okul no') || cl.includes('okul no:') || cl.includes('ogrenci no:') || cl.includes('kunye defteri')) {
-          startIndices.push(i);
-        }
-      }
-
-      // If no explicit header line found, fallback to start 0
-      if (startIndices.length === 0) {
-        startIndices.push(0);
-      }
-
-      for (let k = 0; k < startIndices.length; k++) {
-        const start = startIndices[k];
-        const end = k + 1 < startIndices.length ? startIndices[k + 1] : lines.length;
-        const subLines = lines.slice(start, end);
-
-        const student = parseSingleStudentBlock(subLines);
-        if (student.number || student.name || student.tcNo) {
-          students.push({
-            id: Math.random().toString(36).substring(2, 11),
-            number: student.number || '',
-            name: student.name || '',
-            grade: student.grade || '',
-            ...student,
-            _extractedFieldCount: countExtractedFields(student),
-            _sourceFormat: 'pdf-card'
-          });
-        }
-      }
-    }
-
-    return { students, format: 'pdf-card' };
-  } else {
-    // Tabular PDF list
-    const students: ParsedStudentWithStats[] = [];
-    for (const pageText of pageTexts) {
-      const lines = pageText.split('\n').map(l => cleanStr(l)).filter(Boolean);
-      for (const line of lines) {
-        const cl = cleanTurkish(line);
-        if (cl.includes('ogrenci sayisi') || cl.includes('toplam') || cl.includes('sayfa :') || cl.includes('sinif listesi')) {
-          continue;
-        }
-
-        // 1. Flexible match with School No + 11-digit TC + Name
-        const matchWithTc = line.match(
-          /^(?:(?:\d{1,3})[\t\s]+)?(\d{1,6})[\t\s]+([1-9]\d{10})[\t\s]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?:[\t\s]+(\d{1,2}[/ -][A-Za-z0-9]+))?(?:[\t\s]+([A-Za-zÇĞİÖŞÜçğıöşü]+))?(?:[\t\s]+([A-Za-zÇĞİÖŞÜçğıöşü]+))?$/i
-        ) || line.match(
-          /^(?:(?:\d{1,3})[\t\s]+)?([1-9]\d{10})[\t\s]+(\d{1,6})[\t\s]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?:[\t\s]+(\d{1,2}[/ -][A-Za-z0-9]+))?/i
-        );
-
-        if (matchWithTc) {
-          let no = matchWithTc[1];
-          let tc = matchWithTc[2];
-          // Handle reversed TC / No pattern
-          if (is11DigitTc(no)) {
-            const temp = no;
-            no = tc;
-            tc = temp;
-          }
-          const name = matchWithTc[3];
-          const grade = matchWithTc[4];
-          const father = matchWithTc[5];
-          const mother = matchWithTc[6];
-
-          const s: ParsedStudentWithStats = {
-            id: Math.random().toString(36).substring(2, 11),
-            number: cleanNumberStr(no),
-            tcNo: tc,
-            name: name.trim(),
-            grade: grade ? normalizeGrade(grade) : '',
-            fatherName: father?.trim() || undefined,
-            motherName: mother?.trim() || undefined,
-            boardingStatus: 'GÜNDÜZLÜ',
-            scholarshipStatus: 'BURSSUZ',
-            _sourceFormat: 'pdf-table'
-          };
-          s._extractedFieldCount = countExtractedFields(s);
-          students.push(s);
-        }
-      }
-    }
-    return { students, format: 'pdf-table' };
-  }
-};
-
-/**
- * Parse Raw Pasted Text (e.g. from Excel Ctrl+C or PDF copy)
+ * Parse Raw Pasted Text (e.g. from Excel Ctrl+C copy)
  */
 export const parseStudentPastedText = (
   rawText: string,
@@ -1280,7 +1051,7 @@ export const parseStudentPastedText = (
 };
 
 /**
- * Universal File Parser: Handles both Excel (.xlsx, .xls, .csv) and PDF (.pdf) across all sheets
+ * Universal Student File Parser: Dedicated to Excel (.xlsx, .xls) and CSV (.csv) across all worksheets
  */
 export const parseStudentFile = async (
   file: File,
@@ -1290,17 +1061,9 @@ export const parseStudentFile = async (
   const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
 
   if (isPdf) {
-    const arrayBuffer = await file.arrayBuffer();
-    const pageTexts = await extractTextFromPdf(arrayBuffer);
-    const { students, format } = parsePdfContent(pageTexts);
-
-    return {
-      students,
-      formatDetected: format,
-      fileName: file.name,
-      totalStudents: students.length,
-      extractedFieldsSummary: calculateSummary(students)
-    };
+    throw new Error(
+      "PDF ile veri içe aktarma desteği kaldırılmıştır. Lütfen e-Okul sisteminden aldığınız orijinal Excel (.xlsx veya .xls) dosyasını kullanınız."
+    );
   }
 
   // Excel / CSV File Handling across all worksheets

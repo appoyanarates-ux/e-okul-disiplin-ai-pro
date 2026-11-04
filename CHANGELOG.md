@@ -4,6 +4,20 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.0.6] - 2026-11-03
+
+### 📊 Saf Excel Veri İçe Aktarma Standardı (PDF İçe Aktarma Kaldırıldı)
+- **Yalnızca Excel & CSV Desteği:**
+  - PDF ile veri yükleme karmaşası ve tutarsızlıkları tamamen kaldırılarak, öğrenci künye ve liste aktarımları doğrudan ve eksiksiz çalışan **Excel (`.xlsx`, `.xls`) ve CSV** formatına odaklandı.
+  - Sürükle-bırak alanı, dosya seçiciler ve kılavuzlar yalnızca Excel kabul edecek şekilde güncellendi.
+  - Yanlışlıkla PDF yüklendiğinde kullanıcıyı e-Okul'dan Excel indirmeye yönlendiren bilgilendirici uyarı eklendi.
+- **Hafifletilmiş Paket ve Sıfır Bağımlılık:**
+  - PDF okuyucu motoru kaldırıldı; gereksiz web worker yükleri temizlendi, uygulama açılış ve çalışma performansı artırıldı.
+- **Tam Uyumlu Excel Künye Ayrıştırıcı:**
+  - Yan yana 2'li öğrenci künye kartları, dikey sıralı kartlar ve sınıf tabloları tam uyumla aktarılmaya devam etmektedir.
+
+---
+
 ## [1.0.5] - 2026-11-03
 
 ### 📑 Esnek e-Okul PDF ve Çok Sütunlu Excel Künye Defteri Ayrıştırıcı Motoru

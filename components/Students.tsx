@@ -183,8 +183,18 @@ const Students = () => {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+        
+        if (isPdf) {
+          alert(
+            `"${file.name}" bir PDF belgesidir.\n\n` +
+            "PDF ile veri içe aktarma desteği kaldırılmıştır.\n" +
+            "Lütfen e-Okul > Öğrenci İşlemleri > Raporlar ekranından aldığınız orijinal Excel (.xlsx veya .xls) dosyasını yükleyiniz."
+          );
+          continue;
+        }
+
         setProcessingStatus(
-          `${file.name} taranıyor (${isPdf ? 'PDF Belgesi' : 'Excel Tablosu'})... [${i + 1}/${files.length}]`
+          `${file.name} taranıyor (Excel Tablosu)... [${i + 1}/${files.length}]`
         );
 
         const result = await parseStudentFile(file, uploadFormat);
@@ -195,8 +205,7 @@ const Students = () => {
           
           if (result.formatDetected === 'card') formatLabel = 'e-Okul Künye Defteri (Excel)';
           else if (result.formatDetected === 'tabular') formatLabel = 'e-Okul Sınıf/Tablo Listesi (Excel)';
-          else if (result.formatDetected === 'pdf-card') formatLabel = 'e-Okul Künye Defteri (PDF)';
-          else if (result.formatDetected === 'pdf-table') formatLabel = 'e-Okul Sınıf/Tablo Listesi (PDF)';
+          else formatLabel = 'e-Okul Veri Tablosu (Excel)';
         }
       }
 
@@ -206,19 +215,21 @@ const Students = () => {
         setParseSummary(lastSummary);
         setDetectedFormatName(formatLabel);
         setShowReviewModal(true);
+      } else if (files.every(f => f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf')) {
+        // Already alerted for PDF above
       } else {
         alert(
-          "Yüklenen dosyada geçerli öğrenci veya künye verisi bulunamadı.\n\n" +
+          "Yüklenen Excel dosyasında geçerli öğrenci veya künye verisi bulunamadı.\n\n" +
           "Desteklenen Belgeler:\n" +
-          "• e-Okul > Öğrenci İşlemleri / Raporlar > Öğrenci Künye Defteri (Excel .xlsx/.xls veya PDF .pdf)\n" +
-          "• e-Okul > Sınıf / Şube Öğrenci Listeleri (Excel veya PDF)\n\n" +
-          "Lütfen e-Okul'dan indirdiğiniz orijinal Excel veya PDF dosyasını seçtiğinizden emin olun."
+          "• e-Okul > Öğrenci İşlemleri / Raporlar > Öğrenci Künye Defteri (Excel .xlsx / .xls)\n" +
+          "• e-Okul > Sınıf / Şube Öğrenci Listeleri (Excel .xlsx / .xls / .csv)\n\n" +
+          "Lütfen e-Okul'dan indirdiğiniz orijinal Excel dosyasını seçtiğinizden emin olun."
         );
       }
     } catch (error) {
       console.error("Dosya işleme hatası:", error);
       alert(
-        "Dosya okunurken bir hata oluştu. Dosyanın bozuk veya parola korumalı olmadığından emin olunuz."
+        "Excel dosyası okunurken bir hata oluştu. Dosyanın bozuk veya parola korumalı olmadığından emin olunuz."
       );
     } finally {
       setIsProcessingFile(false);
@@ -345,9 +356,9 @@ const Students = () => {
                     onChange={(e) => setUploadFormat(e.target.value as 'auto' | 'tabular' | 'card')}
                     className="text-xs p-1.5 border rounded-lg bg-white outline-none focus:border-blue-500 font-medium text-slate-700 shadow-2xs"
                 >
-                    <option value="auto">Otomatik Algıla (Excel / PDF - Önerilen)</option>
-                    <option value="card">e-Okul Künye Defteri (Kart / Sayfa Görünümü)</option>
-                    <option value="tabular">e-Okul Tablo / Sınıf Listesi</option>
+                    <option value="auto">Otomatik Algıla (Excel - Önerilen)</option>
+                    <option value="card">e-Okul Künye Defteri (Excel - Kart Görünümü)</option>
+                    <option value="tabular">e-Okul Tablo / Sınıf Listesi (Excel)</option>
                 </select>
             </div>
             <Link 
@@ -384,7 +395,7 @@ const Students = () => {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isProcessingFile}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-lg hover:from-emerald-700 hover:to-teal-800 transition-all shadow-sm text-xs font-bold cursor-pointer disabled:opacity-50"
-                title="MEB e-Okul Künye Defteri Excel (.xlsx/.xls) veya PDF (.pdf) dosyasını yükleyin"
+                title="MEB e-Okul Künye Defteri Excel (.xlsx/.xls/.csv) dosyasını yükleyin"
             >
                 {isProcessingFile ? (
                     <>
@@ -393,11 +404,8 @@ const Students = () => {
                     </>
                 ) : (
                     <>
-                        <div className="flex items-center -space-x-1">
-                            <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
-                            <FileText className="w-4 h-4 text-rose-200" />
-                        </div>
-                        <span>e-Okul Künye Yükle (Excel / PDF)</span>
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                        <span>e-Okul Künye Yükle (Excel)</span>
                     </>
                 )}
             </button>
@@ -405,7 +413,7 @@ const Students = () => {
                 type="file" 
                 ref={fileInputRef} 
                 onChange={handleFileUpload} 
-                accept=".xlsx, .xls, .pdf, .csv" 
+                accept=".xlsx, .xls, .csv" 
                 className="hidden" 
                 multiple
             />
@@ -424,14 +432,14 @@ const Students = () => {
                           Öğrenci Veri Yükleme Standardı: e-Okul Künye Defteri
                       </h2>
                       <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-300">
-                          Excel (.xlsx / .xls) ve PDF (.pdf) Desteği
+                          Excel (.xlsx / .xls) Desteği
                       </span>
                       <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md border border-blue-200">
                           Tüm Künye Alanları
                       </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                      MEB e-Okul &gt; Öğrenci İşlemleri &gt; Raporlar ekranından aldığınız <strong>Öğrenci Künye Defteri</strong> veya <strong>Sınıf Listesi</strong> çıktısını <strong>Excel ya da PDF</strong> formatında yükleyebilirsiniz. <em>Okul No, T.C. Kimlik No, Ad-Soyad, Sınıf/Şube, Anne ve Baba Adı, Doğum Yeri/Tarihi, Veli İletişim (Telefon)</em> ve <em>İkametgâh Adresi</em> gibi tüm künye verileri eksiksiz ayrıştırılır.
+                      MEB e-Okul &gt; Öğrenci İşlemleri &gt; Raporlar ekranından aldığınız <strong>Öğrenci Künye Defteri</strong> veya <strong>Sınıf Listesi</strong> çıktısını <strong>Excel (.xlsx / .xls)</strong> formatında yükleyebilirsiniz. <em>Okul No, T.C. Kimlik No, Ad-Soyad, Sınıf/Şube, Anne ve Baba Adı, Doğum Yeri/Tarihi, Veli İletişim (Telefon)</em> ve <em>İkametgâh Adresi</em> gibi tüm künye verileri eksiksiz ayrıştırılır.
                   </p>
               </div>
           </div>
@@ -531,23 +539,17 @@ const Students = () => {
                         }`}
                     >
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="bg-emerald-100 p-3.5 rounded-2xl shadow-2xs border border-emerald-200">
-                                <FileSpreadsheet className={`w-8 h-8 ${isDragging ? 'text-blue-600' : 'text-emerald-700'}`} />
-                            </div>
-                            <span className="text-slate-300 font-bold text-xl">veya</span>
-                            <div className="bg-rose-100 p-3.5 rounded-2xl shadow-2xs border border-rose-200">
-                                <FileText className={`w-8 h-8 ${isDragging ? 'text-blue-600' : 'text-rose-700'}`} />
+                            <div className="bg-emerald-100 p-4 rounded-2xl shadow-2xs border border-emerald-200">
+                                <FileSpreadsheet className={`w-10 h-10 ${isDragging ? 'text-blue-600' : 'text-emerald-700'}`} />
                             </div>
                         </div>
                         <h3 className="text-lg font-bold text-slate-800 mb-1">
-                            e-Okul Künye Defteri Dosyası Yükleyin (Excel ya da PDF)
+                            e-Okul Künye Defteri Excel Dosyası Yükleyin
                         </h3>
                         <p className="font-normal text-slate-600 max-w-lg mx-auto mb-4 text-sm leading-relaxed">
                             MEB e-Okul sisteminden indirdiğiniz <strong>Öğrenci Künye Defteri</strong> veya <strong>Öğrenci Listesini</strong> 
-                            <span className="inline-block mx-1 font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Excel (.xlsx / .xls)</span> 
-                            ya da 
-                            <span className="inline-block mx-1 font-semibold text-rose-800 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">PDF (.pdf)</span> 
-                            formatında buraya sürükleyin.
+                            <span className="inline-block mx-1 font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Excel (.xlsx / .xls)</span> 
+                            formatında buraya sürükleyip bırakın.
                         </p>
                         <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
                             <span className="text-[11px] font-medium bg-white text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">
@@ -567,10 +569,10 @@ const Students = () => {
                             <button 
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isProcessingFile}
-                                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                                className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-lg text-sm font-semibold hover:from-emerald-700 hover:to-teal-800 shadow-sm transition-all cursor-pointer flex items-center gap-2"
                             >
                                 <Upload className="w-4 h-4" />
-                                Dosya Seçin (Excel / PDF)
+                                Dosya Seçin (Excel .xlsx / .xls)
                             </button>
                             <button 
                                 onClick={() => setShowEokulGuideModal(true)}
@@ -1750,8 +1752,8 @@ const Students = () => {
                         <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                             <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">5</span>
                             <div className="text-xs text-slate-700">
-                                <strong className="text-slate-900 block font-semibold mb-0.5">Excel ya da PDF Formatında İndirin:</strong>
-                                Rapor görüntüleyicinin sol üst kısmındaki <strong>Kaydet / Dışa Aktar (Disket)</strong> simgesine tıklayıp <strong>"Excel (.xls veya .xlsx)"</strong> ya da <strong>"PDF (.pdf)"</strong> formatını seçerek bilgisayarınıza kaydedin. Sistem her iki formatı da doğrudan destekler.
+                                <strong className="text-slate-900 block font-semibold mb-0.5">Excel Formatında İndirin:</strong>
+                                Rapor görüntüleyicinin sol üst kısmındaki <strong>Kaydet / Dışa Aktar (Disket)</strong> simgesine tıklayıp <strong>"Excel (.xls veya .xlsx)"</strong> formatını seçerek bilgisayarınıza kaydedin. Sistem tüm e-Okul Excel tablolarını doğrudan ve eksiksiz destekler.
                             </div>
                         </div>
 
