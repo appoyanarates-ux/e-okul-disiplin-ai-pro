@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Save, Search, Plus, Trash2, Calendar, MapPin, 
-  FileText, UserPlus, X, AlertCircle, Clock, ChevronRight, CheckCircle, AlertTriangle, Download, FileSpreadsheet
+  FileText, UserPlus, X, AlertCircle, Clock, ChevronRight, CheckCircle, AlertTriangle, Download, FileSpreadsheet,
+  Check, Users, Filter
 } from 'lucide-react';
 import { useStudents } from '../context/StudentContext';
 import { useIncidents } from '../context/IncidentContext';
@@ -39,6 +40,11 @@ const IncidentLog = () => {
   const [studentSearchTerm, setStudentSearchTerm] = useState(''); // Added for student picker search
   const [filterYear, setFilterYear] = useState(true); // true: Current Year, false: All
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Multi-Student Picker State
+  const [pickerSelections, setPickerSelections] = useState<Record<string, 'suspect' | 'witness' | 'victim'>>({});
+  const [pickerDefaultRole, setPickerDefaultRole] = useState<'suspect' | 'witness' | 'victim'>('suspect');
+  const [pickerGradeFilter, setPickerGradeFilter] = useState<string>('all');
 
   // --- DELETE CONFIRMATION STATE ---
   const [deleteModal, setDeleteModal] = useState<{
@@ -127,6 +133,32 @@ const IncidentLog = () => {
       setTimeout(() => setSuccessMessage(null), 3000);
     }
     setShowStudentPicker(false);
+  };
+
+  const addMultipleStudentsToIncident = (newSelections: Array<{ studentId: string, role: 'suspect' | 'witness' | 'victim' }>) => {
+    if (newSelections.length === 0) return;
+
+    const existingIds = new Set(formData.involvedStudents.map(s => s.studentId));
+    const toAdd = newSelections.filter(s => !existingIds.has(s.studentId));
+
+    if (toAdd.length === 0) {
+      alert('Seçilen öğrencilerin tümü zaten bu olaya eklenmiş.');
+      return;
+    }
+
+    const updatedInvolved = [...formData.involvedStudents, ...toAdd];
+    const updatedIncident = { ...formData, involvedStudents: updatedInvolved };
+    setFormData(updatedIncident);
+
+    if (selectedIncidentId) {
+      updateIncident(updatedIncident);
+      setSuccessMessage(`${toAdd.length} öğrenci olaya eklendi ve kayıt güncellendi.`);
+    } else {
+      setSuccessMessage(`${toAdd.length} öğrenci olaya eklendi.`);
+    }
+    setTimeout(() => setSuccessMessage(null), 3000);
+    setShowStudentPicker(false);
+    setPickerSelections({});
   };
 
   // Helper to get student info
@@ -472,6 +504,9 @@ const IncidentLog = () => {
                         onClick={() => {
                            setShowStudentPicker(true);
                            setStudentSearchTerm('');
+                           setPickerSelections({});
+                           setPickerGradeFilter('all');
+                           setPickerDefaultRole('suspect');
                         }}
                         className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm text-sm font-medium"
                      >
@@ -540,62 +575,380 @@ const IncidentLog = () => {
         </div>
       </div>
 
-      {/* MODAL: Student Picker */}
-      {showStudentPicker && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in">
-              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                 <h3 className="font-bold text-slate-800">Öğrenci Seç</h3>
-                 <button onClick={() => setShowStudentPicker(false)}><X className="w-5 h-5 text-slate-400" /></button>
-              </div>
-              <div className="p-4">
-                 <div className="relative mb-4">
-                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Öğrenci ara..." 
-                      className="w-full pl-9 p-2 border rounded-lg outline-none" 
-                      value={studentSearchTerm}
-                      onChange={(e) => setStudentSearchTerm(e.target.value)}
-                    />
-                 </div>
-                 <div className="max-h-60 overflow-y-auto border border-slate-100 rounded-lg">
-                    {students
-                      .filter(s => 
-                        s.name.toLowerCase().includes(studentSearchTerm.toLowerCase()) || 
-                        s.number.includes(studentSearchTerm)
-                      )
-                      .map(student => (
-                       <div key={student.id} className="flex items-center justify-between p-3 hover:bg-slate-50 border-b border-slate-50 last:border-0">
-                          <div>
-                             <div className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
-                                <span>{student.name}</span>
-                                {(student.isMesem || (student.grade && student.grade.toUpperCase().includes('MES'))) && (
-                                   <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded border border-indigo-200">
-                                      MESEM
-                                   </span>
-                                )}
-                             </div>
-                             <div className="text-xs text-slate-500">
-                                {student.number} - {student.grade}
-                                {student.companyName ? ` (${student.companyName})` : ''}
-                             </div>
-                          </div>
-                          <div className="flex gap-2">
-                             <button onClick={() => addStudentToIncident(student.id, 'suspect')} className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 hover:bg-red-100">Fail</button>
-                             <button onClick={() => addStudentToIncident(student.id, 'witness')} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 hover:bg-blue-100">Tanık</button>
-                             <button onClick={() => addStudentToIncident(student.id, 'victim')} className="text-xs bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-100 hover:bg-orange-100">Mağdur</button>
-                          </div>
-                       </div>
-                    ))}
-                    {students.filter(s => s.name.toLowerCase().includes(studentSearchTerm.toLowerCase()) || s.number.includes(studentSearchTerm)).length === 0 && (
-                        <div className="p-4 text-center text-slate-400 text-sm">Öğrenci bulunamadı.</div>
-                    )}
-                 </div>
-              </div>
-           </div>
-        </div>
-      )}
+      {/* MODAL: Student Picker (Multi-Select & Multi-Role) */}
+      {showStudentPicker && (() => {
+        const alreadyInvolvedIds = new Set(formData.involvedStudents.map(s => s.studentId));
+        
+        const availableGrades = Array.from(
+          new Set(students.map(s => s.grade).filter(Boolean))
+        ).sort();
+
+        const filteredStudents = students.filter(s => {
+          const matchesSearch = 
+            s.name.toLowerCase().includes(studentSearchTerm.toLowerCase()) || 
+            s.number.includes(studentSearchTerm) ||
+            (s.grade && s.grade.toLowerCase().includes(studentSearchTerm.toLowerCase()));
+
+          const matchesGrade = pickerGradeFilter === 'all' || s.grade === pickerGradeFilter;
+
+          return matchesSearch && matchesGrade;
+        });
+
+        const selectedCount = Object.keys(pickerSelections).length;
+        const suspectCount = Object.values(pickerSelections).filter(r => r === 'suspect').length;
+        const witnessCount = Object.values(pickerSelections).filter(r => r === 'witness').length;
+        const victimCount = Object.values(pickerSelections).filter(r => r === 'victim').length;
+
+        const handleToggleStudent = (studentId: string, specificRole?: 'suspect' | 'witness' | 'victim') => {
+          if (alreadyInvolvedIds.has(studentId)) return;
+
+          setPickerSelections(prev => {
+            const next = { ...prev };
+            const currentRole = next[studentId];
+
+            if (specificRole) {
+              if (currentRole === specificRole) {
+                delete next[studentId];
+              } else {
+                next[studentId] = specificRole;
+              }
+            } else {
+              if (currentRole) {
+                delete next[studentId];
+              } else {
+                next[studentId] = pickerDefaultRole;
+              }
+            }
+            return next;
+          });
+        };
+
+        const handleBatchSelectFiltered = (selectAll: boolean) => {
+          if (!selectAll) {
+            setPickerSelections({});
+            return;
+          }
+          const next = { ...pickerSelections };
+          filteredStudents.forEach(s => {
+            if (!alreadyInvolvedIds.has(s.id)) {
+              if (!next[s.id]) {
+                next[s.id] = pickerDefaultRole;
+              }
+            }
+          });
+          setPickerSelections(next);
+        };
+
+        const handleSetAllSelectedRole = (role: 'suspect' | 'witness' | 'victim') => {
+          setPickerDefaultRole(role);
+          setPickerSelections(prev => {
+            const next: Record<string, 'suspect' | 'witness' | 'victim'> = {};
+            Object.keys(prev).forEach(id => {
+              next[id] = role;
+            });
+            return next;
+          });
+        };
+
+        const handleConfirmAddSelected = () => {
+          const itemsToAdd = (Object.entries(pickerSelections) as [string, 'suspect' | 'witness' | 'victim'][]).map(([studentId, role]) => ({
+            studentId,
+            role
+          }));
+          addMultipleStudentsToIncident(itemsToAdd);
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh] border border-slate-200">
+                
+                {/* Header */}
+                <div className="px-5 py-3.5 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-slate-50 via-slate-100/70 to-indigo-50/40">
+                   <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-xs">
+                         <UserPlus className="w-5 h-5" />
+                      </div>
+                      <div>
+                         <h3 className="font-bold text-slate-900 text-base leading-tight">Olaya Öğrenci Ekle</h3>
+                         <p className="text-xs text-slate-500">Birden fazla öğrenci seçebilir, her birine Fail, Tanık veya Mağdur rolü atayabilirsiniz.</p>
+                      </div>
+                   </div>
+                   <button 
+                      onClick={() => setShowStudentPicker(false)}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
+                   >
+                      <X className="w-5 h-5" />
+                   </button>
+                </div>
+
+                {/* Filter and Role Bar */}
+                <div className="p-4 bg-slate-50/80 border-b border-slate-200 space-y-3">
+                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                      {/* Search */}
+                      <div className="sm:col-span-8 relative">
+                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                         <input 
+                           type="text" 
+                           placeholder="Öğrenci adı, okul no veya sınıf..." 
+                           className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg outline-none text-xs text-slate-800 placeholder-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" 
+                           value={studentSearchTerm}
+                           onChange={(e) => setStudentSearchTerm(e.target.value)}
+                         />
+                      </div>
+                      {/* Grade Filter */}
+                      <div className="sm:col-span-4 relative">
+                         <select
+                            value={pickerGradeFilter}
+                            onChange={(e) => setPickerGradeFilter(e.target.value)}
+                            className="w-full py-2 px-2.5 bg-white border border-slate-200 rounded-lg outline-none text-xs text-slate-700 font-medium cursor-pointer"
+                         >
+                            <option value="all">Tüm Sınıflar</option>
+                            {availableGrades.map(g => (
+                               <option key={g} value={g}>{g}</option>
+                            ))}
+                         </select>
+                      </div>
+                   </div>
+
+                   {/* Quick Role & Selection Controls */}
+                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/70 text-xs">
+                      <div className="flex items-center gap-1.5">
+                         <span className="text-[11px] font-bold text-slate-500 uppercase mr-1">Varsayılan Rol:</span>
+                         <button
+                            type="button"
+                            onClick={() => handleSetAllSelectedRole('suspect')}
+                            className={`px-2.5 py-1 rounded-md font-bold text-xs border transition-all flex items-center gap-1 cursor-pointer ${
+                               pickerDefaultRole === 'suspect' 
+                                 ? 'bg-red-600 text-white border-red-600 shadow-xs ring-2 ring-red-200' 
+                                 : 'bg-white text-red-700 border-red-200 hover:bg-red-50'
+                            }`}
+                         >
+                            <span className="w-2 h-2 rounded-full bg-red-400"></span> Fail (Şüpheli)
+                         </button>
+                         <button
+                            type="button"
+                            onClick={() => handleSetAllSelectedRole('witness')}
+                            className={`px-2.5 py-1 rounded-md font-bold text-xs border transition-all flex items-center gap-1 cursor-pointer ${
+                               pickerDefaultRole === 'witness' 
+                                 ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-200' 
+                                 : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                            }`}
+                         >
+                            <span className="w-2 h-2 rounded-full bg-blue-400"></span> Tanık
+                         </button>
+                         <button
+                            type="button"
+                            onClick={() => handleSetAllSelectedRole('victim')}
+                            className={`px-2.5 py-1 rounded-md font-bold text-xs border transition-all flex items-center gap-1 cursor-pointer ${
+                               pickerDefaultRole === 'victim' 
+                                 ? 'bg-orange-600 text-white border-orange-600 shadow-xs ring-2 ring-orange-200' 
+                                 : 'bg-white text-orange-700 border-orange-200 hover:bg-orange-50'
+                            }`}
+                         >
+                            <span className="w-2 h-2 rounded-full bg-orange-400"></span> Mağdur
+                         </button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                         <button
+                            type="button"
+                            onClick={() => handleBatchSelectFiltered(true)}
+                            className="text-indigo-600 hover:text-indigo-800 font-bold hover:underline cursor-pointer"
+                         >
+                            Listeyi Seç ({filteredStudents.filter(s => !alreadyInvolvedIds.has(s.id)).length})
+                         </button>
+                         {selectedCount > 0 && (
+                            <>
+                               <span className="text-slate-300">•</span>
+                               <button
+                                  type="button"
+                                  onClick={() => handleBatchSelectFiltered(false)}
+                                  className="text-slate-500 hover:text-slate-700 hover:underline cursor-pointer"
+                               >
+                                  Temizle
+                               </button>
+                            </>
+                         )}
+                      </div>
+                   </div>
+                </div>
+
+                {/* Student List */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-1.5 divide-y divide-slate-100 max-h-[46vh]">
+                   {filteredStudents.map(student => {
+                      const isAlreadyInvolved = alreadyInvolvedIds.has(student.id);
+                      const assignedRole = pickerSelections[student.id];
+                      const isSelected = !!assignedRole;
+
+                      return (
+                         <div 
+                            key={student.id} 
+                            className={`pt-1.5 first:pt-0 rounded-xl transition-all p-2.5 flex items-center justify-between gap-3 ${
+                               isAlreadyInvolved 
+                                 ? 'bg-slate-50/80 opacity-60 cursor-not-allowed border border-dashed border-slate-200' 
+                                 : isSelected 
+                                   ? 'bg-indigo-50/70 border border-indigo-200 shadow-2xs' 
+                                   : 'hover:bg-slate-50 border border-transparent'
+                            }`}
+                         >
+                            {/* Checkbox & Student Info */}
+                            <div 
+                               onClick={() => !isAlreadyInvolved && handleToggleStudent(student.id)}
+                               className={`flex items-center gap-3 flex-1 min-w-0 ${!isAlreadyInvolved ? 'cursor-pointer' : ''}`}
+                            >
+                               <div 
+                                  className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                                     isAlreadyInvolved 
+                                       ? 'bg-slate-200 border-slate-300' 
+                                       : isSelected 
+                                         ? assignedRole === 'suspect' ? 'bg-red-600 border-red-600 text-white' : assignedRole === 'witness' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-orange-600 border-orange-600 text-white'
+                                         : 'border-slate-300 bg-white hover:border-slate-400'
+                                  }`}
+                               >
+                                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                  {isAlreadyInvolved && <span className="text-[10px] text-slate-500 font-bold">✓</span>}
+                               </div>
+
+                               <div className="flex-1 min-w-0">
+                                  <div className="font-bold text-xs text-slate-800 flex items-center gap-1.5 truncate">
+                                     <span>{student.name}</span>
+                                     {isAlreadyInvolved && (
+                                        <span className="text-[9.5px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded border border-emerald-200">
+                                           Olaya Ekli
+                                        </span>
+                                     )}
+                                     {(student.isMesem || (student.grade && student.grade.toUpperCase().includes('MES'))) && (
+                                        <span className="text-[9.5px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded border border-purple-200">
+                                           MESEM
+                                        </span>
+                                     )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                     <span>No: <b>{student.number}</b></span>
+                                     <span>•</span>
+                                     <span>Sınıf: <b>{student.grade}</b></span>
+                                     {student.tcNo && <><span>•</span><span>TC: {student.tcNo}</span></>}
+                                  </div>
+                               </div>
+                            </div>
+
+                            {/* Role Buttons */}
+                            {!isAlreadyInvolved ? (
+                               <div className="flex items-center gap-1.5 shrink-0">
+                                  <button 
+                                     type="button"
+                                     onClick={() => handleToggleStudent(student.id, 'suspect')} 
+                                     title="Bu öğrenciyi 'Fail' olarak ata/seç"
+                                     className={`text-xs px-2.5 py-1 rounded-md font-bold border transition-all cursor-pointer ${
+                                        assignedRole === 'suspect'
+                                           ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                                           : 'bg-white text-red-600 border-red-200 hover:bg-red-50'
+                                     }`}
+                                  >
+                                     Fail
+                                  </button>
+                                  <button 
+                                     type="button"
+                                     onClick={() => handleToggleStudent(student.id, 'witness')} 
+                                     title="Bu öğrenciyi 'Tanık' olarak ata/seç"
+                                     className={`text-xs px-2.5 py-1 rounded-md font-bold border transition-all cursor-pointer ${
+                                        assignedRole === 'witness'
+                                           ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                           : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                                     }`}
+                                  >
+                                     Tanık
+                                  </button>
+                                  <button 
+                                     type="button"
+                                     onClick={() => handleToggleStudent(student.id, 'victim')} 
+                                     title="Bu öğrenciyi 'Mağdur' olarak ata/seç"
+                                     className={`text-xs px-2.5 py-1 rounded-md font-bold border transition-all cursor-pointer ${
+                                        assignedRole === 'victim'
+                                           ? 'bg-orange-600 text-white border-orange-600 shadow-xs'
+                                           : 'bg-white text-orange-600 border-orange-200 hover:bg-orange-50'
+                                     }`}
+                                  >
+                                     Mağdur
+                                  </button>
+                               </div>
+                            ) : (
+                               <div className="text-[11px] text-slate-400 font-medium italic pr-2">
+                                  Zaten eklendi
+                               </div>
+                            )}
+                         </div>
+                      );
+                   })}
+
+                   {filteredStudents.length === 0 && (
+                      <div className="p-8 text-center text-slate-400 text-xs">
+                         Arama kriterlerine uygun öğrenci bulunamadı.
+                      </div>
+                   )}
+                </div>
+
+                {/* Footer with Summary and Action */}
+                <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                   <div className="flex items-center gap-2 text-xs">
+                      {selectedCount > 0 ? (
+                         <>
+                            <span className="font-bold text-slate-800 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-2xs">
+                               Toplam {selectedCount} Öğrenci Seçildi
+                            </span>
+                            <div className="hidden sm:flex items-center gap-1.5 text-[11px]">
+                               {suspectCount > 0 && (
+                                  <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded font-bold">
+                                     {suspectCount} Fail
+                                  </span>
+                               )}
+                               {witnessCount > 0 && (
+                                  <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded font-bold">
+                                     {witnessCount} Tanık
+                                  </span>
+                               )}
+                               {victimCount > 0 && (
+                                  <span className="bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded font-bold">
+                                     {victimCount} Mağdur
+                                  </span>
+                               )}
+                            </div>
+                         </>
+                      ) : (
+                         <span className="text-slate-500 italic">
+                            Lütfen eklemek istediğiniz öğrencileri ve rollerini seçiniz.
+                         </span>
+                      )}
+                   </div>
+
+                   <div className="flex items-center gap-2">
+                      <button 
+                         type="button"
+                         onClick={() => setShowStudentPicker(false)}
+                         className="px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                         İptal
+                      </button>
+                      <button 
+                         type="button"
+                         disabled={selectedCount === 0}
+                         onClick={handleConfirmAddSelected}
+                         className={`px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer ${
+                            selectedCount > 0
+                               ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 hover:shadow-md'
+                               : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                         }`}
+                      >
+                         <UserPlus className="w-4 h-4" />
+                         <span>Seçilenleri Olaya Ekle ({selectedCount})</span>
+                      </button>
+                   </div>
+                </div>
+
+             </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL: Delete Confirmation */}
       {deleteModal.isOpen && (

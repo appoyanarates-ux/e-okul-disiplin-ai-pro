@@ -4,6 +4,21 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.1.0] - 2026-11-04
+
+### 👥 Olaylar Sayfası Çoklu Öğrenci ve Rol Seçimi (Fail, Tanık, Mağdur)
+- **Aynı Anda Çoklu Öğrenci Ekleme:**
+  - Olaylar sayfasındaki "Öğrenci Ekle" penceresi baştan aşağı yenilendi.
+  - Artık tek tek öğrenci eklemek yerine, aynı anda dilediğiniz kadar öğrenciyi seçip olaya tek tıkla ekleyebilirsiniz.
+- **Satır Bazında Hızlı Rol Atama:**
+  - Her öğrencinin yanında bulunan **Fail (Şüpheli)**, **Tanık** ve **Mağdur** butonları ile öğrenciye anında rol atanabilir.
+  - Farklı öğrencilere aynı pencerede farklı roller verilerek (örn. 2 Fail, 3 Tanık, 1 Mağdur) hepsi birlikte eklenebilir.
+- **Toplu Rol ve Sınıf Filtresi:**
+  - Üst kısımdaki hızlı rol seçici ile seçilen tüm öğrencilerin rolleri toplu olarak değiştirilebilir.
+  - Sınıf filtresi ve anlık arama ile hedeflenen sınıftaki öğrenciler saniyeler içinde listelenip eklenebilir.
+
+---
+
 ## [1.0.9] - 2026-11-04
 
 ### 🔄 Öğrenci Değişiminde Evrak Verilerinin Korunması & Kalıcı Belge Hafızası
