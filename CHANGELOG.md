@@ -4,6 +4,23 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.1.1] - 2026-11-04
+
+### 📄 Seçili Öğrenciler İçin Toplu & Ayrı Ayrı Öğrenci Çağrı Pusulası Oluşturma
+- **Toplantı Yönetimi (Sekme 2) Toplu Çağrı Pusulası Desteği:**
+  - Olaydaki tüm öğrenciler için öğrenci bazında seçim kutuları (checkbox), "Tümünü Seç / Tümünü Kaldır" kontrolü ve tek tıkla toplu üretim imkanı sağlandı.
+  - Seçilen her öğrenci için MEB standartlarına uygun, kendi adı-soyadı, sınıfı, numarası ve tebellüğ imza bloğunu içeren **bağımsız birer Öğrenci Çağrı Pusulası** oluşturulur.
+  - Öğrenci rolüne göre çağrı metni otomatik olarak özelleştirilir:
+    - **Fail (Şüpheli):** Disiplin kurulunda savunmasını yapmak üzere çağrı.
+    - **Tanık:** Olayla ilgili görgü ve bilgisine başvurulmak üzere ifadeye çağrı.
+    - **Mağdur:** Olayla ilgili bilgi ve beyanına başvurulmak üzere çağrı.
+- **Tutanak ve Formlar (Sekme 3) Hızlı Erişim Butonu:**
+  - "İfade & Savunma Belgeleri" menüsüne doğrudan **"Öğrenci Çağrı Pusulası"** butonu eklendi; seçili öğrenci için tek tıkla çağrı pusulası düzenlenebilir ve yazdırılabilir.
+- **Toplu Yazdırma ve Ön İzleme Entegrasyonu:**
+  - Seçilen öğrenciler için oluşturulan tüm pusulalar tek liste halinde ön izlenebilir ve tek tıkla doğrudan yazdırılabilir veya Word/PDF'e aktarılabilir.
+
+---
+
 ## [1.1.0] - 2026-11-04
 
 ### 👥 Olaylar Sayfası Çoklu Öğrenci ve Rol Seçimi (Fail, Tanık, Mağdur)

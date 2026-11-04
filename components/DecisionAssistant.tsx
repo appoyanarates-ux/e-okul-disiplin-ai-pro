@@ -620,6 +620,7 @@ const DecisionAssistant = () => {
   const [selectedIncidentId, setSelectedIncidentId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [summonsSelectedStudentIds, setSummonsSelectedStudentIds] = useState<string[]>([]);
 
   // --- MEETING STATE (Çağrı Pusulası) ---
   const [meetingData, setMeetingData] = useState({
@@ -665,9 +666,11 @@ const DecisionAssistant = () => {
       const firstStudentId = incident.involvedStudents[0].studentId;
       setSelectedStudentId(firstStudentId);
       setSelectedStudentIds([firstStudentId]);
+      setSummonsSelectedStudentIds(incident.involvedStudents.map(s => s.studentId));
     } else {
       setSelectedStudentId('');
       setSelectedStudentIds([]);
+      setSummonsSelectedStudentIds([]);
     }
     if (incident && incident.date) {
       setFormDateTime({
@@ -1935,9 +1938,12 @@ const DecisionAssistant = () => {
     // --- TEMPLATE LOGIC ---
     if (type === 'student_summons') {
         const isSuspect = studentOverride?.role === 'suspect';
+        const isVictim = studentOverride?.role === 'victim';
         const roleText = isSuspect 
             ? 'Okul Disiplin Kurulunda görüşülecek olan disiplin dosyanızla ilgili <b>savunmanızı vermek üzere</b>' 
-            : 'Okul Disiplin Kurulunda görüşülecek olan bir olayla ilgili <b>görgü tanığı olarak bilginize başvurulmak üzere</b>';
+            : isVictim
+                ? 'Okul Disiplin Kurulunda görüşülecek olan olayla ilgili <b>mağdur olarak bilginize başvurulmak üzere</b>'
+                : 'Okul Disiplin Kurulunda görüşülecek olan bir olayla ilgili <b>görgü tanığı olarak bilginize başvurulmak üzere</b>';
 
         currentBody = `
         ${useHeader}
@@ -3463,44 +3469,138 @@ const DecisionAssistant = () => {
                     </div>
                 </div>
                 <div className="flex-1 flex flex-col bg-slate-50/50">
-                     <div className="p-4 bg-white border-b border-slate-200">
-                         <button onClick={() => generateTemplate('ek1_meeting')} className="w-full flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                     <div className="p-4 bg-white border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-2xs">
+                         <button 
+                             onClick={() => generateTemplate('ek1_meeting')} 
+                             className="flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
+                         >
                              <List className="w-4 h-4" /> Kurul Çağrı Yazısı (Genel)
+                         </button>
+                         <button 
+                             onClick={() => {
+                                 const targets = summonsSelectedStudentIds.length > 0 
+                                     ? summonsSelectedStudentIds 
+                                     : incidentStudents.map(s => s.id);
+                                 if (targets.length === 0) {
+                                     alert('Lütfen önce çağrı pusulası oluşturulacak en az bir öğrenci seçiniz.');
+                                     return;
+                                 }
+                                 generateBulkDocuments('student_summons', targets);
+                                 window.scrollTo({ top: 0, behavior: 'smooth' });
+                             }} 
+                             disabled={incidentStudents.length === 0}
+                             className="flex items-center justify-center gap-2 p-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors shadow-xs disabled:bg-slate-200 disabled:text-slate-400 cursor-pointer"
+                         >
+                             <Mail className="w-4 h-4" /> Öğrenci Çağrı Pusulaları (Toplu - {summonsSelectedStudentIds.length > 0 ? summonsSelectedStudentIds.length : incidentStudents.length} Öğrenci)
                          </button>
                      </div>
 
                      <div className="flex-1 p-8 overflow-y-auto flex flex-col items-center">
                         {renderDocumentPreview()}
                         
-                        {/* Student Summons List Area */}
+                        {/* Student Summons List Area with Multi-Select */}
                         {selectedIncident && (
-                            <div className="w-[210mm] mt-8 bg-white border border-slate-200 rounded-lg p-6 shadow-sm print:hidden">
-                                <h4 className="font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-2">
-                                    <Mail className="w-5 h-5 text-indigo-600" /> 
-                                    Öğrenci Çağrı Pusulaları
-                                </h4>
-                                <div className="grid grid-cols-1 gap-3">
-                                    {incidentStudents.map((s) => (
-                                        <div key={s.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-slate-50">
-                                            <div>
-                                                <div className="font-bold text-sm">{s.name}</div>
-                                                <div className="text-xs flex gap-2 mt-1">
-                                                    <span className="text-slate-500">{s.number}</span>
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${s.role === 'suspect' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                        {s.role === 'suspect' ? 'Fail (Savunma)' : s.role === 'witness' ? 'Tanık (İfade)' : 'Mağdur'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <button 
-                                                onClick={() => generateTemplate('student_summons', s)}
-                                                className="text-xs bg-white border border-slate-300 text-slate-700 px-3 py-1.5 rounded hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-colors"
-                                            >
-                                                Pusula Oluştur
-                                            </button>
+                            <div className="w-[210mm] mt-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm print:hidden">
+                                <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 mb-4 gap-3">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-indigo-50 text-indigo-700 rounded-xl">
+                                            <Mail className="w-5 h-5" />
                                         </div>
-                                    ))}
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-base leading-tight">
+                                                Öğrenci Çağrı Pusulaları
+                                            </h4>
+                                            <p className="text-xs text-slate-500">
+                                                Seçilen öğrenciler için resmi tebliğ/tebellüğ çağrı pusulaları her biri için ayrı ayrı hazırlanır.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (summonsSelectedStudentIds.length === incidentStudents.length) {
+                                                    setSummonsSelectedStudentIds([]);
+                                                } else {
+                                                    setSummonsSelectedStudentIds(incidentStudents.map(s => s.id));
+                                                }
+                                            }}
+                                            className="text-xs text-indigo-600 hover:text-indigo-800 font-bold hover:underline px-2.5 py-1 cursor-pointer"
+                                        >
+                                            {summonsSelectedStudentIds.length === incidentStudents.length ? 'Tümünü Kaldır' : 'Tümünü Seç'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const targets = summonsSelectedStudentIds.length > 0 
+                                                    ? summonsSelectedStudentIds 
+                                                    : incidentStudents.map(s => s.id);
+                                                if (targets.length === 0) {
+                                                    alert('Lütfen en az bir öğrenci seçiniz.');
+                                                    return;
+                                                }
+                                                generateBulkDocuments('student_summons', targets);
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                            disabled={incidentStudents.length === 0}
+                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400"
+                                        >
+                                            <FileText className="w-3.5 h-3.5" />
+                                            <span>Seçilenler İçin Toplu Pusula Oluştur ({summonsSelectedStudentIds.length > 0 ? summonsSelectedStudentIds.length : incidentStudents.length})</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-2">
+                                    {incidentStudents.map((s) => {
+                                        const isChecked = summonsSelectedStudentIds.includes(s.id);
+                                        return (
+                                            <div 
+                                                key={s.id} 
+                                                onClick={() => {
+                                                    setSummonsSelectedStudentIds(prev => 
+                                                        prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                                                    );
+                                                }}
+                                                className={`flex justify-between items-center p-3 border rounded-xl transition-all cursor-pointer ${
+                                                    isChecked 
+                                                        ? 'bg-indigo-50/70 border-indigo-300 shadow-2xs font-semibold' 
+                                                        : 'hover:bg-slate-50 border-slate-200'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isChecked ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'}`}>
+                                                        {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="font-bold text-sm text-slate-800 truncate">{s.name}</div>
+                                                        <div className="text-xs flex items-center gap-2 mt-0.5 text-slate-500">
+                                                            <span>No: <b>{s.number}</b></span>
+                                                            <span>•</span>
+                                                            <span>Sınıf: <b>{s.grade}</b></span>
+                                                            <span>•</span>
+                                                            <span className={`px-2 py-0.2 rounded-full text-[10px] uppercase font-bold border ${s.role === 'suspect' ? 'bg-red-50 text-red-700 border-red-200' : s.role === 'witness' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orange-50 text-orange-700 border-orange-200'}`}>
+                                                                {s.role === 'suspect' ? 'Fail (Savunma İstenecek)' : s.role === 'witness' ? 'Tanık (İfadesine Başvurulacak)' : 'Mağdur (Bilgisine Başvurulacak)'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        generateBulkDocuments('student_summons', [s.id]);
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                    }}
+                                                    className="text-xs bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors font-medium shadow-2xs shrink-0 cursor-pointer"
+                                                >
+                                                    Tekil Ön İzle
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                     {incidentStudents.length === 0 && (
-                                        <div className="text-center text-slate-400 text-sm py-4">Bu olaya eklenmiş öğrenci bulunmamaktadır.</div>
+                                        <div className="text-center text-slate-400 text-sm py-6">Bu olaya eklenmiş öğrenci bulunmamaktadır.</div>
                                     )}
                                 </div>
                             </div>
@@ -3720,6 +3820,16 @@ const DecisionAssistant = () => {
                                     <span>İfade & Savunma Belgeleri</span>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
+                                    <button 
+                                        onClick={() => generateBulkDocuments('student_summons')} 
+                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
+                                            lastGeneratedFormType === 'student_summons' 
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
+                                        }`}
+                                    >
+                                        <Mail className="w-3.5 h-3.5 text-blue-500"/> Öğrenci Çağrı Pusulası
+                                    </button>
                                     <button 
                                         onClick={() => generateBulkDocuments('statement_request')} 
                                         className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
