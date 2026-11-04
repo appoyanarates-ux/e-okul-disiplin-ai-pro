@@ -158,7 +158,7 @@ function createWindow() {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'Hakkında - E-Okul Disiplin AI Pro',
-              message: 'E-OKUL DİSİPLİN AI PRO\nSürüm 1.0.6 (Windows x64)',
+              message: 'E-OKUL DİSİPLİN AI PRO\nSürüm 1.0.7 (Windows x64)',
               detail: 'Okul disiplin süreçlerini yönetmek, olayları kaydetmek, kararları düzenlemek ve resmi belgeler oluşturmak için geliştirilmiş masaüstü yazılımı.\n\nProjenin Sahibi ve Geliştiricisi: By Abdullah Yanarateş\nPlatform: Windows 10 / Windows 11\nİletişim: appo.yanarates@gmail.com',
               buttons: ['Tamam']
             });

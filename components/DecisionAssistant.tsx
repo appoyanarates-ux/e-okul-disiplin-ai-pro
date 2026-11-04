@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bot, FileText, ChevronRight, Loader2, PenTool, User, AlertCircle, 
   Calendar, Clock, List, Printer, Users, Scale, Mail, Download, Calculator, ZoomIn, ZoomOut, RotateCcw, MessageSquare, ScrollText, Sparkles, CheckCircle, RefreshCw, Check, Minimize2,
@@ -493,6 +493,37 @@ const DecisionAssistant = () => {
         break-inside: avoid-page !important;
         margin-top: 6px !important;
         margin-bottom: 0px !important;
+    }
+    .doc-editable-field {
+        cursor: text;
+        transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .doc-editable-field:hover {
+        background-color: #f8fafc !important;
+        border-color: #60a5fa !important;
+    }
+    .doc-editable-field:focus {
+        background-color: #ffffff !important;
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+    }
+    .doc-editable-field:empty::before {
+        content: attr(placeholder);
+        color: #94a3b8;
+        font-style: italic;
+        pointer-events: none;
+        display: block;
+    }
+    @media print {
+        .doc-editable-field {
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border-color: #000000 !important;
+        }
+        .doc-editable-field:empty::before {
+            content: "" !important;
+            display: none !important;
+        }
     }
   `;
 
@@ -1046,6 +1077,15 @@ const DecisionAssistant = () => {
         orphans: 3 !important;
         widows: 3 !important;
       }
+      .doc-editable-field {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+      .doc-editable-field:empty::before {
+        content: "" !important;
+        display: none !important;
+      }
       .print\\:hidden, .print-hide, .page-marker, [data-html2canvas-ignore="true"] {
         display: none !important;
       }
@@ -1122,6 +1162,88 @@ const DecisionAssistant = () => {
     }
   };
 
+  // Auto-Save State & Feedback for Live Document Preview
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveToastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<{ state: 'idle' | 'saving' | 'saved', timestamp?: string }>({ state: 'idle' });
+  const [autoSaveNotification, setAutoSaveNotification] = useState<string | null>(null);
+
+  const triggerAutoSaveToast = (message: string) => {
+    const timeStr = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setAutoSaveStatus({ state: 'saved', timestamp: timeStr });
+    setAutoSaveNotification(message);
+    if (autoSaveToastTimerRef.current) {
+      clearTimeout(autoSaveToastTimerRef.current);
+    }
+    autoSaveToastTimerRef.current = setTimeout(() => {
+      setAutoSaveNotification(null);
+    }, 4000);
+  };
+
+  const syncStatementAndDefenseFields = (container: HTMLElement, docIndex: number) => {
+    const currentDoc = generatedDocs[docIndex];
+    const statementEl = container.querySelector<HTMLElement>('[data-doc-field="statement"]');
+    const defenseEl = container.querySelector<HTMLElement>('[data-doc-field="defense"]');
+
+    let savedLabels: string[] = [];
+    if (selectedIncidentId) {
+      if (statementEl) {
+        const targetStudentId = statementEl.getAttribute('data-student-id') || (currentDoc as any)?.studentId || selectedStudentId;
+        if (targetStudentId) {
+          const text = statementEl.innerText.trim();
+          updateIncidentStudent(selectedIncidentId, targetStudentId, { studentStatement: text });
+          savedLabels.push('Öğrenci İfadesi');
+        }
+      }
+      if (defenseEl) {
+        const targetStudentId = defenseEl.getAttribute('data-student-id') || (currentDoc as any)?.studentId || selectedStudentId;
+        if (targetStudentId) {
+          const text = defenseEl.innerText.trim();
+          updateIncidentStudent(selectedIncidentId, targetStudentId, { studentDefense: text });
+          savedLabels.push('Öğrenci Savunması');
+        }
+      }
+    }
+    return savedLabels;
+  };
+
+  const handleDocInput = (container: HTMLElement, docIndex: number) => {
+    setAutoSaveStatus({ state: 'saving' });
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      const savedLabels = syncStatementAndDefenseFields(container, docIndex);
+      let msg = 'Belge üzerindeki değişiklikler otomatik olarak kaydedildi.';
+      if (savedLabels.length > 0) {
+        msg = `${savedLabels.join(' ve ')} başarıyla olaya işlendi ve kaydedildi.`;
+      }
+      triggerAutoSaveToast(msg);
+    }, 800);
+  };
+
+  const handleDocBlur = (container: HTMLElement, docIndex: number) => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    const updatedHtml = container.innerHTML;
+    setGeneratedDocs(prev => {
+      const next = [...prev];
+      if (next[docIndex]) {
+        next[docIndex] = { ...next[docIndex], body: updatedHtml };
+      }
+      return next;
+    });
+
+    const savedLabels = syncStatementAndDefenseFields(container, docIndex);
+    let msg = 'Belge değişiklikleri otomatik olarak kaydedildi.';
+    if (savedLabels.length > 0) {
+      msg = `${savedLabels.join(' ve ')} başarıyla olaya işlendi ve kaydedildi.`;
+    }
+    triggerAutoSaveToast(msg);
+  };
+
   const handleDocUpdate = (value: string, index: number = 0) => {
     setGeneratedDocs(prev => {
         const next = [...prev];
@@ -1163,7 +1285,7 @@ const DecisionAssistant = () => {
   };
 
   const generateBulkDocuments = async (type: string) => {
-    const docs: Array<{ header: string, body: string, type?: string, studentName?: string }> = [];
+    const docs: Array<{ header: string, body: string, type?: string, studentName?: string, studentId?: string }> = [];
     setLastGeneratedFormType(type);
 
     if (isBlankMode) {
@@ -1385,15 +1507,31 @@ const DecisionAssistant = () => {
                             transition: 'transform 0.2s ease-out'
                         }}
                     >
-                        {/* Word Margin Indicator Header */}
+                        {/* Word Margin Indicator & Auto-Save Header */}
                         <div data-html2canvas-ignore="true" className="print:hidden mb-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-2xs flex items-center justify-between text-xs text-slate-600">
-                            <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                            <div className="flex items-center gap-2 font-bold text-slate-800">
                                 <Layout className="w-3.5 h-3.5 text-blue-600" />
                                 <span>{activeMargin.name}</span>
                                 <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono font-normal">A4 Portre</span>
                             </div>
-                            <div className="text-[11px] font-mono text-slate-500">
-                                Üst: {activeMargin.top}mm • Alt: {activeMargin.bottom}mm • Sol: {activeMargin.left}mm • Sağ: {activeMargin.right}mm
+
+                            {/* Auto-Save & Status Badge */}
+                            <div className="flex items-center gap-2">
+                                {autoSaveStatus.state === 'saving' && (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                                        <RefreshCw className="w-3 h-3 animate-spin text-amber-600" />
+                                        <span>Kaydediliyor...</span>
+                                    </span>
+                                )}
+                                {autoSaveStatus.state === 'saved' && (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                        <span>Otomatik Kaydedildi ({autoSaveStatus.timestamp})</span>
+                                    </span>
+                                )}
+                                <div className="text-[11px] font-mono text-slate-400">
+                                    Üst: {activeMargin.top}mm • Alt: {activeMargin.bottom}mm • Sol: {activeMargin.left}mm • Sağ: {activeMargin.right}mm
+                                </div>
                             </div>
                         </div>
 
@@ -1428,7 +1566,8 @@ const DecisionAssistant = () => {
                             <div 
                                 contentEditable
                                 suppressContentEditableWarning
-                                onBlur={(e) => handleDocUpdate(e.currentTarget.innerHTML, index)}
+                                onInput={(e) => handleDocInput(e.currentTarget, index)}
+                                onBlur={(e) => handleDocBlur(e.currentTarget, index)}
                                 className={`outline-none hover:bg-yellow-50/10 focus:bg-yellow-100/20 transition-colors rounded px-1 h-auto cursor-text border border-transparent focus:border-yellow-200 relative z-0 font-serif ${fitToPage ? 'text-[10pt] min-h-0 leading-normal' : 'text-[12pt] min-h-[180mm] leading-normal'}`}
                                 style={{ fontFamily: '"Times New Roman", Times, "Liberation Serif", serif', fontSize: `${docFontSize}pt` }}
                                 dangerouslySetInnerHTML={{ __html: doc.body }}
@@ -2369,9 +2508,7 @@ const DecisionAssistant = () => {
             <tr><td style="border:1px solid #ccc; padding:3px 6px; height:18px;">Tanık Öğrenci - 4 :</td></tr>
         </table>
         <p style="text-indent:24px; margin-top:6px; margin-bottom:4px; font-size:9.5pt; line-height:1.35;">Yukarıda açıkça bilgileri verilen öğrencimizin iddia edilen olumsuz davranışlarıyla ilgili olmak üzere konu hakkında kesin olarak gördüğünüz, bildiğiniz tüm bilgileri en baştan başlayarak ve ayrıntılı olarak aşağıya yazınız ve imzalayınız.</p>
-        <div style="border:1px solid black; min-height:80px; margin-top:6px; padding:6px; font-size:9pt; line-height:1.3;">
-             Buradan başlayabilirsiniz. Ek kağıt kullanabilirsiniz.
-        </div>
+        <div data-doc-field="statement" data-student-id="${targetStudentId || ''}" class="doc-editable-field doc-statement-box" style="border:1px solid black; min-height:90px; margin-top:6px; padding:6px 8px; font-size:9.5pt; line-height:1.35; white-space:pre-wrap; outline:none;" placeholder="Tanık öğrenci ifadesini buraya yazınız... (El yazısı için boş bırakabilirsiniz)">${(!effectivelyBlankMode && targetInvolvement?.studentStatement) ? targetInvolvement.studentStatement : ''}</div>
         <div class="signature-block avoid-break" style="margin-top:8px; text-align:right; font-size:9.5pt;">
              <b>Tarih:</b> ${formDateStr}<br><br>
              <b>İmza:</b> ........................................
@@ -2420,10 +2557,8 @@ const DecisionAssistant = () => {
                 <td colspan="3" style="padding:3px 6px; border:1px solid #ddd;">: ${i.title}</td>
             </tr>
         </table>
-        <div style="font-size:10pt; font-weight:bold; margin-top:6px;">İfadenizi Yazmaya Buradan Başlayınız:</div>
-        <div style="border:none; border-bottom:1px dotted #ccc; line-height:1.6; min-height:80px; font-size:10pt; margin-top:4px;">
-            ${!effectivelyBlankMode && targetInvolvement?.studentStatement ? targetInvolvement.studentStatement : '<br><br><br>'}
-        </div>
+        <div style="font-size:10pt; font-weight:bold; margin-top:8px;">İfadenizi Yazmaya Buradan Başlayınız:</div>
+        <div data-doc-field="statement" data-student-id="${targetStudentId || ''}" class="doc-editable-field doc-statement-box" style="border:1px dashed #93c5fd; background-color:#f8fafc; border-radius:4px; padding:8px 10px; line-height:1.6; min-height:100px; font-size:10pt; margin-top:4px; outline:none; white-space:pre-wrap;" placeholder="Öğrencinin ifadesini buraya yazınız... (El yazısı için boş bırakabilirsiniz)">${!effectivelyBlankMode && targetInvolvement?.studentStatement ? targetInvolvement.studentStatement : ''}</div>
         
         <table class="signature-block avoid-break" style="width:100%; margin-top:8px; font-size:9.5pt; text-align:center;">
             <tr>
@@ -2483,10 +2618,8 @@ const DecisionAssistant = () => {
                 <td colspan="3" style="padding:3px 6px; border:1px solid #ddd;">: ${i.title}</td>
             </tr>
         </table>
-        <div style="font-size:10pt; font-weight:bold; margin-top:6px;">Savunmanızı Yazmaya Buradan Başlayınız:</div>
-        <div style="border:none; border-bottom:1px dotted #ccc; line-height:1.6; min-height:80px; font-size:10pt; margin-top:4px;">
-            ${!effectivelyBlankMode && targetInvolvement?.studentDefense ? targetInvolvement.studentDefense : '<br><br><br>'}
-        </div>
+        <div style="font-size:10pt; font-weight:bold; margin-top:8px;">Savunmanızı Yazmaya Buradan Başlayınız:</div>
+        <div data-doc-field="defense" data-student-id="${targetStudentId || ''}" class="doc-editable-field doc-defense-box" style="border:1px dashed #93c5fd; background-color:#f8fafc; border-radius:4px; padding:8px 10px; line-height:1.6; min-height:100px; font-size:10pt; margin-top:4px; outline:none; white-space:pre-wrap;" placeholder="Öğrencinin savunma beyanlarını buraya yazınız... (El yazısı için boş bırakabilirsiniz)">${!effectivelyBlankMode && targetInvolvement?.studentDefense ? targetInvolvement.studentDefense : ''}</div>
         
         <div class="signature-block avoid-break" style="margin-top:8px; font-size:10pt; text-align:right;">
              <div style="display:inline-block; text-align:left;">
@@ -2544,7 +2677,7 @@ const DecisionAssistant = () => {
              <tr><td style="padding:3px 6px; font-weight:bold; border-top:2px solid #ccc;">İddia</td><td style="padding:3px 6px; border-top:2px solid #ccc;">: ${i.title}</td></tr>
         </table>
         <p style="margin-top:6px; margin-bottom:4px; text-indent:24px; line-height:1.35; font-size:9.5pt;">Öğrenci Davranışlarını Değerlendirme Kuruluna intikal eden dosyalarda size isnat edilen yukarıdaki suçlamalar ile ilgili yapacağınız tüm açıklama ve bilgileri içeren ifadenizi aşağıya yazarak imzalayınız.</p>
-        <div style="border:1px solid black; min-height:80px; padding:6px; margin-top:6px; font-family:inherit; font-size:9.5pt; white-space:pre-wrap; line-height:1.3;">${(!effectivelyBlankMode && targetInvolvement?.studentStatement) ? targetInvolvement.studentStatement : 'Buradan başlayabilirsiniz. Ek kağıt kullanabilirsiniz.'}</div>
+        <div data-doc-field="statement" data-student-id="${targetStudentId || ''}" class="doc-editable-field doc-statement-box" style="border:1px solid black; min-height:90px; padding:6px 8px; margin-top:6px; font-family:inherit; font-size:9.5pt; white-space:pre-wrap; line-height:1.35; outline:none;" placeholder="Öğrencinin ifadesini buraya yazınız... (El yazısı için boş bırakabilirsiniz)">${(!effectivelyBlankMode && targetInvolvement?.studentStatement) ? targetInvolvement.studentStatement : ''}</div>
         <div class="signature-block avoid-break" style="margin-top:8px; text-align:center; font-size:9.5pt;">
              Tarih : ${formDateStr}<br>
              İmza : ........................<br><br>
@@ -2570,7 +2703,7 @@ const DecisionAssistant = () => {
              <tr><td style="padding:3px 6px; font-weight:bold; border-top:2px solid #ccc;">Olay</td><td style="padding:3px 6px; border-top:2px solid #ccc;">: ${i.title}</td></tr>
         </table>
         <p style="margin-top:6px; margin-bottom:4px; text-indent:24px; line-height:1.35; font-size:9.5pt;">Öğrenci Davranışlarını Değerlendirme Kuruluna intikal eden dosyalarda size isnat edilen ve yukarıda açıkça belirtilen suçlamalar bulunmaktadır. Konuyla ilgili Savunmanızı aşağıya yazarak imzalayınız.</p>
-        <div style="border:1px solid black; min-height:80px; padding:6px; margin-top:6px; font-family:inherit; font-size:9.5pt; white-space:pre-wrap; line-height:1.3;">${(!effectivelyBlankMode && targetInvolvement?.studentDefense) ? targetInvolvement.studentDefense : 'Buradan başlayabilirsiniz. Ek kağıt kullanabilirsiniz.'}</div>
+        <div data-doc-field="defense" data-student-id="${targetStudentId || ''}" class="doc-editable-field doc-defense-box" style="border:1px solid black; min-height:90px; padding:6px 8px; margin-top:6px; font-family:inherit; font-size:9.5pt; white-space:pre-wrap; line-height:1.35; outline:none;" placeholder="Öğrencinin savunmasını buraya yazınız... (El yazısı için boş bırakabilirsiniz)">${(!effectivelyBlankMode && targetInvolvement?.studentDefense) ? targetInvolvement.studentDefense : ''}</div>
         <div class="signature-block avoid-break" style="margin-top:8px; text-align:center; font-size:9.5pt;">
              Tarih : ${formDateStr}<br>
              İmza : ........................<br><br>
@@ -2717,9 +2850,7 @@ const DecisionAssistant = () => {
 
         <div style="margin-bottom:4px;">
             <div style="font-weight:bold; font-size:9pt; background-color:#f1f5f9; padding:2px 6px; border:1px solid black; border-bottom:none;">Görüşme Özeti ve Öğrencinin İfadeleri:</div>
-            <div style="border:1px solid black; min-height:60px; padding:4px 6px; font-size:9pt; line-height:1.35;">
-                ${!effectivelyBlankMode && targetInvolvement?.studentStatement ? targetInvolvement.studentStatement : '<br><br>'}
-            </div>
+            <div data-doc-field="statement" data-student-id="${targetStudentId || ''}" class="doc-editable-field doc-statement-box" style="border:1px solid black; min-height:65px; padding:4px 6px; font-size:9pt; line-height:1.35; white-space:pre-wrap; outline:none;" placeholder="Görüşme özeti ve öğrencinin ifadelerini buraya yazınız...">${!effectivelyBlankMode && targetInvolvement?.studentStatement ? targetInvolvement.studentStatement : ''}</div>
         </div>
 
         <div style="margin-bottom:4px;">
@@ -2890,7 +3021,8 @@ const DecisionAssistant = () => {
         header: '',
         body: currentBody,
         type,
-        studentName: actualStudentName
+        studentName: actualStudentName,
+        studentId: targetStudentId || ''
     };
 
     if (returnOnly) {
@@ -3299,7 +3431,7 @@ const DecisionAssistant = () => {
                         </div>
                     </div>
 
-                    {/* Seçilen Öğrenci Künye ve İfade/Savunma Giriş Alanı */}
+                    {/* Seçilen Öğrenci Künye ve Canlı Düzenleme Rehber Alanı */}
                     {selectedStudentId && (
                         (() => {
                             const curStud = (selectedIncident ? incidentStudents : students).find(s => s.id === selectedStudentId);
@@ -3307,44 +3439,19 @@ const DecisionAssistant = () => {
                             return (
                                 <div className="space-y-3 shrink-0">
                                     {renderStudentKunyePanel(curStud)}
-                                    <div className="p-3 bg-indigo-50/50 border border-indigo-100/80 rounded-lg space-y-2 shadow-2xs">
-                                        <div className="flex items-center gap-1.5 font-bold text-[10.5px] text-indigo-950 uppercase tracking-wide">
-                                            <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
-                                            <span>{curStud.name} • İfade & Savunma Notu</span>
+                                    <div className="p-3 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 border border-blue-200/80 rounded-xl space-y-1.5 shadow-2xs">
+                                        <div className="flex items-center gap-1.5 font-bold text-[11px] text-blue-950 tracking-wide">
+                                            <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                            <span>Canlı Belge Üzerinde Düzenleme</span>
                                         </div>
-                                    <div className="space-y-0.5">
-                                        <label className="block text-[9px] font-bold text-slate-500 uppercase">Öğrenci İfadesi</label>
-                                        <textarea
-                                            value={curStud.studentStatement || ''}
-                                            onChange={(e) => {
-                                                if (selectedIncidentId) {
-                                                    updateIncidentStudent(selectedIncidentId, selectedStudentId, { studentStatement: e.target.value });
-                                                }
-                                            }}
-                                            placeholder="Öğrencinin ifadesini buraya yazın..."
-                                            className="w-full p-2 border border-slate-200 rounded text-xs leading-normal bg-white resize-none shadow-2xs focus:border-indigo-400 focus:ring-1 focus:ring-indigo-150 outline-none"
-                                            rows={2}
-                                        />
-                                    </div>
-                                    <div className="space-y-0.5">
-                                        <label className="block text-[9px] font-bold text-slate-500 uppercase">Öğrenci Savunması</label>
-                                        <textarea
-                                            value={curStud.studentDefense || ''}
-                                            onChange={(e) => {
-                                                if (selectedIncidentId) {
-                                                    updateIncidentStudent(selectedIncidentId, selectedStudentId, { studentDefense: e.target.value });
-                                                }
-                                            }}
-                                            placeholder="Öğrencinin savunmasını buraya yazın..."
-                                            className="w-full p-2 border border-slate-200 rounded text-xs leading-normal bg-white resize-none shadow-2xs focus:border-indigo-400 focus:ring-1 focus:ring-indigo-150 outline-none"
-                                            rows={2}
-                                        />
+                                        <p className="text-[10.5px] text-slate-600 leading-relaxed">
+                                            {curStud.name} için ifade veya savunmayı sağdaki <b>A4 Ön İzleme Penceresinde</b> doğrudan belgenin üzerine tıklayarak yazabilirsiniz. Yazdıklarınız otomatik olarak algılanıp kaydedilir.
+                                        </p>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })()
-                )}
+                            );
+                        })()
+                    )}
                 </div>
 
                 <div className="flex-1 flex flex-col bg-slate-50/50">
@@ -4374,6 +4481,24 @@ const DecisionAssistant = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Otomatik Kayıt Bildirim Uyarısı (Toast) */}
+      {autoSaveNotification && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs border border-slate-700/80 backdrop-blur-md animate-in slide-in-from-bottom-4 duration-200">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30 shadow-inner">
+            <CheckCircle className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+              <span>Otomatik Olarak Kaydedildi</span>
+              {autoSaveStatus.timestamp && (
+                <span className="text-[10px] text-slate-400 font-mono font-normal">({autoSaveStatus.timestamp})</span>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-200 mt-0.5 max-w-sm">{autoSaveNotification}</div>
           </div>
         </div>
       )}

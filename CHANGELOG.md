@@ -4,6 +4,20 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.0.7] - 2026-11-04
+
+### 📝 Canlı Ön İzleme Üzerinde İfade ve Savunma Girişi & Otomatik Kayıt
+- **Tutanak ve Formlar Panelinde Küçük Giriş Alanı Kaldırıldı:**
+  - Tutanak ve Formlar sol panelindeki dar/küçük öğrenci ifade ve savunma textarea kutuları kaldırıldı; yerine canlı belge düzenleme rehberi eklendi.
+- **Doğrudan A4 Ön İzleme Penceresinden Düzenleme:**
+  - İfade tutanakları, savunma tutanakları, talep formları ve öğrenci görüşme belgelerindeki ifade/savunma kısımları sağ taraftaki A4 ön izleme penceresi üzerinde doğrudan tıklanıp yazılabilir hale getirildi.
+  - El yazısı için boş bırakıldığında placeholder baskıda görünmez, temiz ve resmi çıktı formatı korunur.
+- **Otomatik Kayıt ve Anlık Geri Bildirim Bildirimi:**
+  - Ön izleme belgesinde yazılan öğrenci ifadesi ve savunması otomatik olarak olaya işlenir ve anlık olarak kaydedilir.
+  - Belge üzerinde ve ekranın sağ alt köşesinde kaydedildiğine dair şık ve belirgin otomatik kayıt bildirim uyarısı sunuldu.
+
+---
+
 ## [1.0.6] - 2026-11-03
 
 ### 📊 Saf Excel Veri İçe Aktarma Standardı (PDF İçe Aktarma Kaldırıldı)
