@@ -4,6 +4,22 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.1.2] - 2026-11-09
+
+### 📐 Sayfa Düzeni & Kenar Boşlukları Açılır Menüsü ve Künye Defteri Geliştirmeleri
+- **Açılır Menüye Taşınan Sayfa ve Kenar Ayarları:**
+  - "Tek Sayfaya Sığdır" ve "Office / Word Kenar Boşlukları" özellikleri hem evrak üst işlem başlığında hem de alt kayan zoom çubuğunda şık tek bir **"Sayfa Düzeni"** açılır menüsü altında birleştirildi.
+  - Açılır menü içerisine tek tıkla açılıp kapanabilen interaktif *Tek Sayfaya Sığdır (Açık/Kapalı)* anahtarı ve Word Standart (2.5 cm), MEB Resmi Yazışma (3.0 cm), Dar (1.27 cm), Geniş (3.18 cm), Sıfır kenarlık seçenekleri entegre edildi.
+  - Karar ve Evrak Süreç Yönetimi (`DecisionAssistant`) ve Ceza Silme (`PenaltyRemoval`) modüllerinde tutarlı hale getirildi.
+- **e-Okul Künye Defteri Toplu Öğrenci Yükleme:**
+  - e-Okul künye defterinden kopyalanan veya Excel olarak aktarılan dikey kart biçimleri tam otomatik olarak ayrıştırılacak şekilde geliştirildi.
+  - Nüfus kayıt bilgileri (Cilt, Aile Sıra, Sıra No, İl, İlçe, Mahalle), Anne/Ana Adı, Baba Adı, Kabul Edildiği Sınıf ve Tarihi, Geldiği Okul, Kayıt Türü (Nakil vb.), Burs, Pansiyon ve Kan Grubu alanları eksiksiz içeri aktarılır.
+- **Kurum Ayarları ve Evraklar Rehber Öğretmen Entegrasyonu:**
+  - Kurul Üyeleri sekmesine Okul Rehber Öğretmeni / Psikolojik Danışman adı ve unvanı tanımlama alanı eklendi.
+  - Rehberlik Görüş Formu, Öğrenci İfade Tutanağı, Kurul Toplantı Tutanağı, Ceza Silme Kararı, Öğrenci Bilgi Formu ve Resmi Görüşme Belgelerine okul rehber öğretmeni bilgisi bağlandı.
+
+---
+
 ## [1.1.1] - 2026-11-04
 
 ### 📄 Seçili Öğrenciler İçin Toplu & Ayrı Ayrı Öğrenci Çağrı Pusulası Oluşturma
