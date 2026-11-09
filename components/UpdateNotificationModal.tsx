@@ -225,9 +225,13 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
                   {/* Release Notes */}
                   {updateInfo.releaseNotes && (
                     <div>
-                      <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Bu Sürümdeki Yenilikler</h4>
+                      <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Düzeltmeler ve Güncellemeler</h4>
                       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 max-h-40 overflow-y-auto whitespace-pre-wrap leading-relaxed font-sans">
-                        {updateInfo.releaseNotes}
+                        {updateInfo.releaseNotes
+                          .replace(/\*\*Full Changelog\*\*:[^\n]*/gi, '')
+                          .replace(/https:\/\/github\.com\/[^\s]+\/compare\/[^\s]+/gi, '')
+                          .replace(/## What's Changed/gi, '')
+                          .trim() || 'Düzeltmeler ve güncellemeler'}
                       </div>
                     </div>
                   )}

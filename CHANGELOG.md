@@ -4,6 +4,16 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.1.4] - 2026-11-09
+
+### 🚀 Düzeltmeler ve güncellemeler
+- **Sade Güncelleme Açıklaması Standardı:**
+  - Güncelleme duyurularında ve GitHub Release yayınlarında otomatik oluşturulan `Full Changelog` karşılaştırma bağlantıları kaldırıldı.
+  - Güncelleme modal penceresinde ve bildirimlerinde açıklama başlığı `"Düzeltmeler ve Güncellemeler"` olarak düzenlendi.
+  - GitHub Actions yayınlarında açıklama olarak doğrudan `"Düzeltmeler ve güncellemeler"` ifadesi sabitlendi.
+
+---
+
 ## [1.1.3] - 2026-11-09
 
 ### 🚀 Değişiklikler ve düzeltmeler
