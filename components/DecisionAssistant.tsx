@@ -443,6 +443,7 @@ const DecisionAssistant = () => {
   const [zoom, setZoom] = useState(1.0);
   const [marginPreset, setMarginPreset] = useState<MarginType>('normal');
   const [showMarginMenu, setShowMarginMenu] = useState(false);
+  const [showFloatingMarginMenu, setShowFloatingMarginMenu] = useState(false);
   const [fitToPage, setFitToPage] = useState(false);
   // Default font size: 12pt (Times New Roman official correspondence standard)
   const [docFontSize, setDocFontSizeState] = useState<number>(() => {
@@ -480,6 +481,7 @@ const DecisionAssistant = () => {
     setMarginPreset(preset);
     setFitToPage(preset === 'compact');
     setShowMarginMenu(false);
+    setShowFloatingMarginMenu(false);
   };
 
   const activeMargin = PAGE_MARGINS[marginPreset] || PAGE_MARGINS.normal;
@@ -1514,19 +1516,109 @@ const DecisionAssistant = () => {
         <span className="text-[10px] font-mono text-slate-400">{docFontSize}pt</span>
         <button onClick={() => setDocFontSize(prev => Math.min(prev + 1, 24))} className="hover:text-blue-300 transition-colors flex items-center justify-center font-bold font-serif text-lg w-6" title="Punto Büyüt">A+</button>
         <div className="w-px h-4 bg-slate-600 mx-1"></div>
-        <button 
-            onClick={toggleFitToPage} 
-            className={`transition-colors flex items-center gap-1.5 font-medium px-2 py-0.5 rounded ${fitToPage ? 'bg-emerald-600 text-white font-bold' : 'text-slate-300 hover:text-white'}`} 
-            title="Evrakı tek bir sayfaya sığdırır, tarih ve imzanın 2. sayfaya taşmasını önler"
-        >
-            <Minimize2 className="w-3.5 h-3.5" />
-            <span className="text-[11px]">{fitToPage ? 'Tek Sayfa (Açık)' : 'Tek Sayfaya Sığdır'}</span>
-        </button>
+        {/* Sayfa Düzeni (Kenar Boşluğu & Tek Sayfa) Açılır Menüsü */}
+        <div className="relative">
+            <button 
+                onClick={() => setShowFloatingMarginMenu(!showFloatingMarginMenu)} 
+                className={`transition-colors flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-full text-[11px] ${
+                    fitToPage || marginPreset !== 'normal'
+                    ? 'bg-blue-600 text-white font-bold shadow-xs' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                }`} 
+                title="Sayfa Düzeni ve Kenar Boşlukları Menüsü"
+            >
+                <Layout className="w-3.5 h-3.5 text-blue-300" />
+                <span>Sayfa Düzeni</span>
+                <span className="text-[10px] text-blue-200">({activeMargin.badge}{fitToPage ? ' • Tek' : ''})</span>
+                <ChevronUp className={`w-3 h-3 text-slate-400 transition-transform ${showFloatingMarginMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showFloatingMarginMenu && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowFloatingMarginMenu(false)} />
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-80 bg-white text-slate-800 rounded-xl shadow-2xl border border-slate-200 z-50 p-2.5 animate-in fade-in zoom-in-95 duration-150 text-left">
+                        <div className="px-3 py-1.5 border-b border-slate-100 mb-2">
+                            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                                Sayfa & Kenar Ayarları
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                                Resmi evrakın sayfa yerleşimi ve kenar boşluklarını yapılandırın.
+                            </p>
+                        </div>
+
+                        {/* 1. ÖZELLİK: Tek Sayfaya Sığdır */}
+                        <div 
+                            onClick={toggleFitToPage}
+                            className={`cursor-pointer p-2.5 rounded-lg border transition-all flex items-center justify-between gap-3 mb-2.5 ${
+                                fitToPage 
+                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-xs' 
+                                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                            }`}
+                            title="Tıklayarak tek sayfaya sığdırmayı açıp kapatın"
+                        >
+                            <div className="flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                                    fitToPage ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                    <Minimize2 className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold flex items-center gap-1.5">
+                                        <span>Tek Sayfaya Sığdır</span>
+                                        {fitToPage ? (
+                                            <span className="text-[9px] bg-emerald-200/80 text-emerald-800 px-1.5 py-0.2 rounded font-extrabold">Açık</span>
+                                        ) : (
+                                            <span className="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded font-medium">Kapalı</span>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 leading-tight">İmzanın 2. sayfaya taşmasını önler</p>
+                                </div>
+                            </div>
+                            <div className={`relative inline-flex h-4.5 w-8 shrink-0 rounded-full transition-colors duration-200 ease-in-out p-0.5 ${
+                                fitToPage ? 'bg-emerald-600 justify-end' : 'bg-slate-300 justify-start'
+                            }`}>
+                                <span className="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm" />
+                            </div>
+                        </div>
+
+                        {/* 2. ÖZELLİK: Kenar Boşlukları Standardı */}
+                        <div className="px-2 pt-1 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                            <Layout className="w-3 h-3 text-blue-600" />
+                            <span>Kenar Boşluğu Standardı</span>
+                        </div>
+                        <div className="space-y-1">
+                            {Object.values(PAGE_MARGINS).map((preset) => (
+                                <button
+                                    key={preset.id}
+                                    onClick={() => handleSelectMargin(preset.id)}
+                                    className={`w-full text-left p-2 rounded-lg transition-colors flex items-start justify-between gap-2 text-xs ${
+                                        marginPreset === preset.id 
+                                            ? 'bg-blue-50 text-blue-900 font-bold border border-blue-200 shadow-2xs' 
+                                            : 'hover:bg-slate-50 text-slate-700'
+                                    }`}
+                                >
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-1.5 font-bold">
+                                            <span>{preset.name}</span>
+                                            {preset.id === 'normal' && (
+                                                <span className="text-[8px] bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded font-semibold">Word Standart</span>
+                                            )}
+                                            {preset.id === 'official' && (
+                                                <span className="text-[8px] bg-indigo-100 text-indigo-800 px-1 py-0.5 rounded font-semibold">MEB Kuralı</span>
+                                            )}
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 font-normal leading-snug">{preset.description}</div>
+                                    </div>
+                                    {marginPreset === preset.id && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
         <div className="w-px h-4 bg-slate-600 mx-1"></div>
-        <span className="text-[11px] text-blue-300 font-mono hidden sm:inline" title={activeMargin.description}>
-          {activeMargin.badge}
-        </span>
-        <div className="w-px h-4 bg-slate-600 mx-1 hidden sm:block"></div>
         <button onClick={handleZoomOut} className="hover:text-blue-300 transition-colors" title="Uzaklaş"><ZoomOut className="w-4 h-4" /></button>
         <span className="text-xs font-mono w-10 text-center font-bold">{Math.round(zoom * 100)}%</span>
         <button onClick={handleZoomIn} className="hover:text-blue-300 transition-colors" title="Yaklaş"><ZoomIn className="w-4 h-4" /></button>
@@ -3265,77 +3357,115 @@ const DecisionAssistant = () => {
             <h2 className="text-xl font-bold text-blue-700">{getSectionTitle()}</h2>
         </div>
         <div className="flex items-center gap-2">
-                {/* Word / Office Kenar Boşlukları Menüsü */}
+                {/* Sayfa Düzeni (Kenar Boşlukları & Tek Sayfaya Sığdırma) Açılır Menüsü */}
                 <div className="relative">
                     <button 
                         onClick={() => setShowMarginMenu(!showMarginMenu)} 
                         className={`text-sm px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center justify-center gap-2 border shadow-xs ${
-                            marginPreset === 'normal'
-                            ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100'
+                            fitToPage || marginPreset !== 'normal'
+                            ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100 ring-1 ring-blue-200'
                             : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                         }`}
-                        title="Word / Excel kenar boşlukları standardını seçin (Üst, Alt, Sol, Sağ)"
+                        title="Sayfa Düzeni: Kenar boşlukları ve tek sayfaya sığdırma ayarları"
                     >
                         <Layout className="w-4 h-4 text-blue-600" />
-                        <span className="hidden sm:inline">Kenar Boşluğu:</span>
+                        <span className="hidden sm:inline">Sayfa Düzeni:</span>
                         <span className="font-extrabold text-blue-700">{activeMargin.badge}</span>
-                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                        {fitToPage && (
+                            <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
+                                <Minimize2 className="w-2.5 h-2.5" /> Tek Sayfa
+                            </span>
+                        )}
+                        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showMarginMenu ? 'rotate-180' : ''}`} />
                     </button>
 
                     {showMarginMenu && (
-                        <div className="absolute right-0 top-full mt-1.5 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 p-2 animate-in fade-in zoom-in-95 duration-150">
-                            <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                                <p className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Sliders className="w-3.5 h-3.5 text-blue-600" />
-                                    Office / Word Kenar Boşlukları
-                                </p>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                    Tek veya çok sayfalı evrakların sayfa başı, sonu, sağı ve soluna sıkı sıkıya uygulanır.
-                                </p>
-                            </div>
-                            <div className="space-y-1">
-                                {Object.values(PAGE_MARGINS).map((preset) => (
-                                    <button
-                                        key={preset.id}
-                                        onClick={() => handleSelectMargin(preset.id)}
-                                        className={`w-full text-left p-2.5 rounded-lg transition-colors flex items-start justify-between gap-2 text-xs ${
-                                            marginPreset === preset.id 
-                                                ? 'bg-blue-50 text-blue-900 font-bold border border-blue-200 shadow-2xs' 
-                                                : 'hover:bg-slate-50 text-slate-700'
-                                        }`}
-                                    >
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-1.5 font-bold">
-                                                <span>{preset.name}</span>
-                                                {preset.id === 'normal' && (
-                                                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">Word Standart</span>
-                                                )}
-                                                {preset.id === 'official' && (
-                                                    <span className="text-[9px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-semibold">MEB Kuralı</span>
+                        <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowMarginMenu(false)} />
+                            <div className="absolute right-0 top-full mt-1.5 w-84 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 p-2.5 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="px-3 py-2 border-b border-slate-100 mb-2">
+                                    <p className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                                        Sayfa & Kenar Ayarları
+                                    </p>
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                        Resmi evrakın sayfa yerleşimi ve kenar boşluklarını yapılandırın.
+                                    </p>
+                                </div>
+
+                                {/* 1. ÖZELLİK: Tek Sayfaya Sığdır */}
+                                <div 
+                                    onClick={toggleFitToPage}
+                                    className={`cursor-pointer p-2.5 rounded-lg border transition-all flex items-center justify-between gap-3 mb-2.5 ${
+                                        fitToPage 
+                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-xs' 
+                                            : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100/80 text-slate-700'
+                                    }`}
+                                    title="Tıklayarak tek sayfaya sığdırmayı açıp kapatın"
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                            fitToPage ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                                        }`}>
+                                            <Minimize2 className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-bold flex items-center gap-1.5">
+                                                <span>Tek Sayfaya Sığdır</span>
+                                                {fitToPage ? (
+                                                    <span className="text-[9px] bg-emerald-200/80 text-emerald-800 px-1.5 py-0.5 rounded font-extrabold">Açık</span>
+                                                ) : (
+                                                    <span className="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-medium">Kapalı</span>
                                                 )}
                                             </div>
-                                            <div className="text-[11px] text-slate-500 font-normal mt-1 leading-snug">{preset.description}</div>
+                                            <p className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                                İmza ve tablonun 2. sayfaya taşmasını önler
+                                            </p>
                                         </div>
-                                        {marginPreset === preset.id && <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />}
-                                    </button>
-                                ))}
+                                    </div>
+                                    <div className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out p-0.5 ${
+                                        fitToPage ? 'bg-emerald-600 justify-end' : 'bg-slate-300 justify-start'
+                                    }`}>
+                                        <span className="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm" />
+                                    </div>
+                                </div>
+
+                                {/* 2. ÖZELLİK: Kenar Boşlukları Standardı */}
+                                <div className="px-2 pt-1 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                    <Layout className="w-3 h-3 text-blue-600" />
+                                    <span>Kenar Boşluğu Standardı</span>
+                                </div>
+                                <div className="space-y-1">
+                                    {Object.values(PAGE_MARGINS).map((preset) => (
+                                        <button
+                                            key={preset.id}
+                                            onClick={() => handleSelectMargin(preset.id)}
+                                            className={`w-full text-left p-2 rounded-lg transition-colors flex items-start justify-between gap-2 text-xs ${
+                                                marginPreset === preset.id 
+                                                    ? 'bg-blue-50 text-blue-900 font-bold border border-blue-200 shadow-2xs' 
+                                                    : 'hover:bg-slate-50 text-slate-700'
+                                            }`}
+                                        >
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-1.5 font-bold">
+                                                    <span>{preset.name}</span>
+                                                    {preset.id === 'normal' && (
+                                                        <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">Word Standart</span>
+                                                    )}
+                                                    {preset.id === 'official' && (
+                                                        <span className="text-[9px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-semibold">MEB Kuralı</span>
+                                                    )}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 font-normal mt-0.5 leading-snug">{preset.description}</div>
+                                            </div>
+                                            {marginPreset === preset.id && <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        </>
                     )}
                 </div>
-
-                <button 
-                    onClick={toggleFitToPage} 
-                    className={`text-sm px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 border shadow-xs ${
-                        fitToPage 
-                        ? 'bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-700 ring-2 ring-emerald-300' 
-                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
-                    title="Evrakı tek bir sayfaya sığdırır, tarih ve imzanın 2. sayfaya taşmasını önler"
-                >
-                    <Minimize2 className="w-4 h-4" />
-                    <span>{fitToPage ? '✓ Tek Sayfa (Açık)' : 'Tek Sayfaya Sığdır'}</span>
-                </button>
                 <button 
                     onClick={() => setIsBlankMode(!isBlankMode)} 
                     className={`text-sm px-3 py-1.5 rounded-lg font-bold transition-all flex items-center justify-center gap-1 border ${isBlankMode ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}

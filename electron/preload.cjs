@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   isElectron: true,
   platform: process.platform,
-  version: '1.1.1',
+  version: '1.1.2',
   author: 'Abdullah Yanarateş',
   appName: 'E-Okul Disiplin AI Pro',
 
