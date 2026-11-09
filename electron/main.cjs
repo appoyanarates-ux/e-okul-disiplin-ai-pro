@@ -63,6 +63,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 720,
     title: 'E-Okul Disiplin AI Pro - By Abdullah Yanarateş',
+    autoHideMenuBar: true,
     icon: fs.existsSync(iconPath) ? iconPath : fallbackIcon,
     show: false, // Prevents white flash before content loads
     backgroundColor: '#0f172a',
@@ -74,6 +75,11 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs')
     }
   });
+
+  // Completely remove native application menu bar (Dosya, Düzen, Görünüm, Yardım)
+  mainWindow.removeMenu();
+  mainWindow.setMenuBarVisibility(false);
+  Menu.setApplicationMenu(null);
 
   // Smooth appearance when ready
   mainWindow.once('ready-to-show', () => {
@@ -96,80 +102,6 @@ function createWindow() {
       shell.openExternal(url);
     }
   });
-
-  // Application menu
-  const menuTemplate = [
-    {
-      label: 'Dosya',
-      submenu: [
-        {
-          label: 'Yazdır...',
-          accelerator: 'CmdOrCtrl+P',
-          click: () => mainWindow.webContents.print()
-        },
-        { type: 'separator' },
-        {
-          label: 'Yedekleme Klasörünü Aç',
-          click: () => shell.openPath(getBackupDir())
-        },
-        {
-          label: 'Veri Klasörünü Aç (AppData)',
-          click: () => shell.openPath(getUserDataDir())
-        },
-        { type: 'separator' },
-        {
-          label: 'Çıkış',
-          accelerator: 'Alt+F4',
-          click: () => app.quit()
-        }
-      ]
-    },
-    {
-      label: 'Düzen',
-      submenu: [
-        { label: 'Geri Al', role: 'undo' },
-        { label: 'Yinele', role: 'redo' },
-        { type: 'separator' },
-        { label: 'Kes', role: 'cut' },
-        { label: 'Kopyala', role: 'copy' },
-        { label: 'Yapıştır', role: 'paste' },
-        { label: 'Tümünü Seç', role: 'selectAll' }
-      ]
-    },
-    {
-      label: 'Görünüm',
-      submenu: [
-        { label: 'Yenile', accelerator: 'CmdOrCtrl+R', click: () => mainWindow.webContents.reload() },
-        { label: 'Geliştirici Araçları', accelerator: 'Ctrl+Shift+I', click: () => mainWindow.webContents.toggleDevTools() },
-        { type: 'separator' },
-        { label: 'Büyüt', role: 'zoomIn' },
-        { label: 'Küçült', role: 'zoomOut' },
-        { label: 'Varsayılan Boyut', role: 'resetZoom' },
-        { type: 'separator' },
-        { label: 'Tam Ekran', role: 'togglefullscreen' }
-      ]
-    },
-    {
-      label: 'Yardım',
-      submenu: [
-        {
-          label: 'Hakkında (By Abdullah Yanarateş)',
-          click: () => {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'Hakkında - E-Okul Disiplin AI Pro',
-              message: 'E-OKUL DİSİPLİN AI PRO\nSürüm 1.1.2 (Windows x64)',
-              detail: 'Okul disiplin süreçlerini yönetmek, olayları kaydetmek, kararları düzenlemek ve resmi belgeler oluşturmak için geliştirilmiş masaüstü yazılımı.\n\nProjenin Sahibi ve Geliştiricisi: By Abdullah Yanarateş\nPlatform: Windows 10 / Windows 11\nİletişim: appo.yanarates@gmail.com',
-              buttons: ['Tamam']
-            });
-          }
-        }
-      ]
-    }
-  ];
-
-  const menu = Menu.buildFromTemplate(menuTemplate);
-  Menu.setApplicationMenu(menu);
 
   // Load URL depending on Dev / Production
   const isDev = !app.isPackaged && (process.env.ELECTRON_START_URL || process.env.VITE_DEV_SERVER_URL);
@@ -496,7 +428,7 @@ ipcMain.handle('open-external-url', async (event, url) => {
 });
 
 // Helper for download streaming with redirect support and self-signed cert handling (MEB / school networks)
-function downloadFileWithProgress(fileUrl, targetPath, onProgress) {
+function downloadFileWithProgress(fileUrl, targetPath, onProgress, isApiAsset = false) {
   const https = require('https');
   const http = require('http');
 
@@ -505,18 +437,24 @@ function downloadFileWithProgress(fileUrl, targetPath, onProgress) {
     const protocol = isHttps ? https : http;
     const httpsAgent = isHttps ? new https.Agent({ rejectUnauthorized: false }) : undefined;
 
+    const headers = {
+      'User-Agent': 'E-Okul-Disiplin-AI-Pro-Updater'
+    };
+
+    if (isApiAsset || fileUrl.includes('api.github.com/repos/')) {
+      headers['Accept'] = 'application/octet-stream';
+    }
+
     const requestOptions = {
       agent: httpsAgent,
       rejectUnauthorized: false,
-      headers: {
-        'User-Agent': 'E-Okul-Disiplin-AI-Pro-Updater'
-      }
+      headers
     };
 
     const request = protocol.get(fileUrl, requestOptions, (res) => {
-      // Follow HTTP redirects (GitHub releases redirect to AWS S3 objects)
+      // Follow HTTP redirects (GitHub releases redirect to Azure Blob / AWS S3 storage)
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return downloadFileWithProgress(res.headers.location, targetPath, onProgress)
+        return downloadFileWithProgress(res.headers.location, targetPath, onProgress, false)
           .then(resolve)
           .catch(reject);
       }
@@ -573,20 +511,34 @@ function downloadFileWithProgress(fileUrl, targetPath, onProgress) {
   });
 }
 
-// IPC: Download Update
-ipcMain.handle('download-update', async (event, { url, filename }) => {
+// IPC: Download Update with automatic API fallback
+ipcMain.handle('download-update', async (event, { url, assetUrl, filename }) => {
   try {
     const tempDir = app.getPath('temp');
     const safeName = (filename || 'E-Okul-Disiplin-AI-Pro-Setup.exe').replace(/[^a-zA-Z0-9._-]/g, '_');
     const targetPath = path.join(tempDir, safeName);
 
-    await downloadFileWithProgress(url, targetPath, (progress) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('update-download-progress', progress);
+    // Try primary URL first
+    try {
+      await downloadFileWithProgress(url, targetPath, (progress) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('update-download-progress', progress);
+        }
+      });
+      return { success: true, filePath: targetPath };
+    } catch (primaryErr) {
+      console.warn('Primary update download URL failed, attempting API asset fallback:', primaryErr.message);
+      // If primary failed (e.g. HTTP 504 on GitHub web frontend), fall back to GitHub REST API asset endpoint
+      if (assetUrl && assetUrl !== url) {
+        await downloadFileWithProgress(assetUrl, targetPath, (progress) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('update-download-progress', progress);
+          }
+        }, true);
+        return { success: true, filePath: targetPath };
       }
-    });
-
-    return { success: true, filePath: targetPath };
+      throw primaryErr;
+    }
   } catch (err) {
     console.error('Update download error:', err);
     return { success: false, error: err.message };

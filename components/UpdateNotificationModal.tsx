@@ -58,9 +58,8 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
       if (info && info.hasUpdate) {
         setUpdateInfo(info);
         setIsBannerVisible(true);
-        if (isManual) {
-          setIsModalOpen(true);
-        }
+        // Otomatik güncelleme bulunduğunda kullanıcıyı doğrudan bilgilendir
+        setIsModalOpen(true);
       } else {
         setUpdateInfo(info);
         if (isManual) {
@@ -83,6 +82,7 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
 
     const setupAsset = updateInfo.setupAsset;
     const downloadUrl = setupAsset?.browser_download_url || updateInfo.downloadUrl;
+    const assetUrl = setupAsset?.url;
     const filename = setupAsset?.name || `E-Okul-Disiplin-AI-Pro-Setup-v${updateInfo.latestVersion}.exe`;
 
     if (!window.electronAPI?.downloadUpdate) {
@@ -98,6 +98,7 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
     try {
       const res = await window.electronAPI.downloadUpdate({
         url: downloadUrl,
+        assetUrl,
         filename
       });
 

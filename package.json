@@ -1,7 +1,7 @@
 {
   "name": "e-okul-disiplin-ai-pro",
   "productName": "E-Okul Disiplin AI Pro",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "E-Okul Disiplin AI Pro - Okul Disiplin Süreçleri ve Evrak Yönetim Sistemi - By Abdullah Yanarateş",
   "author": {
     "name": "Abdullah Yanarateş"
@@ -81,12 +81,6 @@
           "arch": [
             "x64"
           ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -102,9 +96,6 @@
       "uninstallDisplayName": "E-Okul Disiplin AI Pro - By Abdullah Yanarateş",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true
-    },
-    "portable": {
-      "artifactName": "E-Okul-Disiplin-AI-Pro-Portable.${ext}"
     }
   }
 }

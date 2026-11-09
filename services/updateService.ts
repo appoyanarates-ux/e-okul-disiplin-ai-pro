@@ -5,7 +5,7 @@ export const getAppVersion = (): string => {
   if (typeof window !== 'undefined' && window.electronAPI?.version) {
     return window.electronAPI.version;
   }
-  return '1.1.2';
+  return '1.1.3';
 };
 
 export const GITHUB_REPO = 'appoyanarates-ux/e-okul-disiplin-ai-pro';
@@ -19,13 +19,17 @@ export interface UpdateInfo {
   publishedAt: string;
   downloadUrl: string;
   setupAsset?: {
+    id?: number;
     name: string;
     size: number;
+    url?: string;
     browser_download_url: string;
   };
   portableAsset?: {
+    id?: number;
     name: string;
     size: number;
+    url?: string;
     browser_download_url: string;
   };
 }
@@ -78,13 +82,29 @@ export async function checkForAppUpdates(): Promise<UpdateInfo | null> {
     const currentVersion = getAppVersion();
     const hasUpdate = compareVersions(cleanTag, currentVersion) > 0;
 
-    const setupAsset = release.assets?.find((a: any) => 
+    const setupAssetRaw = release.assets?.find((a: any) => 
       a.name.toLowerCase().includes('setup') && a.name.toLowerCase().endsWith('.exe')
     ) || release.assets?.find((a: any) => a.name.toLowerCase().endsWith('.exe'));
 
-    const portableAsset = release.assets?.find((a: any) => 
+    const portableAssetRaw = release.assets?.find((a: any) => 
       a.name.toLowerCase().includes('portable') && a.name.toLowerCase().endsWith('.exe')
     );
+
+    const setupAsset = setupAssetRaw ? {
+      id: setupAssetRaw.id,
+      name: setupAssetRaw.name,
+      size: setupAssetRaw.size,
+      url: setupAssetRaw.url,
+      browser_download_url: setupAssetRaw.browser_download_url
+    } : undefined;
+
+    const portableAsset = portableAssetRaw ? {
+      id: portableAssetRaw.id,
+      name: portableAssetRaw.name,
+      size: portableAssetRaw.size,
+      url: portableAssetRaw.url,
+      browser_download_url: portableAssetRaw.browser_download_url
+    } : undefined;
 
     return {
       hasUpdate,

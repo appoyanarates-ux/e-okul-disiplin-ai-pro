@@ -4,6 +4,21 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.1.3] - 2026-11-09
+
+### 🚀 Değişiklikler ve düzeltmeler
+- **Üst Menü Çubuğu Kaldırıldı:**
+  - Uygulama penceresinin üstünde görünen yerel menü çubuğu (`Dosya`, `Düzen`, `Görünüm`, `Yardım`) tamamen kaldırılarak modern, sade ve tam ekran yerel uygulama görünümüne kavuşturuldu.
+- **Alt Kayan Durum Kontrol Çubuğu Kaldırıldı:**
+  - Karar ve Evrak sayfalarında altta görünen kayan kontrol çubuğu (`ZoomControls`) kaldırıldı. Sayfa düzeni, kenar boşlukları ve yazdırma kontrolleri artık doğrudan sayfa üst işlem menüsünde temiz şekilde yer almaktadır.
+- **Otomatik Güncelleme Sistemi Güçlendirildi:**
+  - Uygulama açılışında yeni sürüm çıktığında kullanıcıya doğrudan güncelleme bilgilendirme penceresi sunulur.
+  - GitHub web sunucusunda yaşanabilecek geçici HTTP 504 gecikmelerine karşı, otomatik GitHub REST API indirme hattı (fallback) devreye sokuldu.
+- **Yalnızca Windows Kurulabilir Kurulum Dosyası (NSIS):**
+  - Taşınabilir (portable) gereksiz dosya derlemesi kaldırıldı, yalnızca Windows kurulum dosyası (`E-Okul-Disiplin-AI-Pro-Setup.exe`) yayınlanacak şekilde optimize edildi.
+
+---
+
 ## [1.1.2] - 2026-11-09
 
 ### 📐 Sayfa Düzeni & Kenar Boşlukları Açılır Menüsü ve Künye Defteri Geliştirmeleri

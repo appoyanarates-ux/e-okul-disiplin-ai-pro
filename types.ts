@@ -235,7 +235,7 @@ declare global {
       restoreBackup: (fileName: string) => Promise<{ success: boolean; data?: any; error?: string }>;
       createBackupNow: (data: any, note?: string) => Promise<{ success: boolean; filename?: string; targetPath?: string; error?: string }>;
       openExternal: (url: string) => Promise<void>;
-      downloadUpdate: (options: { url: string; filename?: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      downloadUpdate: (options: { url: string; assetUrl?: string; filename?: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
       quitAndInstall: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       onUpdateProgress: (callback: (data: { percent: number; transferred: number; total: number; speed: number }) => void) => () => void;
     };
