@@ -459,6 +459,7 @@ export const createDecisionDoc = (
       { title: "Kurul Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[1]?.mainName || "Öğretmen", duty: "Üye" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[2]?.mainName || "Öğretmen", duty: "Üye" },
+      ...(institution?.counselorName ? [{ title: institution.counselorTitle || "Okul Rehber Öğretmeni", name: institution.counselorName, duty: "Danışman" }] : []),
       { title: "Üye (Veli)", name: boardMembers?.[4]?.mainName || "Veli Temsilcisi", duty: "Üye" },
       { title: "UYGUNDUR\nOkul Müdürü (Tasdik)", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
@@ -663,6 +664,7 @@ export const createPenaltyRemovalDoc = (
       { title: "Kurul Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[1]?.mainName || "Öğretmen", duty: "Üye" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[2]?.mainName || "Öğretmen", duty: "Üye" },
+      ...(institution?.counselorName ? [{ title: institution.counselorTitle || "Okul Rehber Öğretmeni", name: institution.counselorName, duty: "Rehberlik Servisi" }] : []),
       { title: "Okul Müdürü (Onay)", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
     footerNote: "E-Okul Disiplin AI Pro - By Abdullah Yanarateş"
@@ -680,6 +682,9 @@ export const createMeetingSummonsDoc = (
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
   const memberList = (boardMembers || []).map((m, idx) => `${idx + 1}. ${m.role}: ${m.mainName || 'İmza'} (${m.mainTitle || 'Öğretmen'})`);
+  if (institution?.counselorName) {
+    memberList.push(`${memberList.length + 1}. Danışman Üye: ${institution.counselorName} (${institution.counselorTitle || 'Okul Rehber Öğretmeni'})`);
+  }
 
   return {
     id: `summons_${incident.code}`,

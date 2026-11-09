@@ -1518,8 +1518,18 @@ const Students = () => {
                                                             {s.registrationType || 'Yeni Kayıt'} • {s.boardingStatus || 'GÜNDÜZLÜ'}
                                                         </p>
                                                         <span className="block text-[10px] text-slate-500 mt-0.5">
-                                                            Burs: {s.scholarshipStatus || 'BURSSUZ'}
+                                                            Burs: {s.scholarshipStatus || 'BURSSUZ'}{s.registrationDate ? ` • Kayıt: ${s.registrationDate}` : ''}
                                                         </span>
+                                                        {s.previousSchoolInfo && (
+                                                            <span className="block text-[10px] text-indigo-600 mt-0.5 truncate" title={s.previousSchoolInfo}>
+                                                                Geldiği: {s.previousSchoolInfo}
+                                                            </span>
+                                                        )}
+                                                        {s.healthStatus && (
+                                                            <span className="block text-[10px] text-rose-600 mt-0.5">
+                                                                Kan Grubu / Sağlık: {s.healthStatus}
+                                                            </span>
+                                                        )}
                                                     </div>
 
                                                     <div>

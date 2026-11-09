@@ -88,17 +88,17 @@ export const cleanNumberStr = (val: unknown): string => {
 
 // Check if a line or cell looks like an e-Okul label header
 export const isHeaderLabel = (str: unknown): boolean => {
-  const cl = cleanTurkish(str).replace(/[:\s]/g, '');
+  const cl = cleanTurkish(str).replace(/[:\s]/g, '').replace(/ı/g, 'i');
   if (!cl) return false;
   const labels = [
-    'okulno', 'ogrencino', 'adi', 'soyadi', 'babaadi', 'anneadi',
+    'okulno', 'ogrencino', 'adi', 'soyadi', 'babaadi', 'anneadi', 'anaadi',
     'dogumyeri', 'dogumtarihi', 'dogumyeritarihi', 'nufuskimlikbilgileri',
-    'tckimlikno', 'ciltno', 'ili', 'ilcesi', 'ailesirano', 'sirano',
+    'tckimlikno', 'ciltno', 'ili', 'ilcesi', 'ilveilce', 'ilce', 'ailesirano', 'sirano',
     'bireysirano', 'mahallekoy', 'vernufusidaresi', 'cuzkayno', 'verilistarihi',
-    'okulbilgileri', 'yenikayitnakil', 'kabuledsinif', 'kabuledilensinif',
-    'sinif', 'sinifi', 'getogrbelgesi', 'sinavlisinavsiz', 'tarihnumarasi',
-    'yatiligunduzlu', 'veliadisoyadi', 'veliadi', 'burslulukdurumu',
-    'nakilgelmiseokulutarihi', 'adresi', 'ogrencininbasaridurumu', 'kunyedefteri'
+    'okulbilgileri', 'yenikayitnakil', 'kabuledsinif', 'kabuledilensinif', 'kabuledildigisinif',
+    'sinif', 'sinifi', 'getogrbelgesi', 'sinavlisinavsiz', 'sinavliyadasinavsiz', 'tarihnumarasi',
+    'yatiligunduzlu', 'veliadisoyadi', 'veliadi', 'burslulukdurumu', 'geldigiokul', 'geldigiokulunadi',
+    'alandali', 'alan/dali', 'kangrubu', 'nakilgelmiseokulutarihi', 'adresi', 'ogrencininbasaridurumu', 'kunyedefteri'
   ];
   return labels.some(l => cl === l || cl.startsWith(l));
 };
@@ -135,10 +135,21 @@ export const normalizePhone = (val: string): string => {
   return cleanStr(val);
 };
 
-// Normalize Grade string e.g. "5. Sınıf / A Şubesi" -> "5-A", "9/A" -> "9-A"
+// Normalize Grade string e.g. "5. Sınıf / A Şubesi" -> "5-A", "9/A" -> "9-A", "11 . Sınıf" -> "11. Sınıf"
 export const normalizeGrade = (rawGrade: string): string => {
   if (!rawGrade) return '';
   const g = cleanStr(rawGrade);
+
+  // If the string is purely a date like 19/08/2022, it is not a grade!
+  if (/^\s*\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\s*$/.test(g)) {
+    return '';
+  }
+
+  // If label itself e.g. "Sınıfı" or "Sınıf"
+  const cleanLabel = cleanTurkish(g).replace(/ı/g, 'i').replace(/\s+/g, '');
+  if (cleanLabel === 'sinif' || cleanLabel === 'sinifi') {
+    return '';
+  }
 
   // Match e.g. "5. Sınıf / A Şubesi", "9. Sınıf - B Şubesi", "10. Sınıf A Şubesi"
   const mebLongMatch = g.match(/(\d+)\s*\.?\s*Sınıf.*?([A-ZÇĞİÖŞÜa-zçğıöşü]+)\s*Şubesi/i);
@@ -146,10 +157,18 @@ export const normalizeGrade = (rawGrade: string): string => {
     return `${mebLongMatch[1]}-${mebLongMatch[2].toLocaleUpperCase('tr-TR')}`;
   }
 
-  // Match e.g. "9/A", "10-B", "5/A", "12-MES-A"
-  const slashDashMatch = g.match(/(\d{1,2})\s*[/ -]\s*([A-Za-z0-9ÇĞİÖŞÜçğıöşü-]+)/);
-  if (slashDashMatch) {
-    return `${slashDashMatch[1]}-${slashDashMatch[2].toLocaleUpperCase('tr-TR')}`;
+  // Match e.g. "11 . Sınıf", "9. Sınıf", "10 Sınıf"
+  const sinifOnlyMatch = g.match(/(\d{1,2})\s*\.?\s*Sınıf/i);
+  if (sinifOnlyMatch) {
+    return `${sinifOnlyMatch[1]}. Sınıf`;
+  }
+
+  // Match e.g. "9/A", "10-B", "5/A", "12-MES-A" (prevent dates like 19/08/2022)
+  if (!g.match(/\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/)) {
+    const slashDashMatch = g.match(/\b(\d{1,2})\s*[/ -]\s*([A-Za-zÇĞİÖŞÜçğıöşü][A-Za-z0-9ÇĞİÖŞÜçğıöşü-]*)\b/);
+    if (slashDashMatch) {
+      return `${slashDashMatch[1]}-${slashDashMatch[2].toLocaleUpperCase('tr-TR')}`;
+    }
   }
 
   // Match e.g. "9A", "10B", "5A"
@@ -180,7 +199,10 @@ export const countExtractedFields = (s: Partial<Student>): number => {
   if (s.boardingStatus) count++;
   if (s.scholarshipStatus) count++;
   if (s.registrationType || s.registrationDate) count++;
+  if (s.previousSchoolInfo) count++;
   if (s.volumeNo || s.familyOrderNo || s.orderNo) count++;
+  if (s.mesemBranch || s.mesemField) count++;
+  if (s.healthStatus) count++;
   return count;
 };
 
@@ -196,29 +218,205 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
   const student: Partial<Student> = {
     id: Math.random().toString(36).substring(2, 11),
     boardingStatus: 'GÜNDÜZLÜ',
-    scholarshipStatus: 'BURSSUZ'
+    scholarshipStatus: 'BURSSUZ',
+    registrationType: 'YENİ KAYIT'
   };
 
-  // 1. TC Kimlik No (11 digits anywhere in block, handling trailing .0)
-  const tcMatch = text.match(/\b([1-9]\d{10})(?:\.0+)?\b/);
-  if (tcMatch) student.tcNo = tcMatch[1];
-
-  // 2. Kabul Edilen Sınıf / Sınıfı
-  const gradeMatch =
-    text.match(/(\d{1,2})\s*\.?\s*Sınıf.*?([A-ZÇĞİÖŞÜa-zçğıöşü]+)\s*Şubesi/i) ||
-    text.match(/(?:kabul\s*ed.*?sınıf|sınıfı?)[:\s\t]+(\d{1,2}\s*[/ -]\s*[A-Za-z0-9]+)/i);
-  if (gradeMatch) {
-    student.grade = normalizeGrade(gradeMatch[0]);
-  }
-
-  // 3. Scan lines for Same-line / Tab-delimited / Lookahead Key-Value pairs
   let firstName = '';
   let lastName = '';
 
+  // 1. Primary 2D rawRows extraction (Excel grid coordinates)
+  if (rawRows && rawRows.length > 0) {
+    for (const r of rawRows) {
+      if (!Array.isArray(r)) continue;
+      const cleanCells = r.map(c => cleanStr(c)).filter(Boolean);
+      if (cleanCells.length === 0) continue;
+
+      const firstCell = cleanTurkish(r[0]);
+      const secondCell = r.length > 1 ? cleanTurkish(r[1]) : '';
+
+      // Okul No
+      if (!student.number && (firstCell.includes('okul no') || secondCell.includes('okul no') || firstCell.includes('ogrenci no') || secondCell.includes('ogrenci no'))) {
+        for (let c = r.length - 1; c >= 1; c--) {
+          const v = cleanNumberStr(r[c]);
+          if (v && /^\d+$/.test(v)) {
+            student.number = v;
+            break;
+          }
+        }
+      }
+
+      // Adı
+      if (!firstName && (firstCell === 'adı' || firstCell === 'adi')) {
+        const val = cleanCells[cleanCells.length - 1];
+        if (val && !cleanTurkish(val).includes('soyad') && !cleanTurkish(val).includes('baba')) {
+          firstName = val.trim();
+        }
+      }
+
+      // Soyadı
+      if (!lastName && (firstCell === 'soyadı' || firstCell === 'soyadi')) {
+        const val = cleanCells[cleanCells.length - 1];
+        if (val) lastName = val.trim();
+      }
+
+      // T.C. Kimlik No
+      if (!student.tcNo && (firstCell.includes('tc kimlik') || firstCell.includes('t.c. kimlik'))) {
+        for (let c = r.length - 1; c >= 1; c--) {
+          const v = cleanNumberStr(r[c]).replace(/\D/g, '');
+          if (is11DigitTc(v)) {
+            student.tcNo = v;
+            break;
+          }
+        }
+      }
+
+      // Baba Adı
+      if (!student.fatherName && (firstCell.includes('baba adı') || firstCell.includes('baba adi'))) {
+        student.fatherName = cleanCells[cleanCells.length - 1];
+      }
+
+      // Ana Adı / Anne Adı
+      if (!student.motherName && (firstCell.includes('ana adı') || firstCell.includes('anne adı') || firstCell.includes('ana adi') || firstCell.includes('anne adi'))) {
+        student.motherName = cleanCells[cleanCells.length - 1];
+      }
+
+      // Doğum Yeri ve Tarihi
+      if (!student.birthPlaceDate && firstCell.includes('doğum yeri')) {
+        student.birthPlaceDate = cleanCells[cleanCells.length - 1];
+      }
+
+      // İl ve İlçe
+      if (!student.province && (firstCell.includes('il ve ilçe') || firstCell.includes('il / ilçe') || firstCell.includes('ili ve ilcesi'))) {
+        const val = cleanCells[cleanCells.length - 1];
+        if (val.includes('-')) {
+          const parts = val.split('-').map(p => cleanStr(p));
+          student.province = parts[0];
+          student.district = parts[1] || '';
+        } else if (val.includes('/')) {
+          const parts = val.split('/').map(p => cleanStr(p));
+          student.province = parts[0];
+          student.district = parts[1] || '';
+        } else {
+          student.province = val;
+        }
+      } else if (!student.province && (firstCell === 'ili' || firstCell === 'il')) {
+        student.province = cleanCells[cleanCells.length - 1];
+      } else if (!student.district && (firstCell === 'ilçesi' || firstCell === 'ilcesi' || firstCell === 'ilçe')) {
+        student.district = cleanCells[cleanCells.length - 1];
+      }
+
+      // Mahalle / Köy
+      if (!student.neighborhood && firstCell.includes('mahalle')) {
+        student.neighborhood = cleanCells[cleanCells.length - 1];
+      }
+
+      // Cilt No
+      if (!student.volumeNo && firstCell.includes('cilt no')) {
+        student.volumeNo = cleanNumberStr(cleanCells[cleanCells.length - 1]);
+      }
+
+      // Aile Sıra No
+      if (!student.familyOrderNo && firstCell.includes('aile sıra')) {
+        student.familyOrderNo = cleanNumberStr(cleanCells[cleanCells.length - 1]);
+      }
+
+      // Sıra No (Birey Sıra No, excluding Aile Sıra)
+      if (!student.orderNo && !firstCell.includes('aile') && firstCell.includes('sıra no')) {
+        student.orderNo = cleanNumberStr(cleanCells[cleanCells.length - 1]);
+      }
+
+      // Geldiği Okulun Adı / Getirdiği Öğrenim Belgesi
+      if (!student.previousSchoolInfo && (firstCell.includes('geldiği okul') || secondCell.includes('geldiği okul') || firstCell.includes('öğrenim belgesi'))) {
+        const val = cleanCells[cleanCells.length - 1];
+        if (val && !cleanTurkish(val).includes('durumu') && !cleanTurkish(val).includes('türü')) {
+          student.previousSchoolInfo = val;
+          student.registrationType = 'NAKİL';
+        }
+      }
+
+      // Kabul Edildiği Sınıf ve Tarihi
+      if (firstCell.includes('kabul edildiği sınıf') || firstCell.includes('kabul ed. sınıf') || firstCell.includes('kabul ed')) {
+        const val = cleanCells[cleanCells.length - 1];
+        const dateMatch = val.match(/(\d{1,2}[./-]\d{1,2}[./-]\d{4})/);
+        if (dateMatch) {
+          student.registrationDate = dateMatch[1];
+        }
+        const gradeMatch = val.match(/(\d{1,2})\s*\.?\s*Sınıf/i);
+        if (gradeMatch) {
+          student.grade = `${gradeMatch[1]}. Sınıf`;
+        }
+      }
+
+      // Sınıfı
+      if (!student.grade && (firstCell === 'sınıfı' || firstCell === 'sinifi')) {
+        const val = cleanCells[cleanCells.length - 1];
+        const clVal = cleanTurkish(val).replace(/ı/g, 'i').replace(/\s+/g, '');
+        if (val && clVal !== 'sinif' && clVal !== 'sinifi') {
+          student.grade = normalizeGrade(val);
+        }
+      }
+
+      // Alan/Dalı
+      if (!student.mesemBranch && firstCell.includes('alan/dal')) {
+        const val = cleanCells[cleanCells.length - 1];
+        if (val && !cleanTurkish(val).includes('alan')) {
+          student.mesemBranch = val;
+          student.isMesem = true;
+        }
+      }
+
+      // Yatılı / Burslu / Gündüzlü
+      if (firstCell.includes('yatılı') || firstCell.includes('burslu') || firstCell.includes('gündüzlü')) {
+        const val = cleanTurkish(cleanCells[cleanCells.length - 1]);
+        if (val.includes('yatili')) student.boardingStatus = 'YATILI';
+        if (val.includes('gunduzlu')) student.boardingStatus = 'GÜNDÜZLÜ';
+        if (val.includes('burslu')) student.scholarshipStatus = 'BURSLU';
+      }
+
+      // Kan Grubu
+      if (firstCell.includes('kan grubu')) {
+        const val = cleanCells[cleanCells.length - 1];
+        if (val && !cleanTurkish(val).includes('kan')) {
+          student.healthStatus = `Kan Grubu: ${val}`;
+        }
+      }
+
+      // Sınavla Veya Sınavsız Alındığı
+      if (firstCell.includes('sınavla')) {
+        const val = cleanCells[cleanCells.length - 1];
+        if (val && !cleanTurkish(val).includes('alindi')) {
+          student.examStatus = val;
+        }
+      }
+
+      // Veli Adı
+      if (!student.parentName && (firstCell.includes('veli adı') || firstCell.includes('veli soyadı'))) {
+        student.parentName = cleanCells[cleanCells.length - 1];
+      }
+    }
+  }
+
+  // 2. Global text and regex fallbacks for any unpopulated fields
+  if (!student.tcNo) {
+    const tcMatch = text.match(/\b([1-9]\d{10})(?:\.0+)?\b/);
+    if (tcMatch) student.tcNo = tcMatch[1];
+  }
+
+  if (!student.grade) {
+    const gradeMatch =
+      text.match(/(\d{1,2})\s*\.?\s*Sınıf.*?([A-ZÇĞİÖŞÜa-zçğıöşü]+)\s*Şubesi/i) ||
+      text.match(/(?:kabul\s*ed.*?sınıf|sınıfı?)[:\s\t]+(\d{1,2}\s*[/ -]\s*[A-Za-z0-9]+)/i);
+    if (gradeMatch) {
+      student.grade = normalizeGrade(gradeMatch[0]);
+    }
+  }
+
+  // Line-by-line lookahead fallback
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const cl = cleanTurkish(line);
-    const parts = line.split('\t').map(p => cleanStr(p)).filter(Boolean);
+    const parts = line.split(/[\t,]+/).map(p => cleanStr(p)).filter(Boolean);
 
     // Okul No
     if (!student.number && (cl.includes('okul no') || cl.includes('öğrenci no') || cl.startsWith('no:'))) {
@@ -226,7 +424,7 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
       if (m) {
         student.number = cleanNumberStr(m[1]);
       } else if (parts.length >= 2) {
-        const candidate = cleanNumberStr(parts[1]);
+        const candidate = cleanNumberStr(parts[parts.length - 1]);
         if (/^\d+$/.test(candidate)) student.number = candidate;
       }
       if (!student.number) {
@@ -241,10 +439,10 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     // Adı
     if (!firstName && (cl.startsWith('adı:') || cl.startsWith('adi:') || cl === 'adı' || cl === 'adi' || cl.startsWith('adı ') || cl.startsWith('adi '))) {
       const m = line.match(/(?:adı|adi)[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+)$/i);
-      if (m && !cleanTurkish(m[1]).includes('soyad')) {
+      if (m && !cleanTurkish(m[1]).includes('soyad') && !cleanTurkish(m[1]).includes('baba')) {
         firstName = m[1].trim();
-      } else if (parts.length >= 2 && !cleanTurkish(parts[1]).includes('soyad')) {
-        firstName = parts[1];
+      } else if (parts.length >= 2 && !cleanTurkish(parts[parts.length - 1]).includes('soyad')) {
+        firstName = parts[parts.length - 1];
       }
       if (!firstName) {
         const nextVal = getNextValue(lines, i);
@@ -260,7 +458,7 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
       if (m) {
         lastName = m[1].trim();
       } else if (parts.length >= 2) {
-        lastName = parts[1];
+        lastName = parts[parts.length - 1];
       }
       if (!lastName) {
         const nextVal = getNextValue(lines, i);
@@ -271,12 +469,12 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     }
 
     // Baba Adı
-    if (!student.fatherName && cl.includes('baba adı')) {
+    if (!student.fatherName && (cl.includes('baba adı') || cl.includes('baba adi'))) {
       const m = line.match(/baba\s*adı[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+)$/i);
       if (m) {
         student.fatherName = m[1].trim();
       } else if (parts.length >= 2) {
-        student.fatherName = parts[1];
+        student.fatherName = parts[parts.length - 1];
       }
       if (!student.fatherName) {
         const nextVal = getNextValue(lines, i);
@@ -286,13 +484,13 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
       }
     }
 
-    // Anne Adı
-    if (!student.motherName && cl.includes('anne adı')) {
-      const m = line.match(/anne\s*adı[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+)$/i);
+    // Ana Adı / Anne Adı
+    if (!student.motherName && (cl.includes('anne adı') || cl.includes('ana adı') || cl.includes('ana adi') || cl.includes('anne adi'))) {
+      const m = line.match(/(?:anne|ana)\s*adı[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+)$/i);
       if (m) {
         student.motherName = m[1].trim();
       } else if (parts.length >= 2) {
-        student.motherName = parts[1];
+        student.motherName = parts[parts.length - 1];
       }
       if (!student.motherName) {
         const nextVal = getNextValue(lines, i);
@@ -304,7 +502,7 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
 
     // Doğum Yeri / Tarihi
     if (!student.birthPlaceDate && cl.includes('doğum yeri')) {
-      const afterColon = line.split(/[:\t]+/);
+      const afterColon = line.split(/[:\t,]+/);
       const filtered = afterColon.filter(p => cleanStr(p) && !cleanTurkish(p).includes('doğum') && !cleanTurkish(p).includes('dogum'));
       if (filtered.length > 0) {
         student.birthPlaceDate = filtered.join(' - ');
@@ -316,76 +514,26 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
       }
     }
 
-    // T.C. Kimlik No (Line specific fallback)
-    if (!student.tcNo && (cl.includes('t.c. kimlik no') || cl.includes('tc kimlik no'))) {
-      const m = line.match(/(\d{11})(?:\.0+)?/);
-      if (m && is11DigitTc(m[1])) {
-        student.tcNo = m[1];
-      } else {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal) {
-          const cand = cleanNumberStr(nextVal).replace(/\D/g, '');
-          if (is11DigitTc(cand)) student.tcNo = cand;
-        }
+    // İl ve İlçe
+    if (!student.province && (cl.includes('il ve ilçe') || cl.includes('il / ilçe') || cl.includes('ili ve ilcesi'))) {
+      const val = parts.length >= 2 ? parts[parts.length - 1] : '';
+      if (val.includes('-')) {
+        const p = val.split('-').map(s => cleanStr(s));
+        student.province = p[0];
+        student.district = p[1] || '';
+      } else if (val.includes('/')) {
+        const p = val.split('/').map(s => cleanStr(s));
+        student.province = p[0];
+        student.district = p[1] || '';
+      } else if (val) {
+        student.province = val;
       }
-    }
-
-    // Cilt No
-    if (!student.volumeNo && (cl.includes('cilt no') || cl.includes('cilt:'))) {
-      const m = line.match(/cilt\s*(?:no)?[:\s\t]+(\d+(?:\.0+)?)/i);
-      if (m) {
-        student.volumeNo = cleanNumberStr(m[1]);
-      } else {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal && /^\d+(?:\.0+)?$/.test(nextVal)) student.volumeNo = cleanNumberStr(nextVal);
-      }
-    }
-    
-    // Aile Sıra No
-    if (!student.familyOrderNo && (cl.includes('aile sıra') || cl.includes('aile sira'))) {
-      const m = line.match(/aile\s*(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+(?:\.0+)?)/i);
-      if (m) {
-        student.familyOrderNo = cleanNumberStr(m[1]);
-      } else {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal && /^\d+(?:\.0+)?$/.test(nextVal)) student.familyOrderNo = cleanNumberStr(nextVal);
-      }
-    }
-
-    // Sıra No / Birey Sıra No (Must NOT capture the number belonging to Aile Sıra No)
-    if (!student.orderNo) {
-      const bireyMatch = line.match(/birey\s*(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+(?:\.0+)?)/i);
-      if (bireyMatch) {
-        student.orderNo = cleanNumberStr(bireyMatch[1]);
-      } else {
-        const regex = /(?:(aile\s*)?(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+(?:\.0+)?))/gi;
-        let match;
-        while ((match = regex.exec(line)) !== null) {
-          if (!match[1]) {
-            student.orderNo = cleanNumberStr(match[2]);
-            break;
-          }
-        }
-      }
-      if (!student.orderNo && (cl === 'sıra no:' || cl === 'sira no:' || cl === 'sıra no' || cl === 'sira no')) {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal && /^\d+(?:\.0+)?$/.test(nextVal)) student.orderNo = cleanNumberStr(nextVal);
-      }
-    }
-
-    // Nüfus İli
-    if (!student.province && (cl.startsWith('ili:') || cl.startsWith('il:') || cl === 'ili' || cl === 'il')) {
+    } else if (!student.province && (cl.startsWith('ili:') || cl.startsWith('il:') || cl === 'ili' || cl === 'il')) {
       const m = line.match(/(?:ili|il)[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?=\s+(?:aile|cilt|sıra|$))/i);
       if (m) {
         student.province = m[1].trim();
       } else if (parts.length >= 2) {
-        student.province = parts[1];
-      }
-      if (!student.province) {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
-          student.province = nextVal.trim();
-        }
+        student.province = parts[parts.length - 1];
       }
     }
 
@@ -395,13 +543,7 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
       if (m) {
         student.district = m[1].trim();
       } else if (parts.length >= 2) {
-        student.district = parts[1];
-      }
-      if (!student.district) {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
-          student.district = nextVal.trim();
-        }
+        student.district = parts[parts.length - 1];
       }
     }
 
@@ -411,75 +553,30 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
       if (m) {
         student.neighborhood = m[1].trim();
       } else if (parts.length >= 2) {
-        student.neighborhood = parts[1];
+        student.neighborhood = parts[parts.length - 1];
       }
-      if (!student.neighborhood) {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal && !isHeaderLabel(nextVal)) {
-          student.neighborhood = nextVal.trim();
+    }
+
+    // Geldiği Okul
+    if (!student.previousSchoolInfo && (cl.includes('geldiği okul') || cl.includes('geldigi okul') || cl.includes('getirdiği öğrenim'))) {
+      if (parts.length >= 2) {
+        const cand = parts[parts.length - 1];
+        if (cand && !cleanTurkish(cand).includes('durumu') && !cleanTurkish(cand).includes('türü')) {
+          student.previousSchoolInfo = cand;
+          student.registrationType = 'NAKİL';
         }
       }
     }
 
-    // Veli Adı, Soyadı
-    if (!student.parentName && cl.includes('veli adı')) {
-      const m = line.match(/veli\s*adı.*?[:\s\t]+([A-Za-zÇĞİÖŞÜçğıöşü\s]+?)(?=\s+(?:bursluluk|$))/i);
-      if (m) {
-        student.parentName = m[1].trim();
-      } else if (parts.length >= 2) {
-        student.parentName = parts[1];
+    // Kabul Edildiği Sınıf ve Tarihi
+    if (cl.includes('kabul edildiği sınıf') || cl.includes('kabul ed. sınıf') || cl.includes('kabul ed')) {
+      const dateMatch = line.match(/(\d{1,2}[./-]\d{1,2}[./-]\d{4})/);
+      if (dateMatch && !student.registrationDate) {
+        student.registrationDate = dateMatch[1];
       }
-      if (!student.parentName) {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal && !isHeaderLabel(nextVal) && /^[A-Za-zÇĞİÖŞÜçğıöşü\s]+$/.test(nextVal)) {
-          student.parentName = nextVal.trim();
-        }
-      }
-    }
-
-    // Telefon
-    if (!student.parentPhone && (cl.includes('telefon') || cl.includes('cep') || cl.includes('gsm'))) {
-      const phoneMatch = line.match(/(?:0|\+90)?\s?5\d{2}\s?\d{3}\s?\d{2}\s?\d{2}/) || line.match(/[:\s\t]+([0-9\s+() -]+)/);
-      if (phoneMatch) student.parentPhone = normalizePhone(phoneMatch[1] || phoneMatch[0]);
-    }
-
-    // İkametgâh Adresi
-    if (!student.address && cl.startsWith('adresi:')) {
-      const m = line.match(/adresi[:\s\t]+(.*)$/i);
-      if (m && m[1].trim()) student.address = m[1].trim();
-      else if (parts.length >= 2) student.address = parts[1];
-    }
-
-    // Kabul Ed. Sınıf (if not yet found)
-    if (!student.grade && (cl.includes('kabul ed') || cl.includes('sınıf /'))) {
-      const m = line.match(/(\d{1,2}\s*\.?\s*Sınıf.*?Şubesi|\d{1,2}\s*[/ -]\s*[A-Za-z0-9]+)/i);
-      if (m) {
-        student.grade = normalizeGrade(m[1]);
-      } else {
-        const nextVal = getNextValue(lines, i);
-        if (nextVal) {
-          student.grade = normalizeGrade(nextVal);
-        }
-      }
-    }
-  }
-
-  // 4. Sequential Stacked Labels Detection (User's PDF e-Okul format)
-  // If number or name was not resolved, resolve via sequential label-to-value matching
-  if (!student.number || !firstName) {
-    const okulIdx = lines.findIndex(l => cleanTurkish(l).startsWith('okul no') || cleanTurkish(l).includes('ogrenci no'));
-    if (okulIdx !== -1) {
-      const sub = lines.slice(okulIdx, Math.min(lines.length, okulIdx + 25));
-      const vals = sub.filter(l => !isHeaderLabel(l));
-
-      if (vals.length >= 3) {
-        const nCand = cleanNumberStr(vals[0]);
-        if (!student.number && /^\d+$/.test(nCand)) student.number = nCand;
-        if (!firstName) firstName = vals[1];
-        if (!lastName) lastName = vals[2];
-        if (!student.fatherName && vals[3]) student.fatherName = vals[3];
-        if (!student.motherName && vals[4]) student.motherName = vals[4];
-        if (!student.birthPlaceDate && vals[5]) student.birthPlaceDate = vals[5];
+      const gradeMatch = line.match(/(\d{1,2})\s*\.?\s*Sınıf/i);
+      if (gradeMatch && !student.grade) {
+        student.grade = `${gradeMatch[1]}. Sınıf`;
       }
     }
   }
@@ -489,133 +586,17 @@ export const parseSingleStudentBlock = (lines: string[], rawRows?: unknown[][]):
     student.name = `${firstName} ${lastName}`.trim();
   }
 
-  // Sequential Nüfus fallback (User's PDF format)
-  if (!student.province) {
-    const nufusIdx = lines.findIndex(l => cleanTurkish(l).includes('nufus kimlik'));
-    if (nufusIdx !== -1) {
-      const okulBilgiIdx = lines.findIndex(l => cleanTurkish(l).includes('okul bilgi'));
-      const nufusLines = lines.slice(nufusIdx + 1, okulBilgiIdx !== -1 ? okulBilgiIdx : lines.length);
-      const vals = nufusLines.filter(l => !isHeaderLabel(l));
-
-      if (vals.length >= 4) {
-        if (!student.tcNo && is11DigitTc(vals[0])) student.tcNo = cleanNumberStr(vals[0]);
-        if (!student.province) student.province = vals[1];
-        if (!student.district) student.district = vals[2];
-        if (!student.neighborhood) student.neighborhood = vals[3];
-      }
-      const nums = vals.map(v => cleanNumberStr(v)).filter(v => /^\d+$/.test(v));
-      if (nums.length >= 4) {
-        if (!student.volumeNo) student.volumeNo = nums[1];
-        if (!student.familyOrderNo) student.familyOrderNo = nums[2];
-        if (!student.orderNo || (student.orderNo === student.familyOrderNo && nums[3] !== nums[2])) {
-          student.orderNo = nums[3];
-        }
-      }
-    }
-  }
-
-  // Sequential Veli & Okul fallback (User's PDF format)
+  // Parent name fallback
   if (!student.parentName) {
-    const okulBilgiIdx = lines.findIndex(l => cleanTurkish(l).includes('okul bilgi'));
-    if (okulBilgiIdx !== -1) {
-      const okulLines = lines.slice(okulBilgiIdx + 1);
-      const vals = okulLines.filter(
-        l => !isHeaderLabel(l) && !cleanTurkish(l).includes('basari') && !cleanTurkish(l).includes('ogrenci')
-      );
-      for (const v of vals) {
-        if (lastName && v.includes(lastName) && !v.includes(firstName)) {
-          student.parentName = v;
-          break;
-        }
-      }
-    }
+    student.parentName = student.fatherName || student.motherName || '';
   }
 
-  // General Statuses
-  student.boardingStatus = text.includes('YATILI') && !text.includes('GÜNDÜZLÜ') ? 'YATILI' : 'GÜNDÜZLÜ';
-  student.scholarshipStatus = text.includes('BURSLU') && !text.includes('BURSSUZ') ? 'BURSLU' : 'BURSSUZ';
-  student.registrationType = text.includes('NAKİL') ? 'NAKİL' : 'YENİ KAYIT';
-
-  // 2D rawRows extraction if available (Excel grid coordinates)
-  if (rawRows && rawRows.length > 0) {
-    for (const r of rawRows) {
-      if (!Array.isArray(r)) continue;
-      for (let c = 0; c < r.length; c++) {
-        const cell = cleanTurkish(r[c]);
-        // Okul No cell
-        if (!student.number && (cell.startsWith('okul no') || cell.includes('ogrenci no'))) {
-          for (let n = c + 1; n < Math.min(c + 5, r.length); n++) {
-            const v = cleanNumberStr(r[n]);
-            if (v && /^\d+$/.test(v)) {
-              student.number = v;
-              break;
-            }
-          }
-        }
-        // T.C. Kimlik No cell
-        if (!student.tcNo && (cell.includes('tc kimlik') || cell.includes('t.c. kimlik'))) {
-          for (let n = c + 1; n < r.length; n++) {
-            const v = cleanNumberStr(r[n]).replace(/\D/g, '');
-            if (is11DigitTc(v)) {
-              student.tcNo = v;
-              break;
-            }
-          }
-        }
-        // Kabul Ed. Sınıf cell
-        if (!student.grade && cell.includes('kabul ed')) {
-          for (let n = c + 1; n < r.length; n++) {
-            const v = cleanStr(r[n]);
-            if (v && /\d/.test(v)) {
-              student.grade = normalizeGrade(v);
-              break;
-            }
-          }
-        }
-        // Cilt No cell
-        if (!student.volumeNo && (cell === 'cilt no' || cell === 'cilt no:' || cell === 'cilt:')) {
-          for (let n = c + 1; n < Math.min(c + 4, r.length); n++) {
-            const v = cleanNumberStr(r[n]).replace(/\D/g, '');
-            if (v && v.length <= 6) {
-              student.volumeNo = v;
-              break;
-            }
-          }
-        }
-        // Aile Sıra No cell
-        if (cell.includes('aile sıra') || cell.includes('aile sira')) {
-          for (let n = c + 1; n < Math.min(c + 4, r.length); n++) {
-            const v = cleanNumberStr(r[n]).replace(/\D/g, '');
-            if (v && v.length <= 8) {
-              student.familyOrderNo = v;
-              break;
-            }
-          }
-        }
-        // Sıra No / Birey Sıra No cell (Distinct from Aile Sıra No!)
-        if (!cell.includes('aile') && (cell === 'sıra no' || cell === 'sıra no:' || cell === 'sira no' || cell === 'sira no:' || cell.includes('birey sıra') || cell.includes('birey sira'))) {
-          for (let n = c + 1; n < Math.min(c + 4, r.length); n++) {
-            const v = cleanNumberStr(r[n]).replace(/\D/g, '');
-            if (v && v.length <= 8) {
-              student.orderNo = v;
-              break;
-            }
-          }
-        }
-      }
-    }
+  // Boarding & Scholarship status
+  if (text.includes('YATILI') && !text.includes('GÜNDÜZLÜ')) {
+    student.boardingStatus = 'YATILI';
   }
-
-  // Final safeguard: Verify that orderNo does not accidentally mirror familyOrderNo
-  if (student.orderNo && student.familyOrderNo && student.orderNo === student.familyOrderNo) {
-    const regex = /(?:(aile\s*)?(?:sıra|sira)(?:\s*no)?[:\s\t]+(\d+))/gi;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      if (!match[1] && match[2] !== student.familyOrderNo) {
-        student.orderNo = cleanNumberStr(match[2]);
-        break;
-      }
-    }
+  if (text.includes('BURSLU') && !text.includes('BURSSUZ')) {
+    student.scholarshipStatus = 'BURSLU';
   }
 
   return student;
@@ -637,13 +618,12 @@ export const parseCardExcel = (jsonData: unknown[][]): ParsedStudentWithStats[] 
     if (!Array.isArray(row)) continue;
     for (let c = 0; c < row.length; c++) {
       const val = cleanTurkish(row[c]);
-      if (val.startsWith('okul no') || val.includes('okul no:') || val.includes('ogrenci no:')) {
+      if (val.includes('okul no') || val.includes('ogrenci no')) {
         okulCols.add(c);
       }
     }
   }
 
-  // Fallback to checking "T.C. Kimlik" or "Künye" columns if no "Okul No" detected
   if (okulCols.size === 0) {
     for (let r = 0; r < jsonData.length; r++) {
       const row = jsonData[r];
@@ -658,7 +638,6 @@ export const parseCardExcel = (jsonData: unknown[][]): ParsedStudentWithStats[] 
   }
 
   const sortedCols = Array.from(okulCols).sort((a, b) => a - b);
-  // Filter columns that are very close to each other (e.g. within 4 columns) to avoid duplicate bands
   const filteredCols: number[] = [];
   for (const col of sortedCols) {
     if (filteredCols.length === 0 || col - filteredCols[filteredCols.length - 1] > 4) {
@@ -669,8 +648,8 @@ export const parseCardExcel = (jsonData: unknown[][]): ParsedStudentWithStats[] 
   const columnBands: Array<{ startCol: number; endCol?: number }> = [];
   if (filteredCols.length > 1) {
     for (let i = 0; i < filteredCols.length; i++) {
-      const startCol = filteredCols[i];
-      const endCol = i + 1 < filteredCols.length ? filteredCols[i + 1] : undefined;
+      const startCol = i === 0 ? 0 : Math.max(0, filteredCols[i] - 1);
+      const endCol = i + 1 < filteredCols.length ? Math.max(0, filteredCols[i + 1] - 1) : undefined;
       columnBands.push({ startCol, endCol });
     }
   } else {
@@ -691,7 +670,11 @@ export const parseCardExcel = (jsonData: unknown[][]): ParsedStudentWithStats[] 
       if (!Array.isArray(row)) continue;
       const rowStr = row.map(c => cleanTurkish(c)).join(' ');
 
-      if (rowStr.startsWith('okul no') || rowStr.includes('okul no:') || rowStr.includes('ogrenci no:')) {
+      if (
+        rowStr.includes('okul no') || 
+        rowStr.includes('ogrenci no') || 
+        (rowStr.includes('nufus bilgileri') && rowStr.includes('okul no'))
+      ) {
         startRowIndices.push(r);
       }
     }
@@ -984,7 +967,13 @@ export const parseStudentPastedText = (
     const studentStarts: number[] = [];
     for (let i = 0; i < lines.length; i++) {
       const cl = cleanTurkish(lines[i]);
-      if (cl.startsWith('okul no') || cl.includes('kunye defteri') || cl.startsWith('ogrenci kunye')) {
+      if (
+        cl.startsWith('okul no') ||
+        cl.includes('okul no') ||
+        (cl.includes('nufus bilgileri') && cl.includes('okul no')) ||
+        cl.startsWith('ogrenci kunye') ||
+        (cl.includes('kunye defteri') && i < 2)
+      ) {
         studentStarts.push(i);
       }
     }
@@ -998,7 +987,12 @@ export const parseStudentPastedText = (
       const start = studentStarts[k];
       const end = k + 1 < studentStarts.length ? studentStarts[k + 1] : lines.length;
       const subLines = lines.slice(start, end);
-      const student = parseSingleStudentBlock(subLines);
+      const subRows = subLines.map(l => {
+        if (l.includes('\t')) return l.split('\t').map(c => cleanStr(c));
+        if (l.includes(';')) return l.split(';').map(c => cleanStr(c));
+        return l.split(/\s{2,}/).map(c => cleanStr(c));
+      });
+      const student = parseSingleStudentBlock(subLines, subRows);
 
       if (student.number || student.name || student.tcNo) {
         students.push({

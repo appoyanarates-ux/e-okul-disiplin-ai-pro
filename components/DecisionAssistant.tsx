@@ -2202,8 +2202,8 @@ const DecisionAssistant = () => {
                 <td style="border:1px solid #ccc; padding:6px;">:</td>
             </tr>
             <tr>
-                <td style="border:1px solid #ccc; padding:6px; font-weight:bold;">Sınıf Reh. Öğretmeni</td>
-                <td style="border:1px solid #ccc; padding:6px;">:</td>
+                <td style="border:1px solid #ccc; padding:6px; font-weight:bold;">Sınıf / Okul Reh. Öğretmeni</td>
+                <td style="border:1px solid #ccc; padding:6px;">: ${institution.counselorName ? `<b>${institution.counselorName}</b> (${institution.counselorTitle || 'Okul Rehber Öğretmeni'})` : ''}</td>
             </tr>
             <tr>
                 <td style="border:1px solid #ccc; padding:6px; font-weight:bold;">Sözlü Uyarı Sayısı</td>
@@ -2383,6 +2383,13 @@ const DecisionAssistant = () => {
                 <td style="border:1px solid black; padding:8px;">${formatDate(meetingData.date)}</td>
                 <td style="border:1px solid black; padding:8px;"></td>
              </tr>`).join('')}
+             ${institution.counselorName ? `
+             <tr>
+                <td style="border:1px solid black; padding:8px;"><b>${institution.counselorName}</b></td>
+                <td style="border:1px solid black; padding:8px;">${institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni'} (Danışman Üye)</td>
+                <td style="border:1px solid black; padding:8px;">${formatDate(meetingData.date)}</td>
+                <td style="border:1px solid black; padding:8px;"></td>
+             </tr>` : ''}
         </table>
         `;
     }
@@ -2648,7 +2655,7 @@ const DecisionAssistant = () => {
                  <td style="padding:20px;"><b>Üye</b><br><br><br>Adı Soyadı<br>İmza</td>
              </tr>
              <tr>
-                 <td style="padding:20px;"><b>Rehber Öğretmen</b><br><br><br>Adı Soyadı<br>İmza</td>
+                 <td style="padding:20px;"><b>Rehber Öğretmen</b><br><br><br>${institution.counselorName || 'Adı Soyadı'}<br>İmza</td>
                  <td style="padding:20px;"><b>Kurul Başkanı</b><br><br><br>${boardPresident}<br>İmza</td>
                  <td style="padding:20px;"><b>Okul Aile B. Temsilcisi</b><br><br><br>Adı Soyadı<br>İmza</td>
              </tr>
@@ -2694,8 +2701,8 @@ const DecisionAssistant = () => {
         <div class="signature-block avoid-break" style="margin-top:10px; text-align:center; font-size:9.5pt;">
              Tarih : ${formDateStr}<br>
              İmza : ........................<br><br>
-             Adı Soyadı : ........................<br>
-             Psikolojik Danışman / Rehberlik Öğretmeni
+             Adı Soyadı : <b>${institution.counselorName || '........................'}</b><br>
+             ${institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni'}
         </div>
         `;
     }
@@ -2780,7 +2787,7 @@ const DecisionAssistant = () => {
             </tr>
             <tr>
                 <td style="text-align:left; padding-top:6px;"><b>Tarih &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</b> ${formDateStr} - ${formTimeStr}</td>
-                <td></td>
+                <td style="text-align:center; padding-top:6px;">${institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni'}</td>
             </tr>
             <tr>
                 <td style="text-align:left; padding-top:6px;"><b>İmzası &nbsp;&nbsp;&nbsp;&nbsp;:</b> ........................................</td>
@@ -2788,7 +2795,7 @@ const DecisionAssistant = () => {
             </tr>
             <tr>
                 <td style="text-align:left; padding-top:6px;"><b>Adı ve Soyadı:</b> ${s.name}</td>
-                <td style="text-align:center; padding-top:6px;">........................................</td>
+                <td style="text-align:center; padding-top:6px;"><b>${institution.counselorName || '........................................'}</b></td>
             </tr>
         </table>
         `;
@@ -3083,8 +3090,9 @@ const DecisionAssistant = () => {
                     İmza: ........................................
                 </td>
                 <td style="width:50%;">
-                    <b>Görüşmeyi Yapan</b><br>
-                    <b>${boardPresident}</b><br><br>
+                    <b>Görüşmeyi Yapan Yetkili / Rehberlik</b><br>
+                    <b>${institution.counselorName || boardPresident}</b><br>
+                    <span style="font-size:8pt; color:#444;">${institution.counselorName ? (institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni') : 'Öğr. Dav. Değ. Kur. Başkanı'}</span><br>
                     İmza: ........................................
                 </td>
             </tr>
@@ -3165,8 +3173,9 @@ const DecisionAssistant = () => {
                     İmza: ........................................
                 </td>
                 <td style="width:50%;">
-                    <b>Görüşmeyi Yapan Yetkili</b><br>
-                    <b>${boardPresident}</b><br><br>
+                    <b>Görüşmeyi Yapan Yetkili / Rehberlik</b><br>
+                    <b>${institution.counselorName || boardPresident}</b><br>
+                    <span style="font-size:8pt; color:#444;">${institution.counselorName ? (institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni') : 'Öğr. Dav. Değ. Kur. Başkanı'}</span><br>
                     İmza: ........................................
                 </td>
             </tr>

@@ -687,7 +687,42 @@ const Settings = () => {
 
         {/* TAB 2: KURUL ÜYELERİ */}
         {activeTab === 'board' && (
-           <div className="animate-fade-in">
+           <div className="animate-fade-in space-y-6">
+             {/* OKUL REHBER ÖĞRETMENİ / REHBERLİK SERVİSİ ALANI */}
+             <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/80 rounded-xl p-5 shadow-xs">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
+                        <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-800">Okul Rehber Öğretmeni / Psikolojik Danışman</h3>
+                        <p className="text-xs text-slate-500">Disiplin kurulu sürecinde görüş bildiren, evraklarda (İfade tutanağı, Rehberlik Görüş Formu, Öğrenci Bilgileri vb.) yer alan rehber öğretmen bilgisi.</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Rehber Öğretmen Adı Soyadı</label>
+                        <input 
+                            type="text"
+                            value={institution.counselorName || ''}
+                            onChange={(e) => handleInstitutionChange('counselorName', e.target.value)}
+                            placeholder="Örn: Ayşe YILMAZ"
+                            className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white outline-none font-medium text-slate-800 text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Görevi / Ünvanı</label>
+                        <input 
+                            type="text"
+                            value={institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni'}
+                            onChange={(e) => handleInstitutionChange('counselorTitle', e.target.value)}
+                            placeholder="Psikolojik Danışman / Rehberlik Öğretmeni"
+                            className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white outline-none font-medium text-slate-800 text-sm"
+                        />
+                    </div>
+                </div>
+             </div>
+
              <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm mb-4">
                 <table className="w-full text-left border-collapse">
                     <thead>

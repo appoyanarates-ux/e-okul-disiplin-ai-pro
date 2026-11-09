@@ -125,6 +125,8 @@ export interface Institution {
   province: string;
   district: string;
   managerName: string; // Müdür Adı
+  counselorName?: string; // Okul Rehber Öğretmeni / Psikolojik Danışman
+  counselorTitle?: string; // Rehber Öğretmen Ünvanı / Görevi
   address: string;
   phone: string;
   fax: string;

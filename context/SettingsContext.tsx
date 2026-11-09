@@ -22,6 +22,8 @@ const defaultInstitution: Institution = {
   province: '',
   district: '',
   managerName: '',
+  counselorName: '',
+  counselorTitle: 'Psikolojik Danışman / Rehberlik Öğretmeni',
   address: '',
   phone: '',
   fax: '',
