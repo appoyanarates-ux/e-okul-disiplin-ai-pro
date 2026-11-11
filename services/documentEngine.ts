@@ -1,4 +1,5 @@
 import { Incident, Student, Institution, BoardMember } from '../types';
+import { getBoardInfo } from './boardHelpers';
 
 export interface DocumentSection {
   type: 'paragraph' | 'keyValueGrid' | 'table' | 'bulletList' | 'notice' | 'heading';
@@ -86,8 +87,12 @@ const getInstitutionHeader = (inst?: Institution): string => {
     const district = inst.district ? `${inst.district.toUpperCase()} / ` : '';
     return `T.C.\n${province}${district}${inst.name.toUpperCase()}`;
   }
-  return "T.C.\nMİLLÎ EĞİTİM BAKANLIĞI\nÖĞRENCİ ÖDÜL VE DİSİPLİN KURULU BAŞKANLIĞI";
+  const boardInfo = getBoardInfo(inst?.type);
+  return `T.C.\nMİLLÎ EĞİTİM BAKANLIĞI\n${boardInfo.boardNameUpper} BAŞKANLIĞI`;
 };
+
+const getEnginePresidentName = (boardInfo: ReturnType<typeof getBoardInfo>): string =>
+  boardInfo.presidentName.includes('..') ? boardInfo.presidentTitle : boardInfo.presidentName;
 
 // 1. DİSİPLİN OLAY TUTANAĞI VE İNCELEME RAPORU
 export const createIncidentReportDoc = (
@@ -96,6 +101,7 @@ export const createIncidentReportDoc = (
   institution?: Institution,
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   const involvedRows: (string | number)[][] = incident.involvedStudents.map((inv, idx) => {
     const s = students.find(st => st.id === inv.studentId);
     const roleText = inv.role === 'suspect' ? 'Fail / Şüpheli' : inv.role === 'witness' ? 'Tanık' : 'Mağdur';
@@ -112,7 +118,7 @@ export const createIncidentReportDoc = (
   return {
     id: `incident_${incident.code}`,
     title: "DİSİPLİN OLAYI VE SORUŞTURMA İNCELEME RAPORU",
-    subtitle: "Öğrenci Ödül ve Disiplin Kurulu İnceleme Evrakı",
+    subtitle: `${boardInfo.boardName} İnceleme Evrakı`,
     institutionName: getInstitutionHeader(institution),
     academicYear: institution?.year ? `${institution.year} Eğitim-Öğretim Yılı` : undefined,
     date: incident.date,
@@ -150,7 +156,7 @@ export const createIncidentReportDoc = (
       }
     ],
     signatures: [
-      { title: "Disiplin Kurulu Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Başyardımcısı / Yrd.", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[1]?.mainName || "Öğretmen", duty: "Üye" },
       { title: "Okul Müdürü (Tasdik)", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
@@ -165,6 +171,7 @@ export const createDisciplineRegisterDoc = (
   institution?: Institution,
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   const rows: (string | number)[][] = [];
   let count = 0;
 
@@ -197,7 +204,7 @@ export const createDisciplineRegisterDoc = (
 
   return {
     id: `discipline_register_${new Date().getFullYear()}`,
-    title: "ÖĞRENCİ ÖDÜL VE DİSİPLİN KURULU KARAR DEFTERİ",
+    title: `${boardInfo.boardNameUpper} KARAR DEFTERİ`,
     subtitle: "Millî Eğitim Bakanlığı Resmi Karar Defteri Çizelgesi",
     institutionName: getInstitutionHeader(institution),
     academicYear: institution?.year ? `${institution.year} Eğitim-Öğretim Yılı` : undefined,
@@ -212,7 +219,7 @@ export const createDisciplineRegisterDoc = (
       }
     ],
     signatures: [
-      { title: "Kurul Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[1]?.mainName || "Öğretmen", duty: "Üye" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[2]?.mainName || "Öğretmen", duty: "Üye" },
       { title: "Üye (Veli)", name: boardMembers?.[4]?.mainName || "Okul Aile Birliği", duty: "Veli Temsilcisi" },
@@ -226,8 +233,10 @@ export const createDisciplineRegisterDoc = (
 export const createStudentListDoc = (
   students: Student[],
   incidents: Incident[] = [],
-  institution?: Institution
+  institution?: Institution,
+  boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   const rows: (string | number)[][] = students.map((s, idx) => {
     const score = calculateStudentScore(s, incidents);
     return [
@@ -260,7 +269,7 @@ export const createStudentListDoc = (
       }
     ],
     signatures: [
-      { title: "Disiplin Kurulu Başkanı", name: "Müdür Yardımcısı", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Okul Müdürü", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
     footerNote: "E-Okul Disiplin AI Pro - By Abdullah Yanarateş"
@@ -274,6 +283,7 @@ export const createSingleStudentDoc = (
   institution?: Institution,
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   const score = calculateStudentScore(student, incidents);
   const studentIncidents = incidents.filter(inc =>
     inc.involvedStudents.some(inv => inv.studentId === student.id)
@@ -347,7 +357,7 @@ export const createSingleStudentDoc = (
       }
     ],
     signatures: [
-      { title: "Disiplin Kurulu Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Okul Müdürü", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
     footerNote: "E-Okul Disiplin AI Pro - By Abdullah Yanarateş"
@@ -413,9 +423,10 @@ export const createDecisionDoc = (
   institution?: Institution,
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   return {
     id: `decision_${decisionData.decisionNo || incident.code}`,
-    title: "ÖĞRENCİ ÖDÜL VE DİSİPLİN KURULU KARAR TUTANAĞI (EK-10)",
+    title: `${boardInfo.boardNameUpper} KARAR TUTANAĞI (EK-10)`,
     subtitle: "Resmî Disiplin Kararı ve Gerekçesi",
     institutionName: getInstitutionHeader(institution),
     academicYear: institution?.year ? `${institution.year} Eğitim-Öğretim Yılı` : undefined,
@@ -434,7 +445,7 @@ export const createDecisionDoc = (
           { label: "Karar Tarihi", value: decisionData.decisionDate },
           { label: "Verilen Ceza / Yaptırım", value: decisionData.penalty },
           { label: "Düşürülen Davranış Puanı", value: `-${decisionData.score} Puan` },
-          { label: "Dayanak Yönetmelik Maddesi", value: decisionData.regulationArticle || "MEB Ortaöğretim Kurumları Yönetmeliği Madde 164" }
+          { label: "Dayanak Yönetmelik Maddesi", value: decisionData.regulationArticle || boardInfo.regulationDefaultArticle }
         ]
       },
       {
@@ -452,11 +463,11 @@ export const createDecisionDoc = (
       },
       {
         type: 'notice',
-        text: "Bu karara karşı, tebliğ tarihinden itibaren ilgili mevzuatta belirtilen süre içerisinde İl/İlçe Öğrenci Disiplin Kurulu nezdinde itiraz hakkı saklıdır."
+        text: `Bu karara karşı, tebliğ tarihinden itibaren ilgili mevzuatta belirtilen süre içerisinde ${boardInfo.isOrtaokul ? 'İlçe Millî Eğitim Müdürlüğü / Öğrenci Davranışlarını Değerlendirme Üst Kuruluna' : 'İl/İlçe Öğrenci Disiplin Kurulu nezdinde'} itiraz hakkı saklıdır.`
       }
     ],
     signatures: [
-      { title: "Kurul Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[1]?.mainName || "Öğretmen", duty: "Üye" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[2]?.mainName || "Öğretmen", duty: "Üye" },
       ...(institution?.counselorName ? [{ title: institution.counselorTitle || "Okul Rehber Öğretmeni", name: institution.counselorName, duty: "Danışman" }] : []),
@@ -474,6 +485,7 @@ export const createDefenseRequestDoc = (
   institution?: Institution,
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   return {
     id: `defense_req_${student.number}`,
     title: "YAZILI SAVUNMA İSTEME YAZISI",
@@ -497,7 +509,7 @@ export const createDefenseRequestDoc = (
       {
         type: 'paragraph',
         title: "Savunma Konusu İddia ve Olay",
-        text: `${incident.date} tarihinde okulumuzda meydana gelen "${incident.title}" olayı ile ilgili olarak hakkınızda disiplin incelemesi ve soruşturması başlatılmıştır.\n\nOlayla ilgili iddialara dair savunmanızı, bu yazının tarafınıza tebliğ edildiği tarihten itibaren yasal süre içerisinde yazılı olarak Disiplin Kurulu Başkanlığına teslim etmeniz gerekmektedir. Belirtilen sürede savunma vermemeniz halinde savunma hakkınızdan feragat etmiş sayılacağınız hususunda bilgilerinizi rica ederim.`,
+        text: `${incident.date} tarihinde okulumuzda meydana gelen "${incident.title}" olayı ile ilgili olarak hakkınızda disiplin incelemesi ve soruşturması başlatılmıştır.\n\nOlayla ilgili iddialara dair savunmanızı, bu yazının tarafınıza tebliğ edildiği tarihten itibaren yasal süre içerisinde yazılı olarak ${boardInfo.boardPresidencyDative} teslim etmeniz gerekmektedir. Belirtilen sürede savunma vermemeniz halinde savunma hakkınızdan feragat etmiş sayılacağınız hususunda bilgilerinizi rica ederim.`,
         align: 'justify'
       },
       {
@@ -506,7 +518,7 @@ export const createDefenseRequestDoc = (
       }
     ],
     signatures: [
-      { title: "Disiplin Kurulu Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Okul Müdürü", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
     footerNote: "E-Okul Disiplin AI Pro - By Abdullah Yanarateş"
@@ -523,6 +535,7 @@ export const createStatementDoc = (
   institution?: Institution,
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   return {
     id: `statement_${incident.code}_${personName.replace(/\s+/g, '_')}`,
     title: "DİSİPLİN SORUŞTURMASI İFADE TUTANAĞI",
@@ -556,7 +569,7 @@ export const createStatementDoc = (
       }
     ],
     signatures: [
-      { title: "İfadeyi Alan (Kurul Başkanı)", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
+      { title: `İfadeyi Alan (${boardInfo.boardPresidentLabel})`, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "İfadeyi Alan (Üye)", name: boardMembers?.[1]?.mainName || "Öğretmen", duty: "Üye" },
       { title: "İfade Sahibi", name: personName, duty: personRole }
     ],
@@ -571,8 +584,10 @@ export const createParentNoticeDoc = (
   decision: string,
   decisionNo: string,
   penaltyScore: string,
-  institution?: Institution
+  institution?: Institution,
+  boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   return {
     id: `parent_notice_${student.number}`,
     title: "DİSİPLİN CEZASI VE YAPTIRIM VELİ BİLGİLENDİRME TEBLİĞİ",
@@ -598,7 +613,7 @@ export const createParentNoticeDoc = (
       {
         type: 'paragraph',
         title: "Tebligat Metni",
-        text: `Velisi bulunduğunuz okulumuz ${student.grade || ''} sınıfı ${student.number} numaralı öğrencisi ${student.name}'in, ${incident.date} tarihinde meydana gelen "${incident.title}" olayındaki eylemleri sebebiyle, Okul Öğrenci Ödül ve Disiplin Kurulumuz tarafından yukarıda belirtilen yaptırımın uygulanmasına karar verilmiştir.\n\nÖğrencimizin davranış gelişiminin olumlu yönde desteklenmesi, eğitim ve öğretim sürecinin aksamaması adına veli olarak gerekli rehberliğin yapılması hususunda iş birliğinizi rica eder, kararı bilgilerinize tebliğ ederiz.`,
+        text: `Velisi bulunduğunuz okulumuz ${student.grade || ''} sınıfı ${student.number} numaralı öğrencisi ${student.name}'in, ${incident.date} tarihinde meydana gelen "${incident.title}" olayındaki eylemleri sebebiyle, ${boardInfo.boardOur} tarafından yukarıda belirtilen yaptırımın uygulanmasına karar verilmiştir.\n\nÖğrencimizin davranış gelişiminin olumlu yönde desteklenmesi, eğitim ve öğretim sürecinin aksamaması adına veli olarak gerekli rehberliğin yapılması hususunda iş birliğinizi rica eder, kararı bilgilerinize tebliğ ederiz.`,
         align: 'justify'
       },
       {
@@ -607,7 +622,7 @@ export const createParentNoticeDoc = (
       }
     ],
     signatures: [
-      { title: "Disiplin Kurulu Başkanı", name: "Müdür Yardımcısı", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Okul Müdürü", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
     footerNote: "E-Okul Disiplin AI Pro - By Abdullah Yanarateş"
@@ -627,6 +642,7 @@ export const createPenaltyRemovalDoc = (
   institution?: Institution,
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   return {
     id: `penalty_removal_${student.number}`,
     title: "DİSİPLİN CEZASININ KALDIRILMASI VE DAVRANIŞ NOTU İADE KARARI",
@@ -652,7 +668,7 @@ export const createPenaltyRemovalDoc = (
       {
         type: 'paragraph',
         title: "Kurul Değerlendirmesi ve Gerekçe",
-        text: penaltyInfo.removalReason || "Öğrencinin ceza aldığı tarihten itibaren olumlu davranış sergilediği, öğretmenler ve sınıf rehber öğretmeninin olumlu görüşleri doğrultusunda MEB Ortaöğretim Kurumları Yönetmeliğinin cezanın kaldırılmasına ilişkin maddesi gereğince cezasının sicilden silinmesine ve davranış puanının iadesine karar verilmiştir.",
+        text: penaltyInfo.removalReason || `Öğrencinin ceza aldığı tarihten itibaren olumlu davranış sergilediği, öğretmenler ve sınıf rehber öğretmeninin olumlu görüşleri doğrultusunda ${boardInfo.regulationRemovalArticle} gereğince ${boardInfo.boardName} kararıyla cezasının sicilden silinmesine ve davranış puanının iadesine karar verilmiştir.`,
         align: 'justify'
       },
       {
@@ -661,7 +677,7 @@ export const createPenaltyRemovalDoc = (
       }
     ],
     signatures: [
-      { title: "Kurul Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[1]?.mainName || "Öğretmen", duty: "Üye" },
       { title: "Üye (Öğretmen)", name: boardMembers?.[2]?.mainName || "Öğretmen", duty: "Üye" },
       ...(institution?.counselorName ? [{ title: institution.counselorTitle || "Okul Rehber Öğretmeni", name: institution.counselorName, duty: "Rehberlik Servisi" }] : []),
@@ -681,6 +697,7 @@ export const createMeetingSummonsDoc = (
   institution?: Institution,
   boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   const memberList = (boardMembers || []).map((m, idx) => `${idx + 1}. ${m.role}: ${m.mainName || 'İmza'} (${m.mainTitle || 'Öğretmen'})`);
   if (institution?.counselorName) {
     memberList.push(`${memberList.length + 1}. Danışman Üye: ${institution.counselorName} (${institution.counselorTitle || 'Okul Rehber Öğretmeni'})`);
@@ -688,7 +705,7 @@ export const createMeetingSummonsDoc = (
 
   return {
     id: `summons_${incident.code}`,
-    title: "DİSİPLİN KURULU TOPLANTI ÇAĞRI YAZISI",
+    title: `${boardInfo.boardNameUpper} TOPLANTI ÇAĞRI YAZISI`,
     subtitle: "Kurul Üyelerine Resmi Davet",
     institutionName: getInstitutionHeader(institution),
     academicYear: institution?.year ? `${institution.year} Eğitim-Öğretim Yılı` : undefined,
@@ -701,7 +718,7 @@ export const createMeetingSummonsDoc = (
         title: "Toplantı Bilgileri",
         items: [
           { label: "Toplantı Tarihi ve Saati", value: `${meetingDate} / ${meetingTime}` },
-          { label: "Toplantı Yeri", value: meetingLocation || 'Öğrenci Disiplin Odası' },
+          { label: "Toplantı Yeri", value: meetingLocation || 'Kurul Toplantı Odası' },
           { label: "Gündem Konusu", value: incident.title },
           { label: "İlgili Olay Kodu", value: incident.code }
         ]
@@ -709,17 +726,17 @@ export const createMeetingSummonsDoc = (
       {
         type: 'paragraph',
         title: "Toplantı Çağrı Metni",
-        text: `Okulumuzda meydana gelen "${incident.title}" disiplin olayı ve soruşturması hakkında inceleme yapmak, ilgililerin ifadelerini ve savunmalarını değerlendirmek üzere Öğrenci Ödül ve Disiplin Kurulumuz yukarıda belirtilen gün ve saatte toplanacaktır. Kurul üyelerinin belirtilen yer ve zamanda hazır bulunmalarını rica ederim.`,
+        text: `Okulumuzda meydana gelen "${incident.title}" disiplin olayı ve soruşturması hakkında inceleme yapmak, ilgililerin ifadelerini ve savunmalarını değerlendirmek üzere ${boardInfo.boardOur} yukarıda belirtilen gün ve saatte toplanacaktır. Kurul üyelerinin belirtilen yer ve zamanda hazır bulunmalarını rica ederim.`,
         align: 'justify'
       },
       {
         type: 'bulletList',
         title: "Kurul Üyeleri Listesi",
-        bullets: memberList.length > 0 ? memberList : ["Disiplin Kurulu Başkanı", "Öğretmen Üyeler", "Okul Aile Birliği Temsilcisi"]
+        bullets: memberList.length > 0 ? memberList : [boardInfo.boardPresidentLabel, "Öğretmen Üyeler", "Okul Aile Birliği Temsilcisi"]
       }
     ],
     signatures: [
-      { title: "Kurul Başkanı", name: boardMembers?.[0]?.mainName || "Müdür Yrd.", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Okul Müdürü (Uygundur)", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
     footerNote: "E-Okul Disiplin AI Pro - By Abdullah Yanarateş"
@@ -735,8 +752,10 @@ export const createStatisticsDoc = (
     decidedIncidents: number;
     penaltiesByType: Record<string, number>;
   },
-  institution?: Institution
+  institution?: Institution,
+  boardMembers?: BoardMember[]
 ): DocumentDefinition => {
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   const penaltyRows = Object.entries(stats.penaltiesByType).map(([penalty, count]) => [penalty, count]);
 
   return {
@@ -767,7 +786,7 @@ export const createStatisticsDoc = (
       }
     ],
     signatures: [
-      { title: "Disiplin Kurulu Başkanı", name: "Müdür Yardımcısı", duty: "Başkan" },
+      { title: boardInfo.boardPresidentLabel, name: getEnginePresidentName(boardInfo), duty: "Başkan" },
       { title: "Okul Müdürü", name: institution?.managerName || "Okul Müdürü", duty: "Müdür" }
     ],
     footerNote: "E-Okul Disiplin AI Pro - By Abdullah Yanarateş"

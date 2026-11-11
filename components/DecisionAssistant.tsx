@@ -12,6 +12,7 @@ import { useStudents } from '../context/StudentContext';
 import { useIncidents } from '../context/IncidentContext';
 import { useSettings } from '../context/SettingsContext';
 import { exportHtmlToWord, printHtmlViaIframe } from '../services/exportService';
+import { getBoardInfo } from '../services/boardHelpers';
 
 const getOneDegreeHeavierPenalty = (penalty: string, schoolType: string): string => {
   const p = penalty.toUpperCase().trim();
@@ -755,7 +756,8 @@ const DecisionAssistant = () => {
       })).filter(s => s.id) as (Student & { role: string, decision?: string, studentStatement?: string, studentDefense?: string })[]
     : [];
 
-  const boardPresident = boardMembers.find(m => m.role.includes('BAŞKAN'))?.mainName || '.......................................';
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
+  const boardPresident = boardInfo.presidentName;
   
   // --- HANDLERS ---
   const handlePenaltyChange = (val: string) => {
@@ -1915,10 +1917,10 @@ const DecisionAssistant = () => {
         const isSuspect = studentOverride?.role === 'suspect';
         const isVictim = studentOverride?.role === 'victim';
         const roleText = isSuspect 
-            ? 'Okul Disiplin Kurulunda görüşülecek olan disiplin dosyanızla ilgili <b>savunmanızı vermek üzere</b>' 
+            ? `${boardInfo.boardLocative} görüşülecek olan disiplin dosyanızla ilgili <b>savunmanızı vermek üzere</b>` 
             : isVictim
-                ? 'Okul Disiplin Kurulunda görüşülecek olan olayla ilgili <b>mağdur olarak bilginize başvurulmak üzere</b>'
-                : 'Okul Disiplin Kurulunda görüşülecek olan bir olayla ilgili <b>görgü tanığı olarak bilginize başvurulmak üzere</b>';
+                ? `${boardInfo.boardLocative} görüşülecek olan olayla ilgili <b>mağdur olarak bilginize başvurulmak üzere</b>`
+                : `${boardInfo.boardLocative} görüşülecek olan bir olayla ilgili <b>görgü tanığı olarak bilginize başvurulmak üzere</b>`;
 
         currentBody = `
         ${useHeader}
@@ -1954,7 +1956,7 @@ const DecisionAssistant = () => {
         </table>
         
         <div style="text-align:right; margin-top:40px;">
-            <b>${institution.managerName}</b><br>Okul Müdürü
+            <b>${boardInfo.presidentName}</b><br>${boardInfo.presidentTitle && boardInfo.presidentTitle.toLocaleLowerCase('tr-TR') !== boardInfo.boardPresidentLabel.toLocaleLowerCase('tr-TR') ? `${boardInfo.presidentTitle}<br>` : ''}${boardInfo.boardPresidentLabel}
         </div>
         
         <div style="margin-top:50px; border-top:1px dashed black; padding-top:10px; font-size:9pt;">
@@ -1979,7 +1981,7 @@ const DecisionAssistant = () => {
     else if (type === 'ek10_decision') {
         currentBody = `
         ${headerHtml}
-        <div style="text-align:center; font-weight:bold; margin-bottom:5px; margin-top:5px; border:1px solid black; padding:3px; font-size:10pt;">ÖĞRENCİ DAVRANIŞLARINI DEĞERLENDİRME KURULU KARARI<br><span style="font-weight:normal;">(Değişik: 02.05.2006/26156 RG)</span> <span style="float:right;">EK - 10</span></div>
+        <div style="text-align:center; font-weight:bold; margin-bottom:5px; margin-top:5px; border:1px solid black; padding:3px; font-size:10pt;">${boardInfo.boardNameUpper} KARARI<br><span style="font-weight:normal;">${boardInfo.ek10SubNote}</span> <span style="float:right;">EK - 10</span></div>
         <table style="width:100%; border-collapse:collapse; border:1px solid black; font-size:9pt; page-break-inside:auto;">
             <tr>
                 <td style="border:1px solid black; padding:3px; font-weight:bold; width:15%;">Karar No</td>
@@ -2082,7 +2084,7 @@ const DecisionAssistant = () => {
                 <td colspan="3" style="border:1px solid black; padding:3px;">: ${(!effectivelyBlankMode && activeIncident?.useMitigatingFactors && activeIncident?.mitigatingFactors) ? `<b>Hafifletici Neden:</b> ${activeIncident.mitigatingFactors} (Cezada 1 derece hafifletme uygulanmıştır)` : 'Yoktur/Belirtilmemiştir.'}</td>
             </tr>
              <tr>
-                <td style="border:1px solid black; padding:3px; background-color:#f9f9f9;"><b>Öğr. davranışlarını değ. kurulunun kanaati</b></td>
+                <td style="border:1px solid black; padding:3px; background-color:#f9f9f9;"><b>${boardInfo.boardGenitive} kanaati</b></td>
                 <td colspan="3" style="border:1px solid black; padding:3px;">: <b>${d.penalty}</b> ile cezalandırılmasına karar verilmiştir.</td>
             </tr>
         </table>
@@ -2108,7 +2110,7 @@ const DecisionAssistant = () => {
         currentBody = `
         <div style="text-align:right; font-weight:bold; margin-bottom:5px;">EK - 1</div>
         <div style="text-align:center; font-weight:bold; margin-bottom:10px; font-size:12pt;">
-            ÖĞRENCİ DAVRANIŞLARINI DEĞERLENDİRME KURULU ÜYELERİNE<br>
+            ${boardInfo.boardNameUpper} ÜYELERİNE<br>
             ÖĞRENCİ BİLGİLERİ
         </div>
         <table style="width:100%; border-collapse:collapse; border:1px solid #ccc; font-size:10pt;">
@@ -2246,8 +2248,7 @@ const DecisionAssistant = () => {
     else if (type === 'dizi_pusulasi') {
         currentBody = `
         <div style="text-align:center; font-weight:bold; margin-bottom:1rem; font-size:12pt; line-height:1.2;">
-            ÖĞRENCİ DAVRANIŞLARI<br>
-            DEĞERLENDİRME KURULU<br>
+            ${boardInfo.boardNameUpper}<br>
             DOSYASI<br>
             DİZİ PUSULASI
         </div>
@@ -2283,7 +2284,7 @@ const DecisionAssistant = () => {
             </tr>
             <tr>
                 <td style="border:1px solid black; padding:5px; text-align:center; font-weight:bold;">1</td>
-                <td style="border:1px solid black; padding:5px;">Okul Öğrenci Davranışları Değerlendirme Kurulu Kararının Onaylı Örneği<br>(Yön. 61-2.a)</td>
+                <td style="border:1px solid black; padding:5px;">${boardInfo.boardName} Kararının Onaylı Örneği<br>${boardInfo.isOrtaokul ? '(Yön. 61-2.a)' : '(MEB Ortaöğretim Kur. Yön.)'}</td>
                 <td style="border:1px solid black; padding:5px; text-align:center;"><div style="width:15px; height:15px; border:1px solid black; margin:0 auto;"></div></td>
                 <td style="border:1px solid black; padding:5px;"></td>
             </tr>
@@ -2311,7 +2312,7 @@ const DecisionAssistant = () => {
         
         <div style="margin-top:20px; font-size:8pt; line-height:1.4;">
             <b>Açıklamalar:</b><br>
-            1. Öğrenci Davranışları Değerlendirme Dosyaları mutlaka üst yazı ekinde zarf içerisinde gönderilecektir.<br>
+            1. ${boardInfo.boardName} Dosyaları mutlaka üst yazı ekinde zarf içerisinde gönderilecektir.<br>
             2. Dizi pusulasında sıralanan hususların karşısındaki VAR kısmına (X) işareti konulacak, eğer evrak dosyaya konulmamışsa konulmama sebebi açıklama kısmına yazılacaktır. Örneğin 10 numaralı evrak konulamamışsa açıklama sütununa "Konu Mahkemeye İntikal etmemiştir" ifadeleri yazılmalı, diğer evraklar ise dosyaya mutlaka konulmalıdır.<br>
             3. Dosyaya suretleri konulan belgeler okul müdürlüğünce "Aslı Gibidir" ifadesi yazılıp onaylanacaktır.<br>
             4. Diğer seçeneği işaretlenmişse, açıklama kısmına eklenen evrakların isimleri yazılacaktır.<br>
@@ -2325,12 +2326,12 @@ const DecisionAssistant = () => {
         ${headerHtml}
         <br>
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-             <div><b>Sayı</b> : ${institution.ebysCode}<br><b>Konu</b> : Öğrenci Davranışları Kurulu<br>Toplantısı Çağrısı</div>
+             <div><b>Sayı</b> : ${institution.ebysCode}<br><b>Konu</b> : ${boardInfo.boardName}<br>Toplantısı Çağrısı</div>
              <div>${new Date().toLocaleDateString('tr-TR')}</div>
         </div>
-        <div style="text-align:center; font-weight:bold; margin:20px 0;">ÖĞRENCİ DAVRANIŞLARINI DEĞERLENDİRME KURULU ÜYELERİNE</div>
+        <div style="text-align:center; font-weight:bold; margin:20px 0;">${boardInfo.boardNameUpper} ÜYELERİNE</div>
         <p style="text-indent:30px; text-align:justify; line-height:1.6;">
-           Öğrenci Davranışlarını Değerlendirme Kurulu'muz <b>${formatDate(meetingData.date)}</b> tarihinde saat <b>${meetingData.time}</b>'da toplanacaktır. 
+           ${boardInfo.boardOur} <b>${formatDate(meetingData.date)}</b> tarihinde saat <b>${meetingData.time}</b>'da toplanacaktır. 
            Kurulda bulunan öğretmenlerimizin aşağıdaki gündem maddelerini görüşmek üzere belirtilen gün ve saatte hazır bulunmaları, Asil üyelerden gelemeyenlerin yerine yedek üyelerin hazır bulunmaları hususunda gereğini rica ederim.
         </p>
         <div style="text-align:right; margin-top:30px; margin-bottom:40px;">
@@ -2340,7 +2341,7 @@ const DecisionAssistant = () => {
         <b>GÜNDEM</b>
         <ol style="margin-top:5px;">
             <li>Açılış ve yoklama.</li>
-            <li>Öğrenci Davranışları Değerlendirme Kurulu'ndaki dosyaların görüşülmesi.</li>
+            <li>${boardInfo.boardLocative}ki dosyaların görüşülmesi.</li>
             <li>Dilek, temenniler ve kapanış.</li>
         </ol>
         <br>
@@ -2390,7 +2391,7 @@ const DecisionAssistant = () => {
         <div style="text-align:center;"><b>Sayın ${s.name} (T.C.: ${s.tc})<br>${s.grade} Sınıfı / ${s.number} Nolu Öğrencisi</b><br><span style="font-size:9pt; color:#444;">Baba Adı: ${s.fatherName} • Anne Adı: ${s.motherName}</span></div>
         <br>
         <p style="text-indent:30px; text-align:justify; line-height:1.5;">
-            Aşağıda belirtilen uygunsuz davranışı yapmanız nedeniyle okulumuz Öğrenci Davranışlarını Değerlendirme Kurulu'nca suçlu bulunarak, şahsınıza aşağıdaki yaptırımın uygulanması uygun görülmüştür.
+            Aşağıda belirtilen uygunsuz davranışı yapmanız nedeniyle okulumuz ${boardInfo.boardAgentive} suçlu bulunarak, şahsınıza aşağıdaki yaptırımın uygulanması uygun görülmüştür.
         </p>
         <p style="text-indent:30px; text-align:justify; line-height:1.5;">
              Bilgilerinize sunar, okul içinde ve dışında daha kötü sonuçlar doğurabilecek davranışlara yönelmemenizi, bu konuda okul idaresi, rehberlik servisi ve öğretmenlerinizden destek istemenizi, aksi takdirde bundan sonra yapacağınız her olumsuz davranıştan dolayı yaptırımın ağırlaşabileceğini bilmenizi rica ederim.
@@ -2428,7 +2429,7 @@ const DecisionAssistant = () => {
             ` : ''}
             <tr>
                 <td style="border:1px solid black; padding:5px; font-weight:bold;">Yaptırımı Veren</td>
-                <td style="border:1px solid black; padding:5px;">Öğrenci Davranışlarını Değerlendirme Kurulu</td>
+                <td style="border:1px solid black; padding:5px;">${boardInfo.boardName}</td>
             </tr>
             <tr>
                 <td style="border:1px solid black; padding:5px; font-weight:bold;">Kırılan Davranış Notu</td>
@@ -2473,7 +2474,7 @@ const DecisionAssistant = () => {
         <div style="text-align:center;"><b>Sayın ${s.parent}<br>(${s.name} Velisi - T.C.: <b>${s.tc}</b>)</b><br><span style="font-size:9pt; color:#444;">Veli Telefonu: ${s.parentPhone} • İkamet: ${s.address}</span></div>
         <br>
         <p style="text-indent:30px; text-align:justify; line-height:1.5;">
-            Velisi olduğunuz ${s.grade} sınıfından ${s.number} no'lu öğrencimiz ${s.name} aşağıda belirtilen kusurlu davranışı yapması nedeniyle okulumuz Öğrenci Davranışlarını Değerlendirme Kurulu'nca suçlu bulunarak, kendisine aşağıdaki yaptırımın uygulanması uygun görülmüştür.
+            Velisi olduğunuz ${s.grade} sınıfından ${s.number} no'lu öğrencimiz ${s.name} aşağıda belirtilen kusurlu davranışı yapması nedeniyle okulumuz ${boardInfo.boardAgentive} suçlu bulunarak, kendisine aşağıdaki yaptırımın uygulanması uygun görülmüştür.
         </p>
         <p style="text-indent:30px; text-align:justify; line-height:1.5;">
              Bilgilerinize sunar, öğrencimizin daha kötü sonuçlar doğurabilecek davranışlara yönelmesini önlemek için okul yönetimi, rehberlik servisi ve öğretmenleri ile işbirliği yapmanızı önerir, bundan sonra yapacağı her olumsuz davranıştan dolayı cezasının ağırlaşabileceğini bilmenizi rica ederim.
@@ -2511,7 +2512,7 @@ const DecisionAssistant = () => {
             ` : ''}
             <tr>
                 <td style="border:1px solid black; padding:5px; font-weight:bold;">Yaptırımı Veren</td>
-                <td style="border:1px solid black; padding:5px;">Öğrenci Davranışlarını Değerlendirme Kurulu</td>
+                <td style="border:1px solid black; padding:5px;">${boardInfo.boardName}</td>
             </tr>
             <tr>
                 <td style="border:1px solid black; padding:5px; font-weight:bold;">Kırılan Davranış Notu</td>
@@ -2548,10 +2549,10 @@ const DecisionAssistant = () => {
         <div style="text-align:center;"><b>..........<br>Sınıf Rehber / Ders Öğretmenine</b></div>
         <br>
         <p style="text-indent:30px; text-align:justify; line-height:1.5;">
-            Öğrenci Davranışlarını Değerlendirme Kurulu'nda görüşülmesi için gönderilen <b>${s.grade}</b> sınıfından <b>${s.number}</b> numaralı <b>${s.name}</b> adlı öğrenciye ait dosya ile ilgili olarak; adı geçen öğrencinin sizin dersinizdeki veya okul/sınıf içindeki genel durumunu, akademik ilgisini ve gözlemlediğiniz belirgin davranış kalıplarını değerlendiren bir rapor hazırlamanızı ve kurulumuza sunmanızı rica ederim.
+            ${boardInfo.boardLocative} görüşülmesi için gönderilen <b>${s.grade}</b> sınıfından <b>${s.number}</b> numaralı <b>${s.name}</b> adlı öğrenciye ait dosya ile ilgili olarak; adı geçen öğrencinin sizin dersinizdeki veya okul/sınıf içindeki genel durumunu, akademik ilgisini ve gözlemlediğiniz belirgin davranış kalıplarını değerlendiren bir rapor hazırlamanızı ve kurulumuza sunmanızı rica ederim.
         </p>
         <div style="text-align:right; margin-top:30px; margin-bottom:30px;">
-            <b>${boardPresident}</b><br>Öğr. Dav. Değ. Kur. Başkanı
+            <b>${boardPresident}</b><br>${boardInfo.boardPresidentLabel}
         </div>
         
         <b>NOT: Öğrenci hakkındaki görüşlerinizi şu başlıklarda sunabilirsiniz:</b>
@@ -2582,7 +2583,7 @@ const DecisionAssistant = () => {
         <p style="text-align:left;"><b>Sayın Veli (Adı Soyadı):</b> ........................................</p>
         <br>
         <p style="text-indent:30px; text-align:justify; line-height:1.6;">
-            Velisi bulunduğunuz okulumuz <b>${s.grade}</b> sınıfı, <b>${s.number}</b> numaralı öğrencimiz <b>${s.name}</b> hakkında daha önce Öğrenci Davranışlarını Değerlendirme Kurulu (ÖDDK) tarafından verilmiş olan yaptırım/ceza kararının, öğrencinin son dönemdeki olumlu tutum ve davranışları değerlendirilerek MEB Ortaöğretim Kurumları Yönetmeliği ilgili maddeleri gereğince dosyasından <b>silinmesi/kaldırılması</b> hususunun görüşüleceği Kurul Toplantısına katılmanızı önemle rica ederim.
+            Velisi bulunduğunuz okulumuz <b>${s.grade}</b> sınıfı, <b>${s.number}</b> numaralı öğrencimiz <b>${s.name}</b> hakkında daha önce ${boardInfo.boardName} (${boardInfo.boardAbbr}) tarafından verilmiş olan yaptırım/ceza kararının, öğrencinin son dönemdeki olumlu tutum ve davranışları değerlendirilerek ${boardInfo.regulationRemovalSentence} gereğince dosyasından <b>silinmesi/kaldırılması</b> hususunun görüşüleceği Kurul Toplantısına katılmanızı önemle rica ederim.
         </p>
         <br>
         <table style="width:100%; border:none; line-height:1.8;">
@@ -2602,7 +2603,7 @@ const DecisionAssistant = () => {
         <br><br><br>
         <div style="text-align:right;">
              <b>${boardPresident}</b><br>
-             Öğr. Dav. Değ. Kur. Başkanı
+             ${boardInfo.boardPresidentLabel}
         </div>
         `;
     }
@@ -2620,7 +2621,7 @@ const DecisionAssistant = () => {
         </table>
         <br>
         <p style="text-indent:30px; text-align:justify; line-height:1.6;">
-            Yukarıda açık kimliği yazılı okulumuz öğrencisi <b>${s.name}</b> hakkında daha önceden verilmiş olan disiplin cezası, öğrencinin bu tarihten itibaren gösterdiği olumlu gelişim, okul kurallarına uyum sürecindeki pozitif katkısı ve rehberlik servisi/öğretmenlerinin olumlu görüşleri göz önünde bulundurularak; MEB Ortaöğretim Kurumları Yönetmeliğinin ilgili maddesi hükmü gereğince Öğrenci Davranışlarını Değerlendirme Kurulu kararıyla dosyasından silinmesine / kaldırılmasına; oy birliği / oy çokluğu ile karar verilmiştir.
+            Yukarıda açık kimliği yazılı okulumuz öğrencisi <b>${s.name}</b> hakkında daha önceden verilmiş olan disiplin cezası, öğrencinin bu tarihten itibaren gösterdiği olumlu gelişim, okul kurallarına uyum sürecindeki pozitif katkısı ve rehberlik servisi/öğretmenlerinin olumlu görüşleri göz önünde bulundurularak; ${boardInfo.regulationRemovalSentence} hükmü gereğince ${boardInfo.boardName} kararıyla dosyasından silinmesine / kaldırılmasına; oy birliği / oy çokluğu ile karar verilmiştir.
         </p>
         <br>
         <table style="width:100%; border:none; margin-top:20px; text-align:center;">
@@ -2652,10 +2653,10 @@ const DecisionAssistant = () => {
         </div>
         <div style="text-align:center; font-weight:bold; margin:6px 0; font-size:10.5pt;">Psikolojik Danışman / Rehberlik Öğretmenine</div>
         <p style="text-indent:24px; text-align:justify; font-size:9.5pt; line-height:1.4; margin:4px 0;">
-            Öğrenci Davranışlarını Değerlendirme Kurulu'nda görüşülmesi için gönderilen <b>${s.grade}</b> sınıfından <b>${s.name}</b> adlı öğrenciye ait dosya ile ilgili olarak adı geçen öğrenci ve velisiyle ilgili varsa görüşme tarih ve saatlerini ve öğrenci hakkındaki genel yorumlarınızı belirtmenizi rica ederim.
+            ${boardInfo.boardLocative} görüşülmesi için gönderilen <b>${s.grade}</b> sınıfından <b>${s.name}</b> adlı öğrenciye ait dosya ile ilgili olarak adı geçen öğrenci ve velisiyle ilgili varsa görüşme tarih ve saatlerini ve öğrenci hakkındaki genel yorumlarınızı belirtmenizi rica ederim.
         </p>
         <div style="text-align:right; margin-top:8px; margin-bottom:8px; font-size:9.5pt;">
-            <b>${boardPresident}</b><br>Öğr. Dav. Değ. Kur. Başkanı
+            <b>${boardPresident}</b><br>${boardInfo.boardPresidentLabel}
         </div>
         
         <b style="font-size:9.5pt;">NOT: Öğrenci hakkındaki görüşlerinizi şu başlıklarda sunabilirsiniz:</b>
@@ -2712,7 +2713,7 @@ const DecisionAssistant = () => {
     }
     else if (type === 'student_statement_doc') {
         currentBody = `
-        <div style="text-align:center; font-weight:bold; margin-bottom:0.4rem; font-size:11pt;">ÖĞRENCİ DAVRANIŞLARINI DEĞERLENDİRME KURULU<br>ÖĞRENCİ İFADE TUTANAĞI</div>
+        <div style="text-align:center; font-weight:bold; margin-bottom:0.4rem; font-size:11pt;">${boardInfo.boardNameUpper}<br>ÖĞRENCİ İFADE TUTANAĞI</div>
         
         <div style="margin-bottom:8px; font-size:10pt; line-height:1.35;">
             Sayın : <b>${s.name}</b><br>
@@ -2720,7 +2721,7 @@ const DecisionAssistant = () => {
             <div style="text-align:right; margin-top:4px;">
                 ${formDateStr}<br>
                 ${boardPresident}<br>
-                Öğrenci Davranışlarını Değerlendirme Kurulu Başkanı
+                ${boardInfo.boardPresidentLabel}
             </div>
         </div>
         
@@ -2845,7 +2846,7 @@ const DecisionAssistant = () => {
             <tr><td style="border:1px solid #ccc; padding:3px 6px; height:18px;">Tanık Öğretmen :</td></tr>
             <tr><td style="border:1px solid #ccc; padding:3px 6px; height:18px;">Tanık Öğretmen :</td></tr>
         </table>
-        <p style="text-indent:24px; margin-top:6px; margin-bottom:4px; line-height:1.35; font-size:9.5pt;">Yukarıda açıkça bilgileri verilen öğrencimizin iddia edilen olumsuz davranışlarıyla ilgili bilgi, belge ve tutanakların, yaptığınız çalışmalar ve rehberlik faaliyetleri raporlarının Öğrenci Davranışlarını Değerlendirme Kuruluna sevk edilmek üzere dosya halinde Müdürlüğümüze teslim edilmesini rica ederim.</p>
+        <p style="text-indent:24px; margin-top:6px; margin-bottom:4px; line-height:1.35; font-size:9.5pt;">Yukarıda açıkça bilgileri verilen öğrencimizin iddia edilen olumsuz davranışlarıyla ilgili bilgi, belge ve tutanakların, yaptığınız çalışmalar ve rehberlik faaliyetleri raporlarının ${boardInfo.boardDative} sevk edilmek üzere dosya halinde Müdürlüğümüze teslim edilmesini rica ederim.</p>
         <div style="border:1px solid black; min-height:80px; margin-top:6px; padding:6px; font-size:9pt; line-height:1.3;">
              <!-- Space for teacher's report -->
         </div>
@@ -2871,7 +2872,7 @@ const DecisionAssistant = () => {
              <tr><td style="padding:3px 6px; border:1px solid #ccc;">Velisinin Adresi</td><td style="padding:3px 6px; border:1px solid #ccc;">: ${s.address}</td></tr>
              <tr><td style="padding:3px 6px; font-weight:bold; border-top:2px solid #ccc;">İddia</td><td style="padding:3px 6px; border-top:2px solid #ccc;">: ${i.title}</td></tr>
         </table>
-        <p style="margin-top:6px; margin-bottom:4px; text-indent:24px; line-height:1.35; font-size:9.5pt;">Öğrenci Davranışlarını Değerlendirme Kuruluna intikal eden dosyalarda size isnat edilen yukarıdaki suçlamalar ile ilgili yapacağınız tüm açıklama ve bilgileri içeren ifadenizi aşağıya yazarak imzalayınız.</p>
+        <p style="margin-top:6px; margin-bottom:4px; text-indent:24px; line-height:1.35; font-size:9.5pt;">${boardInfo.boardDative} intikal eden dosyalarda size isnat edilen yukarıdaki suçlamalar ile ilgili yapacağınız tüm açıklama ve bilgileri içeren ifadenizi aşağıya yazarak imzalayınız.</p>
         <div data-doc-field="statement" data-student-id="${targetStudentId || ''}" class="doc-editable-field doc-statement-box" style="border:1px solid black; min-height:90px; padding:6px 8px; margin-top:6px; font-family:inherit; font-size:9.5pt; white-space:pre-wrap; line-height:1.35; outline:none;" placeholder="Öğrencinin ifadesini buraya yazınız... (El yazısı için boş bırakabilirsiniz)">${(!effectivelyBlankMode && targetInvolvement?.studentStatement) ? targetInvolvement.studentStatement : ''}</div>
         <div class="signature-block avoid-break" style="margin-top:8px; text-align:center; font-size:9.5pt;">
              Tarih : ${formDateStr}<br>
@@ -2897,7 +2898,7 @@ const DecisionAssistant = () => {
              <tr><td style="padding:3px 6px; border:1px solid #ccc;">Velisinin Adresi</td><td style="padding:3px 6px; border:1px solid #ccc;">: ${s.address}</td></tr>
              <tr><td style="padding:3px 6px; font-weight:bold; border-top:2px solid #ccc;">Olay</td><td style="padding:3px 6px; border-top:2px solid #ccc;">: ${i.title}</td></tr>
         </table>
-        <p style="margin-top:6px; margin-bottom:4px; text-indent:24px; line-height:1.35; font-size:9.5pt;">Öğrenci Davranışlarını Değerlendirme Kuruluna intikal eden dosyalarda size isnat edilen ve yukarıda açıkça belirtilen suçlamalar bulunmaktadır. Konuyla ilgili Savunmanızı aşağıya yazarak imzalayınız.</p>
+        <p style="margin-top:6px; margin-bottom:4px; text-indent:24px; line-height:1.35; font-size:9.5pt;">${boardInfo.boardDative} intikal eden dosyalarda size isnat edilen ve yukarıda açıkça belirtilen suçlamalar bulunmaktadır. Konuyla ilgili Savunmanızı aşağıya yazarak imzalayınız.</p>
         <div data-doc-field="defense" data-student-id="${targetStudentId || ''}" class="doc-editable-field doc-defense-box" style="border:1px solid black; min-height:90px; padding:6px 8px; margin-top:6px; font-family:inherit; font-size:9.5pt; white-space:pre-wrap; line-height:1.35; outline:none;" placeholder="Öğrencinin savunmasını buraya yazınız... (El yazısı için boş bırakabilirsiniz)">${(!effectivelyBlankMode && targetInvolvement?.studentDefense) ? targetInvolvement.studentDefense : ''}</div>
         <div class="signature-block avoid-break" style="margin-top:8px; text-align:center; font-size:9.5pt;">
              Tarih : ${formDateStr}<br>
@@ -3031,7 +3032,7 @@ const DecisionAssistant = () => {
             <tr>
                 <td style="padding:3px 6px; border:1px solid black; font-weight:bold; background-color:#f8fafc;">Görüşmeyi Talep Eden</td>
                 <td colspan="3" style="padding:3px 6px; border:1px solid black;">
-                    [ &nbsp; ] Öğrenci &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Veli &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Öğretmen &nbsp;&nbsp;&nbsp;&nbsp; [ <b>X</b> ] Disiplin Kurulu / İdare &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Rehberlik Servisi
+                    [ &nbsp; ] Öğrenci &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Veli &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Öğretmen &nbsp;&nbsp;&nbsp;&nbsp; [ <b>X</b> ] ${boardInfo.boardName} / İdare &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Rehberlik Servisi
                 </td>
             </tr>
         </table>
@@ -3067,7 +3068,7 @@ const DecisionAssistant = () => {
                 <td style="width:50%;">
                     <b>Görüşmeyi Yapan Yetkili / Rehberlik</b><br>
                     <b>${institution.counselorName || boardPresident}</b><br>
-                    <span style="font-size:8pt; color:#444;">${institution.counselorName ? (institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni') : 'Öğr. Dav. Değ. Kur. Başkanı'}</span><br>
+                    <span style="font-size:8pt; color:#444;">${institution.counselorName ? (institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni') : boardInfo.boardPresidentLabel}</span><br>
                     İmza: ........................................
                 </td>
             </tr>
@@ -3112,7 +3113,7 @@ const DecisionAssistant = () => {
             <tr>
                 <td style="padding:3px 6px; border:1px solid black; font-weight:bold; background-color:#f8fafc;">Görüşmeyi Talep Eden</td>
                 <td colspan="3" style="padding:3px 6px; border:1px solid black;">
-                    [ &nbsp; ] Veli &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Öğretmen &nbsp;&nbsp;&nbsp;&nbsp; [ <b>X</b> ] Disiplin Kurulu / Okul İdaresi &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Rehberlik Servisi
+                    [ &nbsp; ] Veli &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Öğretmen &nbsp;&nbsp;&nbsp;&nbsp; [ <b>X</b> ] ${boardInfo.boardName} / Okul İdaresi &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Rehberlik Servisi
                 </td>
             </tr>
         </table>
@@ -3150,7 +3151,7 @@ const DecisionAssistant = () => {
                 <td style="width:50%;">
                     <b>Görüşmeyi Yapan Yetkili / Rehberlik</b><br>
                     <b>${institution.counselorName || boardPresident}</b><br>
-                    <span style="font-size:8pt; color:#444;">${institution.counselorName ? (institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni') : 'Öğr. Dav. Değ. Kur. Başkanı'}</span><br>
+                    <span style="font-size:8pt; color:#444;">${institution.counselorName ? (institution.counselorTitle || 'Psikolojik Danışman / Rehberlik Öğretmeni') : boardInfo.boardPresidentLabel}</span><br>
                     İmza: ........................................
                 </td>
             </tr>
@@ -3192,7 +3193,7 @@ const DecisionAssistant = () => {
             </tr>
         </table>
         <p style="text-align:justify; line-height:1.4; font-size:9.5pt; text-indent:20px; margin-top:6px; margin-bottom:6px;">
-            Yukarıda açık kimliği bulunan öğrencim <b>${s.name}</b> tarafından gerçekleştirilen olumsuz davranışlar (<b>${i.title}</b>) ile ilgili olarak <b>${formDateStr}</b> tarihinde, saat <b>${formTimeStr}</b>'de, Okul Müdür Yardımcısı / Kurul Başkanı <b>${boardPresident}</b> nezaretinde konu hakkında ve öğrencimin olumsuz davranışlarının devam etmesi durumunda mevzuat hükümleri doğrultusunda uygulanabilecek disiplin işlemleri konusunda detaylı olarak bilgilendirildim.
+            Yukarıda açık kimliği bulunan öğrencim <b>${s.name}</b> tarafından gerçekleştirilen olumsuz davranışlar (<b>${i.title}</b>) ile ilgili olarak <b>${formDateStr}</b> tarihinde, saat <b>${formTimeStr}</b>'de, ${boardInfo.presidentTitle} / ${boardInfo.boardPresidentLabel} <b>${boardPresident}</b> nezaretinde konu hakkında ve öğrencimin olumsuz davranışlarının devam etmesi durumunda mevzuat hükümleri doğrultusunda uygulanabilecek disiplin işlemleri konusunda detaylı olarak bilgilendirildim.
         </p>
         <div style="border:1px solid black; padding:6px; min-height:50px; font-size:9.5pt;">
              <b>Velinin Görüşü / Açıklaması:</b><br>
@@ -3206,7 +3207,7 @@ const DecisionAssistant = () => {
             </div>
             <div style="border-top:1px solid black; padding-top:4px; width:40%;">
                 <b>${boardPresident}</b><br>
-                Öğr. Dav. Değ. Kur. Başkanı<br><br>
+                ${boardInfo.boardPresidentLabel}<br><br>
                 İmza: .................................
             </div>
         </div>

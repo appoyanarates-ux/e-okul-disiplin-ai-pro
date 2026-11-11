@@ -4,6 +4,17 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.1.5] - 2026-11-11
+
+### 🚀 Düzeltmeler ve güncellemeler
+- **Okul Türüne Göre Dinamik Kurul Adı:**
+  - Kurum Ayarlarında **Lise ve dengi okullar** (`Lise`, `Meslek Lisesi`, `İmam Hatip`, `MESEM`) seçildiğinde tüm resmi evraklarda **"Okul Öğrenci Ödül ve Disiplin Kurulu"** ifadesinin kullanılması sağlandı.
+  - **Ortaokul** seçildiğinde tüm resmi evraklarda **"Öğrenci Davranışlarını Değerlendirme Kurulu"** ifadesinin kullanılması sağlandı.
+- **Öğrenci Çağrı Pusulası İmza Güncellemesi:**
+  - Öğrenci Çağrı Pusulası imza bölümünde Okul Müdürü yerine Kurul Başkanının (`BAŞKAN`) adı soyadı, ünvanı ve kurul başkanlığı sıfatının yer alması sağlandı.
+
+---
+
 ## [1.1.4] - 2026-11-09
 
 ### 🚀 Düzeltmeler ve güncellemeler

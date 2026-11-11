@@ -10,11 +10,13 @@ import { useStudents } from '../context/StudentContext';
 import { useSettings } from '../context/SettingsContext';
 import { exportHtmlToWord, printHtmlViaIframe } from '../services/exportService';
 import { MarginType, PAGE_MARGINS, Student } from '../types';
+import { getBoardInfo } from '../services/boardHelpers';
 
 const PenaltyRemoval = () => {
   const { incidents, updateIncidentStudent } = useIncidents();
   const { students, updateStudent } = useStudents();
   const { institution, boardMembers } = useSettings();
+  const boardInfo = getBoardInfo(institution?.type, boardMembers);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // --- TAB STATE ---
@@ -524,7 +526,7 @@ const PenaltyRemoval = () => {
            <div>${new Date().toLocaleDateString('tr-TR')}</div>
       </div>
       <br>
-      <div style="text-align:center; font-weight:bold; margin:20px 0;">ÖĞRENCİ DAVRANIŞLARINI DEĞERLENDİRME KURULU ÜYELERİNE</div>
+      <div style="text-align:center; font-weight:bold; margin:20px 0;">${boardInfo.boardNameUpper} ÜYELERİNE</div>
       <p style="text-indent:30px; text-align:justify; line-height:1.6;">
          Okulumuz ${studentsAndPenaltiesText}nın; davranışlarındaki gelişmelerin değerlendirilerek cezasının kaldırılması (davranış puanının iadesi) veya cezasının devamı hususunu görüşmek üzere toplanılacaktır.
       </p>
@@ -607,7 +609,7 @@ const PenaltyRemoval = () => {
           <div style="text-align:center;"><b>${student!.grade} SINIFI REHBER ÖĞRETMENLİĞİNE</b></div>
           <br>
           <p style="text-indent:30px; text-align:justify; line-height:1.6;">
-              Sınıfınız öğrencilerinden <b>${student!.number}</b> numaralı <b>${student!.name}</b> hakkında daha önce uygulanmış olan disiplin cezasının kaldırılıp kaldırılmayacağının değerlendirilmesi amacıyla Öğrenci Davranışlarını Değerlendirme Kurulu toplanacaktır.
+              Sınıfınız öğrencilerinden <b>${student!.number}</b> numaralı <b>${student!.name}</b> hakkında daha önce uygulanmış olan disiplin cezasının kaldırılıp kaldırılmayacağının değerlendirilmesi amacıyla ${boardInfo.boardName} toplanacaktır.
           </p>
           <p style="text-indent:30px; text-align:justify; line-height:1.6;">
               İlgili yönetmelik gereği; öğrencinin ceza aldıktan sonraki süreçteki davranışları, ders içi tutumları ve arkadaşlık ilişkilerindeki olumlu/olumsuz değişimler hakkındaki görüşlerinizi içeren raporun hazırlanarak idareye teslim edilmesi hususunda;
@@ -695,14 +697,14 @@ const PenaltyRemoval = () => {
     const reasonLabel = removalForm.resultType === 'removed' ? 'Karar Gerekçesi (Davranışlardaki Olumlu Değişimler):' : 'Karar Gerekçesi:';
     
     const decisionText = removalForm.resultType === 'removed'
-        ? `Okulumuz Öğrenci Davranışlarını Değerlendirme Kurulu, yukarıda bilgileri ve cezaları belirtilen öğrenci/öğrencilerin durumlarını görüşmek üzere toplanmıştır. Sınıf rehber öğretmeni/öğretmenleri tarafından gönderilen gözlem raporları incelenmiş ve ilgili öğrencinin/öğrencilerin ders yılı içerisindeki olumlu davranış değişiklikleri dikkate alınarak; <b>${regulationArticle}</b> gereğince, daha önceden almış oldukları disiplin cezalarının kaldırılmasına ve e-Okul sistemindeki karar ve eylem silinmeden, davranış puanlarının iadesine katılanların oy birliği/oy çokluğu ile karar verilmiştir.`
-        : `Okulumuz Öğrenci Davranışlarını Değerlendirme Kurulu, yukarıda bilgileri ve cezaları belirtilen öğrenci/öğrencilerin durumlarını görüşmek üzere toplanmıştır. Sınıf rehber öğretmeni/öğretmenleri tarafından gönderilen gözlem raporları incelenmiş ve ilgili öğrencinin/öğrencilerin ders yılı içerisindeki davranışlarında cezanın kaldırılmasını gerektirecek olumlu bir değişiklik gözlemlenmediğinden; <b>${regulationArticle}</b> gereğince, daha önceden almış oldukları disiplin cezalarının devamına katılanların oy birliği/oy çokluğu ile karar verilmiştir.`;
+        ? `Okulumuz ${boardInfo.boardName}, yukarıda bilgileri ve cezaları belirtilen öğrenci/öğrencilerin durumlarını görüşmek üzere toplanmıştır. Sınıf rehber öğretmeni/öğretmenleri tarafından gönderilen gözlem raporları incelenmiş ve ilgili öğrencinin/öğrencilerin ders yılı içerisindeki olumlu davranış değişiklikleri dikkate alınarak; <b>${regulationArticle}</b> gereğince, daha önceden almış oldukları disiplin cezalarının kaldırılmasına ve e-Okul sistemindeki karar ve eylem silinmeden, davranış puanlarının iadesine katılanların oy birliği/oy çokluğu ile karar verilmiştir.`
+        : `Okulumuz ${boardInfo.boardName}, yukarıda bilgileri ve cezaları belirtilen öğrenci/öğrencilerin durumlarını görüşmek üzere toplanmıştır. Sınıf rehber öğretmeni/öğretmenleri tarafından gönderilen gözlem raporları incelenmiş ve ilgili öğrencinin/öğrencilerin ders yılı içerisindeki davranışlarında cezanın kaldırılmasını gerektirecek olumlu bir değişiklik gözlemlenmediğinden; <b>${regulationArticle}</b> gereğince, daha önceden almış oldukları disiplin cezalarının devamına katılanların oy birliği/oy çokluğu ile karar verilmiştir.`;
 
     const body = `
       ${header}
       <br>
       <div style="text-align:center; font-weight:bold; margin-bottom:20px; font-size:14px; text-decoration:underline;">
-          ÖĞRENCİ DAVRANIŞLARINI DEĞERLENDİRME KURULU ${titleText}
+          ${boardInfo.boardNameUpper} ${titleText}
       </div>
       
       <table style="width:100%; border-collapse:collapse; border:1px solid black; margin-bottom:20px; font-size:10pt;">
@@ -1288,7 +1290,7 @@ const PenaltyRemoval = () => {
                     <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-lg text-xs text-amber-900 flex gap-2">
                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
                         <span>
-                            <strong>Mevzuat Hatırlatması:</strong> {institution.type === 'Ortaokul' ? 'MEB İlköğretim Kurumları Yönetmeliği 58. Maddesi' : 'MEB Ortaöğretim Kurumları Yönetmeliği 171. Maddesi'} uyarınca, olumlu gelişim gösteren öğrencilerin disiplin yaptırımları öğretmen raporları ve Öğrenci Davranışlarını Değerlendirme Kurulu kararıyla kaldırılabilir.
+                            <strong>Mevzuat Hatırlatması:</strong> {boardInfo.regulationRemovalShort} uyarınca, olumlu gelişim gösteren öğrencilerin disiplin yaptırımları öğretmen raporları ve {boardInfo.boardName} kararıyla kaldırılabilir.
                         </span>
                     </div>
                 </div>
@@ -1539,7 +1541,7 @@ const PenaltyRemoval = () => {
                     <div>
                         <span className="text-xs text-indigo-800 font-bold block uppercase tracking-wide">Mevzuat Güvencesi ve Sicil Temizliği</span>
                         <p className="text-xs text-slate-600 mt-1 leading-normal">
-                            MEB Kurumları Yönetmeliği gereği, Öğrenci Davranışlarını Değerlendirme Kurulu tarafından durumları olumlu değerlendirilen öğrencilerin yaptırımları iade edilerek dönem/ders yılı sonu karnelerine ve e-Okul sicillerine <u>yansıtılmaz</u>. Bu panel, yapılan resmi iade kararlarının kalıcı arşivini tutar.
+                            MEB Kurumları Yönetmeliği gereği, {boardInfo.boardName} tarafından durumları olumlu değerlendirilen öğrencilerin yaptırımları iade edilerek dönem/ders yılı sonu karnelerine ve e-Okul sicillerine <u>yansıtılmaz</u>. Bu panel, yapılan resmi iade kararlarının kalıcı arşivini tutar.
                         </p>
                     </div>
                 </div>
