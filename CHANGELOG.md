@@ -4,6 +4,20 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.1.6] - 2026-11-13
+
+### 🔑 Api Key Güncellemeleri
+- **Çoklu Gemini Model Havuzu ve Otomatik Model Algılama:**
+  - Farklı Google AI Studio ve Google Cloud hesaplarına ait Gemini API anahtarlarının model yetkileri (`gemini-2.0-flash`, `gemini-1.5-flash`, `gemini-2.0-flash-lite`, `gemini-2.5-flash`) otomatik olarak test edilir ve çalışan en uygun model tespit edilerek hafızaya alınır.
+  - Model yetersizliği veya kota hatalarında (403 Permission Denied, 404 Not Found, 429 Too Many Requests, 503 Overloaded) sistem kilitlenmek yerine alternatif modellere anında geçiş yaparak işlemlerin kesintisiz sürmesini sağlar.
+  - API anahtarı yapıştırılırken başında/sonunda oluşabilecek boşluklar, tırnak işaretleri (`"..."`, `'...'`) veya `Bearer ` / `GEMINI_API_KEY=` gibi yanlış ön ekler otomatik olarak temizlenir.
+- **Yapay Zeka Ayarları & Model Tercihi:**
+  - Ayarlar > Yapay Zeka sekmesine model tercihi seçeneği, aktif çalışan model durumu göstergesi ve API anahtarı test araçları eklendi.
+- **Windows SmartScreen Uyumluluk İyileştirmesi:**
+  - Kurulum dosyasında kullanıcı yetki seviyesi (`asInvoker`) ve kullanıcı bazlı kurulum (`perMachine: false`) optimize edildi; kurulum engeli uyarılarına karşı bilgilendirme rehberi eklendi.
+
+---
+
 ## [1.1.5] - 2026-11-11
 
 ### 🚀 Düzeltmeler ve güncellemeler

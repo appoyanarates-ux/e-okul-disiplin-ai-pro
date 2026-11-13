@@ -46,7 +46,7 @@ jobs:
           name: "E-Okul Disiplin AI Pro ${{ github.ref_name }} - By Abdullah Yanarateş"
           draft: false
           prerelease: false
-          body: "Düzeltmeler ve güncellemeler"
+          body: "Api Key Güncellemeleri"
           generate_release_notes: false
           files: |
             release/E-Okul-Disiplin-AI-Pro-Setup.exe

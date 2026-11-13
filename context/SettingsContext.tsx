@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Institution, BoardMember } from '../types';
 import { getCurrentAcademicYear } from '../services/academicYear';
 import { triggerPersistenceSync } from '../services/persistenceSync';
+import { cleanApiKey } from '../services/geminiService';
 
 interface SettingsContextType {
   institution: Institution;
@@ -82,12 +83,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateApiKey = (key: string) => {
-    const trimmed = (key || '').trim();
-    setApiKey(trimmed);
-    if (trimmed) {
-      localStorage.setItem('gemini_api_key', trimmed);
+    const cleaned = cleanApiKey(key);
+    setApiKey(cleaned);
+    if (cleaned) {
+      localStorage.setItem('gemini_api_key', cleaned);
     } else {
       localStorage.removeItem('gemini_api_key');
+      localStorage.removeItem('gemini_preferred_model');
     }
     triggerPersistenceSync();
   };
@@ -95,6 +97,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const clearApiKey = () => {
     setApiKey('');
     localStorage.removeItem('gemini_api_key');
+    localStorage.removeItem('gemini_preferred_model');
     triggerPersistenceSync();
   };
 

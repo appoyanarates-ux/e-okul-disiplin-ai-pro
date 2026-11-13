@@ -306,6 +306,9 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
                         <p className="text-emerald-800 leading-relaxed">
                           Yükleyiciyi başlatmak için aşağıdaki butona basınız. Mevcut tüm öğrenci ve disiplin verileriniz korunacaktır.
                         </p>
+                        <p className="text-[11px] text-emerald-700/90 mt-1.5 bg-white/60 p-2 rounded-lg border border-emerald-200">
+                          🛡️ <strong>Windows Uyarısı Çıkarsa:</strong> Windows ilk kurulumda mavi koruma ekranı çıkartırsa <strong>"Ek bilgi"</strong> linkine ve ardından <strong>"Yine de çalıştır"</strong> butonuna basabilirsiniz.
+                        </p>
                       </div>
                     </div>
                   )}

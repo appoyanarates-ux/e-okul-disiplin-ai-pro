@@ -2,7 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Building, Users, Info, AlertTriangle, Sparkles, Eye, EyeOff, CheckCircle, XCircle, Loader2, ExternalLink, RefreshCw, Trash2, Plus, X, Database, Download, Upload, Check, Key } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
-import { validateApiKeyDetailed, fetchBoardInfoFromUrl } from '../services/geminiService';
+import { 
+  validateApiKeyDetailed, 
+  fetchBoardInfoFromUrl, 
+  cleanApiKey, 
+  MODEL_OPTIONS, 
+  getPreferredModel, 
+  setPreferredModel, 
+  getModelFriendlyName 
+} from '../services/geminiService';
 import { BoardMember } from '../types';
 import { migrateImportedData } from '../services/dataMigrator';
 import { getCurrentAcademicYear, getAcademicYearOptions } from '../services/academicYear';
@@ -26,6 +34,8 @@ const Settings = () => {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testErrorType, setTestErrorType] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>(getPreferredModel());
+  const [detectedModel, setDetectedModel] = useState<string | null>(null);
 
   // Board Regulation Info State
   const [regulationInfo, setRegulationInfo] = useState<string>('');
@@ -179,14 +189,19 @@ const Settings = () => {
   };
 
   const handleTestKey = async () => {
-    if (!tempKey.trim()) return;
+    const cleaned = cleanApiKey(tempKey);
+    if (!cleaned) return;
     setTestStatus('testing');
     setTestMessage(null);
     setTestErrorType(null);
-    const result = await validateApiKeyDetailed(tempKey.trim());
+    setDetectedModel(null);
+    const result = await validateApiKeyDetailed(cleaned, selectedModel);
     setTestStatus(result.valid ? 'success' : 'error');
     setTestMessage(result.message);
     setTestErrorType(result.errorType || null);
+    if (result.workingModel) {
+      setDetectedModel(result.workingModel);
+    }
   };
 
   const handleClearKey = () => {
@@ -195,11 +210,16 @@ const Settings = () => {
     setTestStatus('idle');
     setTestMessage(null);
     setTestErrorType(null);
+    setDetectedModel(null);
+    setSelectedModel('auto');
+    setPreferredModel('auto');
     handleSave();
   };
 
   const handleSaveKey = () => {
-    updateApiKey(tempKey);
+    const cleaned = cleanApiKey(tempKey);
+    updateApiKey(cleaned);
+    setPreferredModel(selectedModel);
     handleSave();
   };
 
@@ -956,6 +976,51 @@ const Settings = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Model Selection & Auto-Detection */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <label className="block text-xs font-bold text-slate-800">
+                                🧠 Yapay Zeka Modeli Tercihi
+                            </label>
+                            {detectedModel && (
+                                <span className="text-[11px] text-blue-700 bg-blue-100 border border-blue-200 px-2.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1 w-fit">
+                                    <Sparkles className="w-3 h-3 text-blue-600" />
+                                    Aktif: {getModelFriendlyName(detectedModel)}
+                                </span>
+                            )}
+                        </div>
+                        <select
+                            value={selectedModel}
+                            onChange={(e) => {
+                                setSelectedModel(e.target.value);
+                                setPreferredModel(e.target.value);
+                            }}
+                            className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                            {MODEL_OPTIONS.map((opt) => (
+                                <option key={opt.id} value={opt.id}>
+                                    {opt.name}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-[11px] text-slate-500 leading-relaxed">
+                            Program, farklı Google hesaplarının desteklediği modelleri (Gemini 2.0 Flash, 1.5 Flash, 2.5 Flash vb.) otomatik algılar. Herhangi bir modelde kota sınırı (429) veya erişim kısıtı olursa sıradaki en kararlı modele otomatik geçiş yapar.
+                        </p>
+                    </div>
+
+                    {/* API Key Diversity & Compatibility Note */}
+                    <div className="p-4 bg-indigo-50/70 border border-indigo-150 rounded-xl text-xs text-indigo-950 space-y-1.5">
+                        <p className="font-bold text-indigo-900 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                            Google Gemini API Çeşitleri & Akıllı Uyumluluk:
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 text-slate-700 text-[11px] leading-relaxed">
+                            <li><strong>Google AI Studio (Ücretsiz):</strong> En yaygın standart türdür. <code>gemini-2.0-flash</code> ve <code>gemini-1.5-flash</code> modellerini tam destekler.</li>
+                            <li><strong>Model Kısıtlamalı / Kurumsal Anahtarlar:</strong> Bazı anahtarlar belirli önizleme modellerine kapalı olsa dahi sistem bunu algılayıp çalışan diğer modellere otomatik bağlanır.</li>
+                            <li><strong>Kota ve Yoğunluk Koruması:</strong> Ücretsiz kotanız anlık olarak dolsa bile (429/503), sistem diğer kotalı modelleri deneyerek analizinizi kesintiye uğratmaz.</li>
+                        </ul>
+                    </div>
 
                     <p className="text-xs text-slate-500">
                         API anahtarınız sadece sizin tarayıcınızda (Local Storage) saklanır.

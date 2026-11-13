@@ -23,8 +23,12 @@ const HelpBackup = () => {
             <ul className="list-disc pl-5 space-y-1 text-slate-600">
                 <li><strong>Kurum Bilgileri:</strong> Okul adı, müdür adı ve il/ilçe bilgileri tüm resmi evraklara otomatik yansır.</li>
                 <li><strong>Okul Türü:</strong> Lise veya Ortaokul seçimi, disiplin yönetmeliği maddelerinin (Madde 164 veya 55) otomatik ayarlanmasını sağlar.</li>
-                <li><strong>Yapay Zeka (AI):</strong> Gemini API anahtarınızı girerek olay analizi ve otomatik taslak oluşturma özelliklerini aktif hale getirin.</li>
+                <li><strong>Yapay Zeka (AI):</strong> Gemini API anahtarınızı girerek olay analizi ve otomatik taslak oluşturma özelliklerini aktif hale getirin. Program her türlü Gemini API anahtarını ve modellerini (Gemini 2.0 Flash, 1.5 Flash vb.) otomatik algılar.</li>
             </ul>
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 space-y-1">
+                <p className="font-bold flex items-center gap-1">🛡️ Windows SmartScreen ("Windows kişisel bilgisayarınızı korudu") Uyarısı Çıkarsa:</p>
+                <p>Windows ilk kurulumda mavi renkli Microsoft Defender ekranı gösterdiğinde: Ekranda yer alan <strong>"Ek bilgi"</strong> bağlantısına tıklayın ve ardından altta açılan <strong>"Yine de çalıştır"</strong> butonuna basın. Kurulum güvenle başlayacaktır.</p>
+            </div>
         </div>
       )
     },
