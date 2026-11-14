@@ -1,6 +1,6 @@
 <?php
 /**
- * E-Okul Disiplin AI Pro - Evrakplus.com WordPress & Bulut Senkronizasyon API'si (v1.1.7)
+ * E-Okul Disiplin AI Pro - Evrakplus.com WordPress & Bulut Senkronizasyon API'si (v1.1.8)
  * Konum: https://www.evrakplus.com/disiplin-cezasi-programi/sync-api.php
  * Geliştirici: Abdullah Yanarateş
  */
@@ -79,7 +79,7 @@ function generateSecureToken() {
 
 function loadUserData($file) {
     $default = [
-        'version' => '1.1.7',
+        'version' => '1.1.8',
         'updatedAt' => null,
         'institutionSettings' => new stdClass(),
         'boardSettings' => [],
@@ -192,7 +192,7 @@ function performSmartSync($storageFile, $clientData) {
         : (!empty($serverData['gemini_api_key']) ? $serverData['gemini_api_key'] : '');
 
     $mergedData = [
-        'version' => '1.1.7',
+        'version' => '1.1.8',
         'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'),
         'institutionSettings' => $clientInst,
         'boardSettings' => $clientBoard,
@@ -237,7 +237,7 @@ if ($action === 'ping') {
     echo json_encode([
         'ok' => true,
         'service' => 'E-Okul Disiplin AI Pro Sync API',
-        'version' => '1.1.7',
+        'version' => '1.1.8',
         'wpIntegrated' => $wpLoaded,
         'serverTime' => gmdate('Y-m-d\TH:i:s\Z')
     ], JSON_UNESCAPED_UNICODE);

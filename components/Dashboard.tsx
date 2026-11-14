@@ -2,7 +2,8 @@
 import React from 'react';
 import { 
   Users, AlertTriangle, FileCheck, Scale, 
-  FileText, TrendingUp, Book, Mail, FilePlus, Settings, RotateCcw, AlertCircle, Briefcase, FileSpreadsheet, Calendar
+  FileText, TrendingUp, Book, Mail, FilePlus, Settings, RotateCcw, AlertCircle, Briefcase, FileSpreadsheet, Calendar,
+  Globe, ExternalLink
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
@@ -50,15 +51,31 @@ const Dashboard = () => {
           <p className="text-slate-500">Disiplin süreçlerini yönetmek için aşağıdaki menüleri kullanabilirsiniz.</p>
         </div>
 
-        {showApiWarning && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-lg animate-pulse">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-650"></span>
-            </span>
-            <span>AI Sistemi Eksik Yapılandırma!</span>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href="https://www.evrakplus.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="evrakplus.com Ana Sayfasına Git"
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 hover:text-blue-600 border border-slate-200 hover:border-blue-300 rounded-xl text-xs font-semibold shadow-xs transition-all group"
+          >
+            <div className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <Globe className="w-3.5 h-3.5" />
+            </div>
+            <span>evrakplus.com Ana Sayfa</span>
+            <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-blue-500 transition-colors" />
+          </a>
+
+          {showApiWarning && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-lg animate-pulse">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-650"></span>
+              </span>
+              <span>AI Sistemi Eksik Yapılandırma!</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {showApiWarning && (

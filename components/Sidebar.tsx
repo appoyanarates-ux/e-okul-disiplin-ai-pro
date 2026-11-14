@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, AlertTriangle, Gavel, BarChart3, 
   BookOpen, Settings, ChevronDown, ChevronRight, LifeBuoy, Scale, Info, Wifi, WifiOff, AlertCircle, RotateCcw, X,
-  Briefcase, FileSpreadsheet, Cloud, RefreshCw
+  Briefcase, FileSpreadsheet, Cloud, RefreshCw, Globe, ExternalLink
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
@@ -304,6 +304,28 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
           </button>
         </div>
 
+        {/* Ana Siteye Dön Butonu (evrakplus.com) */}
+        <div className="px-3 pt-3 pb-1">
+          <a
+            href="https://www.evrakplus.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="evrakplus.com Ana Sayfasına Git"
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 hover:from-blue-600 hover:to-indigo-600 text-white text-xs font-semibold shadow-md shadow-blue-950/40 border border-blue-500/30 transition-all group"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
+                <Globe className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="font-bold tracking-tight">evrakplus.com</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] text-blue-200 group-hover:text-white">
+              <span>Siteye Dön</span>
+              <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </a>
+        </div>
+
         {/* Menu List */}
         <div className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
           <div className="space-y-1">
@@ -387,7 +409,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
               </div>
               <div className="flex-1 overflow-hidden">
                   <p className="text-xs font-bold text-slate-200 truncate">By Abdullah Yanarateş</p>
-                  <p className="text-[10px] text-slate-400 truncate">E-Okul Disiplin AI Pro v1.1.7</p>
+                  <p className="text-[10px] text-slate-400 truncate">E-Okul Disiplin AI Pro v1.1.8</p>
               </div>
            </div>
         </div>
