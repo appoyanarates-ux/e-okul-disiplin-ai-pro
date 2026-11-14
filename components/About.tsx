@@ -13,7 +13,8 @@ import {
   ExternalLink,
   CheckCircle,
   FileText,
-  RefreshCw
+  RefreshCw,
+  Globe
 } from 'lucide-react';
 import { UpdateNotificationModal } from './UpdateNotificationModal';
 
@@ -108,6 +109,21 @@ const About = () => {
               </span>
               <a href="mailto:appo.yanarates@gmail.com" className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 appo.yanarates@gmail.com
+              </a>
+            </div>
+
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <span className="text-slate-500 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-slate-400" /> Program Sayfası
+              </span>
+              <a 
+                href="https://www.evrakplus.com/programlar/yapay-zeka-destekli-disiplin-cezasi-programi-e-okul-disiplin-ai-pro/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
+              >
+                <span>evrakplus.com</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
 

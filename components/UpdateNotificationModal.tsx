@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Download, Sparkles, CheckCircle2, AlertTriangle, 
-  ArrowUpCircle, X, ExternalLink, RefreshCw, Loader2, HardDrive
+  ArrowUpCircle, X, ExternalLink, RefreshCw, Loader2, HardDrive, Globe
 } from 'lucide-react';
 import { checkForAppUpdates, UpdateInfo, DownloadProgress } from '../services/updateService';
 
@@ -221,6 +221,26 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
                       </span>
                     </div>
                   </div>
+
+                  {/* evrakplus.com Yonlendirme Butonu */}
+                  <a
+                    href="https://www.evrakplus.com/programlar/yapay-zeka-destekli-disiplin-cezasi-programi-e-okul-disiplin-ai-pro/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="evrakplus.com Program ve Güncelleme Sayfasına Git"
+                    className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border border-blue-200 hover:border-blue-300 rounded-xl text-blue-900 transition-all group shadow-xs"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                        <Globe className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold block text-blue-950">evrakplus.com Program & Güncelleme Sayfası</span>
+                        <span className="text-[10px] text-blue-600 font-medium">Rehber, detaylar ve doğrudan indirme için tıklayın</span>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-blue-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </a>
 
                   {/* Release Notes */}
                   {updateInfo.releaseNotes && (
