@@ -335,7 +335,7 @@ const Students = () => {
   };
 
   return (
-    <div className="p-8 max-w-full mx-auto h-screen flex flex-col">
+    <div className="p-3 sm:p-6 lg:p-8 max-w-full mx-auto min-h-screen lg:h-screen flex flex-col">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 shrink-0">
         <div>
             <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -348,7 +348,7 @@ const Students = () => {
                  : 'Henüz öğrenci eklenmedi. Excel ile toplu yükleme yapabilirsiniz.'}
             </p>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
             <div className="flex flex-col items-end mr-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Yükleme Formatı</span>
                 <select 

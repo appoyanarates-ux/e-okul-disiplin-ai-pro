@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Menu, Globe } from 'lucide-react';
+import { HashRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
+import { Menu, Globe, LayoutDashboard, Users, AlertTriangle, Gavel, MoreHorizontal } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import IncidentLog from './components/IncidentLog';
@@ -63,7 +63,7 @@ const App = () => {
 
               <Sidebar isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} /> 
               
-              <div className="flex-1 lg:ml-64 pt-16 lg:pt-0 transition-all duration-300 w-full">
+              <div className="flex-1 lg:ml-64 pt-16 lg:pt-0 pb-20 lg:pb-0 transition-all duration-300 w-full min-w-0">
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/students" element={<Students />} />
@@ -80,6 +80,54 @@ const App = () => {
                   <Route path="/about" element={<About />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
+              </div>
+
+              {/* Mobile Bottom Navigation Bar (Sadece Mobilde Görünür) */}
+              <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-30 flex items-center justify-around px-2 shadow-lg shadow-slate-900/10">
+                <NavLink
+                  to="/"
+                  className={({ isActive }) => `flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+                    isActive ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <LayoutDashboard className="w-5 h-5 mb-0.5" />
+                  <span className="text-[10px]">Panel</span>
+                </NavLink>
+                <NavLink
+                  to="/students"
+                  className={({ isActive }) => `flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+                    isActive ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Users className="w-5 h-5 mb-0.5" />
+                  <span className="text-[10px]">Öğrenci</span>
+                </NavLink>
+                <NavLink
+                  to="/incidents"
+                  className={({ isActive }) => `flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+                    isActive ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <AlertTriangle className="w-5 h-5 mb-0.5" />
+                  <span className="text-[10px]">Olaylar</span>
+                </NavLink>
+                <NavLink
+                  to="/decisions"
+                  className={({ isActive }) => `flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+                    isActive ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Gavel className="w-5 h-5 mb-0.5" />
+                  <span className="text-[10px]">Karar</span>
+                </NavLink>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  <MoreHorizontal className="w-5 h-5 mb-0.5" />
+                  <span className="text-[10px]">Menü</span>
+                </button>
               </div>
             </div>
           </HashRouter>

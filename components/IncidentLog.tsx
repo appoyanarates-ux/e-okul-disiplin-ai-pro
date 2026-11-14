@@ -202,10 +202,10 @@ const IncidentLog = () => {
   });
 
   return (
-    <div className="flex h-screen pt-0 overflow-hidden bg-[#f3f4f6]">
+    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen pt-0 bg-[#f3f4f6]">
       
       {/* LEFT PANEL: LIST */}
-      <div className="w-1/3 bg-white border-r border-slate-200 flex flex-col z-0">
+      <div className="w-full lg:w-1/3 max-h-[45vh] lg:max-h-none bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col z-0">
         <div className="p-4 border-b border-slate-100 bg-slate-50">
            <h2 className="font-bold text-slate-800 flex items-center gap-2 mb-3">
              <FileText className="w-5 h-5 text-blue-600" />
@@ -276,16 +276,16 @@ const IncidentLog = () => {
       </div>
 
       {/* RIGHT PANEL: FORM & DETAILS */}
-      <div className="w-2/3 flex flex-col h-full bg-[#f3f4f6]">
+      <div className="w-full lg:w-2/3 flex flex-col min-h-screen lg:h-full bg-[#f3f4f6]">
         
         {/* Header Actions */}
-        <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm shrink-0">
+        <div className="p-3 sm:p-4 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-3 shadow-sm shrink-0">
            <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-slate-500">Olay İşlemleri</h1>
-                <ChevronRight className="w-5 h-5 text-slate-300" />
-                <h2 className="text-lg font-bold text-blue-700">Olay Kaydı & Öğrenciler</h2>
+                <h1 className="text-base sm:text-lg font-bold text-slate-500">Olay İşlemleri</h1>
+                <ChevronRight className="w-4 h-4 text-slate-300" />
+                <h2 className="text-base sm:text-lg font-bold text-blue-700">Olay Kaydı & Öğrenciler</h2>
             </div>
-           <div className="flex gap-2">
+           <div className="flex flex-wrap items-center gap-2">
              <Link 
                 to="/export"
                 className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"

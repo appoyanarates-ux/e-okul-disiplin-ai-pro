@@ -3231,16 +3231,16 @@ const DecisionAssistant = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#f3f4f6]">
+    <div className="flex flex-col min-h-screen lg:h-screen bg-[#f3f4f6]">
       <style dangerouslySetInnerHTML={{ __html: cssFitPage }} />
       {/* HEADER ACTIONS */}
-      <div className="bg-white border-b border-slate-200 px-8 py-5 shadow-sm z-10 flex justify-between items-center">
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3 sm:py-5 shadow-sm z-10 flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-500">Süreç Yönetimi</h1>
-            <ChevronRight className="w-5 h-5 text-slate-300" />
-            <h2 className="text-xl font-bold text-blue-700">{getSectionTitle()}</h2>
+            <h1 className="text-base sm:text-xl font-bold text-slate-500">Süreç Yönetimi</h1>
+            <ChevronRight className="w-4 sm:w-5 h-4 sm:h-5 text-slate-300" />
+            <h2 className="text-base sm:text-xl font-bold text-blue-700">{getSectionTitle()}</h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
                 {/* Sayfa Düzeni (Kenar Boşlukları & Tek Sayfaya Sığdırma) Açılır Menüsü */}
                 <div className="relative">
                     <button 

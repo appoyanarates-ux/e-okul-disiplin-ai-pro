@@ -44,7 +44,7 @@ const Dashboard = () => {
   const showApiWarning = !apiKey || apiKey.trim() === '';
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Kontrol Paneli</h1>
