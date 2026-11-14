@@ -172,7 +172,7 @@ const DecisionAssistant = () => {
   const { students, updateStudent } = useStudents();
   const { incidents, updateIncidentStudent, updateIncident } = useIncidents();
   const { institution, boardMembers } = useSettings();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const getAutoDecisionNo = (incident?: Incident) => {
     if (!incident) return '';
@@ -441,7 +441,9 @@ const DecisionAssistant = () => {
   };
 
   // --- ZOOM & OFFICE MARGIN STATE ---
-  const [zoom, setZoom] = useState(1.0);
+  const isMobileInitial = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [zoom, setZoom] = useState(isMobileInitial ? 0.45 : 1.0);
+  const [mobileViewMode, setMobileViewMode] = useState<'form' | 'preview'>('form');
   const [marginPreset, setMarginPreset] = useState<MarginType>('normal');
   const [showMarginMenu, setShowMarginMenu] = useState(false);
   const [fitToPage, setFitToPage] = useState(false);
@@ -813,6 +815,9 @@ const DecisionAssistant = () => {
     const res = await analyzeIncident(analysisIncident, targetStudents);
     setAiResult(res);
     setLoading(false);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setMobileViewMode('preview');
+    }
     
     if (res) {
         targets.forEach(studentId => {
@@ -1479,6 +1484,9 @@ const DecisionAssistant = () => {
     }
     
     setGeneratedDocs(docs);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setMobileViewMode('preview');
+    }
     
     if (docs.length > 1) {
         setSuccessMessage(`${docs.length} adet belge başarıyla oluşturuldu.`);
@@ -1507,8 +1515,56 @@ const DecisionAssistant = () => {
 
   // --- ZOOM CONTROLS ---
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 2.0));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.5));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.35));
   const handleResetZoom = () => setZoom(1.0);
+  const handleFitMobile = () => setZoom(typeof window !== 'undefined' && window.innerWidth < 768 ? 0.45 : 0.85);
+
+  const renderZoomToolbar = () => (
+    <div data-html2canvas-ignore="true" className="print:hidden w-full max-w-[210mm] mx-auto mb-3 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-xs flex items-center justify-between gap-2 text-xs">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px] font-bold text-slate-500 uppercase hidden sm:inline">Görünüm:</span>
+        <button 
+          type="button" 
+          onClick={handleZoomOut} 
+          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-700 font-bold transition-colors cursor-pointer"
+          title="Küçült"
+        >
+          <ZoomOut className="w-3.5 h-3.5" />
+        </button>
+        <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-700 font-mono text-[11px] font-bold">
+          %{Math.round(zoom * 100)}
+        </span>
+        <button 
+          type="button" 
+          onClick={handleZoomIn} 
+          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-700 font-bold transition-colors cursor-pointer"
+          title="Büyüt"
+        >
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <button 
+          type="button"
+          onClick={handleFitMobile}
+          className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+          title="A4 kağıdı ekrana sığdırır"
+        >
+          <Layout className="w-3 h-3" />
+          <span>Ekrana Sığdır</span>
+        </button>
+        <button 
+          type="button"
+          onClick={handleResetZoom}
+          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-colors cursor-pointer hidden sm:inline"
+          title="Orijinal %100 boyut"
+        >
+          %100 Orijinal
+        </button>
+      </div>
+    </div>
+  );
 
   // Zoom and font controls are managed in the document action headers
 
@@ -1557,51 +1613,67 @@ const DecisionAssistant = () => {
           );
 
           return (
-             <div className="mx-auto w-[210mm]">
-                 {/* Word Margin Indicator Header */}
-                 <div data-html2canvas-ignore="true" className="print:hidden mb-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-2xs flex items-center justify-between text-xs text-slate-600">
-                     <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                         <Layout className="w-3.5 h-3.5 text-blue-600" />
-                         <span>{activeMargin.name}</span>
-                         <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono font-normal">A4 Portre</span>
-                     </div>
-                     <div className="text-[11px] font-mono text-slate-500">
-                         Üst: {activeMargin.top}mm • Alt: {activeMargin.bottom}mm • Sol: {activeMargin.left}mm • Sağ: {activeMargin.right}mm
-                     </div>
-                 </div>
+             <div className="w-full flex flex-col items-center">
+                 {renderZoomToolbar()}
+                 <div className="w-full overflow-x-auto flex justify-center py-2 px-1 custom-scrollbar">
+                     <div className="mx-auto w-[210mm]">
+                         {/* Word Margin Indicator Header */}
+                         <div data-html2canvas-ignore="true" className="print:hidden mb-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-2xs flex items-center justify-between text-xs text-slate-600">
+                             <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                 <Layout className="w-3.5 h-3.5 text-blue-600" />
+                                 <span>{activeMargin.name}</span>
+                                 <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono font-normal">A4 Portre</span>
+                             </div>
+                             <div className="text-[11px] font-mono text-slate-500">
+                                 Üst: {activeMargin.top}mm • Alt: {activeMargin.bottom}mm • Sol: {activeMargin.left}mm • Sağ: {activeMargin.right}mm
+                             </div>
+                         </div>
 
-                 <div 
-                     id="ai-report-preview" 
-                     className={`document-page bg-white shadow-2xl text-black mx-auto w-[210mm] min-h-[297mm] h-auto relative font-serif ${fitToPage ? 'print-fit-page' : ''}`}
-                     style={{ 
-                         paddingTop: `${activeMargin.top}mm`,
-                         paddingBottom: `${activeMargin.bottom}mm`,
-                         paddingLeft: `${activeMargin.left}mm`,
-                         paddingRight: `${activeMargin.right}mm`,
-                         fontSize: `${docFontSize}pt`,
-                         fontFamily: '"Times New Roman", Times, "Liberation Serif", serif',
-                         transform: `scale(${zoom})`, 
-                         transformOrigin: 'top center',
-                         transition: 'transform 0.2s ease-out'
-                     }}
-                 >
-                     {pageMarkers}
-                     <h3 className="text-lg font-bold border-b border-black mb-6 pb-2 text-center font-sans tracking-wide">YAPAY ZEKA ANALİZ VE MEVZUAT RAPORU</h3>
-                     <div className="whitespace-pre-wrap text-justify text-sm leading-relaxed">{aiResult}</div>
-                     <div className="mt-12 text-center text-xs text-slate-400 border-t pt-4 font-sans">*** Yapay Zeka (AI) tarafından bilgi amaçlı oluşturulmuştur. ***</div>
-                </div>
-            </div>
+                         <div 
+                             id="ai-report-preview" 
+                             className={`document-page bg-white shadow-2xl text-black mx-auto w-[210mm] min-h-[297mm] h-auto relative font-serif ${fitToPage ? 'print-fit-page' : ''}`}
+                             style={{ 
+                                 paddingTop: `${activeMargin.top}mm`,
+                                 paddingBottom: `${activeMargin.bottom}mm`,
+                                 paddingLeft: `${activeMargin.left}mm`,
+                                 paddingRight: `${activeMargin.right}mm`,
+                                 fontSize: `${docFontSize}pt`,
+                                 fontFamily: '"Times New Roman", Times, "Liberation Serif", serif',
+                                 transform: `scale(${zoom})`, 
+                                 transformOrigin: 'top center',
+                                 transition: 'transform 0.2s ease-out'
+                             }}
+                         >
+                             {pageMarkers}
+                             <h3 className="text-lg font-bold border-b border-black mb-6 pb-2 text-center font-sans tracking-wide">YAPAY ZEKA ANALİZ VE MEVZUAT RAPORU</h3>
+                             <div className="whitespace-pre-wrap text-justify text-sm leading-relaxed">{aiResult}</div>
+                             <div className="mt-12 text-center text-xs text-slate-400 border-t pt-4 font-sans">*** Yapay Zeka (AI) tarafından bilgi amaçlı oluşturulmuştur. ***</div>
+                        </div>
+                    </div>
+                 </div>
+             </div>
           );
       }
       if (generatedDocs.length === 0) return (
-         <div className="flex flex-col items-center justify-center h-full text-slate-300">
-             <FileText className="w-16 h-16 mb-4" />
-             <p>Önizleme için soldan seçim yapıp yukarıdan belge türüne tıklayınız.</p>
+         <div className="flex flex-col items-center justify-center min-h-[300px] h-full text-slate-400 p-6 text-center">
+             <FileText className="w-16 h-16 mb-4 text-slate-300" />
+             <p className="font-semibold text-slate-600 text-sm">Önizlenecek evrak henüz oluşturulmadı.</p>
+             <p className="text-xs text-slate-400 mt-1 max-w-sm">Sol menüden (veya mobilde 'Form &amp; Seçimler' sekmesinden) olay ve öğrenci seçip belge türüne tıklayınız.</p>
+             <button
+               type="button"
+               onClick={() => setMobileViewMode('form')}
+               className="mt-4 lg:hidden px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-blue-700 transition-colors"
+             >
+               Form &amp; Seçimlere Git &rarr;
+             </button>
          </div>
       );
 
       return (
-         <div className="flex flex-col gap-12 pb-20">
+         <div className="w-full flex flex-col items-center">
+             {renderZoomToolbar()}
+             <div className="w-full overflow-x-auto flex justify-center py-2 px-1 custom-scrollbar">
+                 <div className="flex flex-col gap-12 pb-20">
              {generatedDocs.map((doc, index) => {
                 const totalPages = 5;
                 const pageMarkers = (
@@ -1745,8 +1817,10 @@ const DecisionAssistant = () => {
                 );
              })}
          </div>
-      );
-  };
+       </div>
+     </div>
+   );
+};
 
   // --- TEMPLATE GENERATOR ---
   const generateTemplate = (
@@ -3378,12 +3452,88 @@ const DecisionAssistant = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex">
+      {/* İÇ SEKME GEÇİŞİ (MOBİL VE MASAÜSTÜ İÇİN HIZLI GEÇİŞ ÇUBUĞU) */}
+      <div className="bg-slate-100 border-b border-slate-200 px-3 py-2 flex items-center gap-2 overflow-x-auto shrink-0 shadow-inner custom-scrollbar">
+        <button
+          type="button"
+          onClick={() => { setActiveTab('analysis'); setSearchParams({ tab: 'analysis' }); setMobileViewMode('form'); }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'analysis' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5" />
+          <span>1. AI Analiz</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setActiveTab('meeting'); setSearchParams({ tab: 'meeting' }); setMobileViewMode('form'); }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'meeting' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>2. Toplantı Yönetimi</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setActiveTab('forms'); setSearchParams({ tab: 'forms' }); setMobileViewMode('form'); }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'forms' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>3. Tutanak &amp; Formlar</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setActiveTab('decision'); setSearchParams({ tab: 'decision' }); setMobileViewMode('form'); }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'decision' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+          }`}
+        >
+          <Scale className="w-3.5 h-3.5" />
+          <span>4. Karar ve Tebligat</span>
+        </button>
+      </div>
+
+      {/* MOBİL GÖRÜNÜM GEÇİŞİ: FORM vs ÖN İZLEME (Sadece Mobilde Görünür) */}
+      <div className="lg:hidden bg-white p-2 border-b border-slate-200 flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileViewMode('form')}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+            mobileViewMode === 'form' 
+              ? 'bg-blue-600 text-white shadow-sm' 
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          <PenTool className="w-4 h-4" />
+          <span>Form &amp; Seçimler</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileViewMode('preview')}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+            mobileViewMode === 'preview' 
+              ? 'bg-blue-600 text-white shadow-sm' 
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Evrak Ön İzleme {generatedDocs.length > 0 ? `(${generatedDocs.length})` : ''}</span>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-hidden flex flex-col">
         
         {/* --- TAB 1: AI ANALYSIS --- */}
         {activeTab === 'analysis' && (
-             <div className="flex-1 flex overflow-hidden">
-                <div className="w-1/3 bg-white border-r border-slate-200 p-6 overflow-y-auto">
+             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'block' : 'hidden lg:block'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-6 overflow-y-auto`}>
                     <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6 flex gap-3">
                         <Bot className="w-6 h-6 text-indigo-600 shrink-0" />
                         <p className="text-xs text-indigo-800">Yapay zeka asistanı, seçilen olay ve öğrenci için disiplin maddelerini analiz eder.</p>
@@ -3442,14 +3592,16 @@ const DecisionAssistant = () => {
                         </button>
                     </div>
                 </div>
-                <div className="flex-1 bg-slate-50 p-8 overflow-y-auto flex justify-center">{renderDocumentPreview()}</div>
+                <div className={`w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} bg-slate-50 p-2 sm:p-8 overflow-y-auto flex-col items-center`}>
+                    {renderDocumentPreview()}
+                </div>
              </div>
         )}
 
         {/* --- TAB 2: MEETING --- */}
         {activeTab === 'meeting' && (
-            <div className="flex-1 flex overflow-hidden">
-                <div className="w-1/3 bg-white border-r border-slate-200 p-6 overflow-y-auto">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'block' : 'hidden lg:block'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-6 overflow-y-auto`}>
                     
                     <div className="mb-6">
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Olay Seçimi (Çağrı İçin)</label>
@@ -3491,7 +3643,7 @@ const DecisionAssistant = () => {
                         </button>
                     </div>
                 </div>
-                <div className="flex-1 flex flex-col bg-slate-50/50">
+                <div className={`w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} flex-col bg-slate-50/50 overflow-y-auto`}>
                      <div className="p-4 bg-white border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-2xs">
                          <button 
                              onClick={() => generateTemplate('ek1_meeting')} 
@@ -3523,7 +3675,7 @@ const DecisionAssistant = () => {
                         
                         {/* Student Summons List Area with Multi-Select */}
                         {selectedIncident && (
-                            <div className="w-[210mm] mt-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm print:hidden">
+                            <div className="w-full max-w-[210mm] mt-8 bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm print:hidden">
                                 <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 mb-4 gap-3">
                                     <div className="flex items-center gap-2.5">
                                         <div className="p-2 bg-indigo-50 text-indigo-700 rounded-xl">
@@ -3635,8 +3787,8 @@ const DecisionAssistant = () => {
 
         {/* --- TAB 3: FORMS --- */}
         {activeTab === 'forms' && (
-            <div className="flex-1 flex overflow-hidden">
-                <div className="w-1/3 bg-white border-r border-slate-200 p-6 flex flex-col overflow-y-auto">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'flex' : 'hidden lg:flex'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-6 flex-col overflow-y-auto`}>
                     {/* Tarih ve Saat Seçimi Bölümü */}
                     <div className="mb-5 bg-gradient-to-br from-blue-50/70 to-indigo-50/50 border border-blue-200/80 rounded-xl p-3.5 shadow-2xs">
                         <div className="flex items-center justify-between mb-2">
@@ -3790,7 +3942,7 @@ const DecisionAssistant = () => {
                     )}
                 </div>
 
-                <div className="flex-1 flex flex-col bg-slate-50/50">
+                <div className={`w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} flex-col bg-slate-50/50 overflow-y-auto`}>
                     {/* Üst Form Seçim Butonları Paneli */}
                     <div className="p-3.5 bg-white border-b border-slate-200 overflow-x-auto shadow-2xs">
                         <div className="space-y-2">
@@ -3956,7 +4108,7 @@ const DecisionAssistant = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 p-8 overflow-y-auto flex justify-center">
+                    <div className="flex-1 p-2 sm:p-6 overflow-y-auto flex justify-center">
                         {renderDocumentPreview()}
                     </div>
                 </div>
@@ -3965,8 +4117,8 @@ const DecisionAssistant = () => {
 
         {/* --- TAB 4: DECISION --- */}
         {activeTab === 'decision' && (
-             <div className="flex-1 flex overflow-hidden">
-                <div className="w-1/3 bg-white border-r border-slate-200 p-6 flex flex-col overflow-y-auto">
+             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'flex' : 'hidden lg:flex'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-6 flex-col overflow-y-auto`}>
                     
                     {/* INCIDENT & STUDENT SELECTOR (Added for Tab 4) */}
                     <div className="mb-6">
@@ -4515,7 +4667,7 @@ const DecisionAssistant = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col bg-slate-50/50">
+                <div className={`w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} flex-col bg-slate-50/50 overflow-y-auto`}>
                     <div className="p-4 bg-white border-b border-slate-200 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                         <button onClick={() => generateBulkDocuments('ek10_decision')} className="p-2 border rounded hover:bg-red-50 text-red-700 text-xs font-bold">EK-10 Karar</button>
                         <button onClick={() => generateBulkDocuments('dizi_pusulasi')} className="p-2 border rounded hover:bg-slate-50 text-xs">Dizi Pusulası</button>
@@ -4524,7 +4676,7 @@ const DecisionAssistant = () => {
                         <button onClick={() => generateBulkDocuments('penalty_removal_call')} className="p-2 border rounded hover:bg-amber-50 text-amber-700 text-xs">Ceza Silme Çağrı</button>
                         <button onClick={() => generateBulkDocuments('penalty_removal_decision')} className="p-2 border rounded hover:bg-amber-50 text-amber-700 text-xs bg-amber-50 border-amber-200 font-semibold">Ceza Kal. Kararı</button>
                     </div>
-                    <div className="flex-1 p-8 overflow-y-auto flex justify-center">
+                    <div className="flex-1 p-2 sm:p-6 overflow-y-auto flex justify-center">
                         {renderDocumentPreview()}
                     </div>
                 </div>
