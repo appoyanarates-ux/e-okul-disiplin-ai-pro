@@ -87,8 +87,13 @@ function createWindow() {
     mainWindow.focus();
   });
 
+  const REMOTE_WEB_URL = 'https://www.evrakplus.com/disiplin-cezasi-programi/';
+
   // Handle external links safely in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith(REMOTE_WEB_URL) || url.startsWith('file://')) {
+      return { action: 'allow' };
+    }
     if (url.startsWith('http:') || url.startsWith('https:') || url.startsWith('mailto:')) {
       shell.openExternal(url);
     }
@@ -97,9 +102,18 @@ function createWindow() {
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
     const isDev = !app.isPackaged && (process.env.ELECTRON_START_URL || process.env.VITE_DEV_SERVER_URL);
-    if (!isDev && !url.startsWith('file://')) {
+    if (url.startsWith('file://') || url.startsWith(REMOTE_WEB_URL) || (isDev && url.startsWith('http://127.0.0.1:3000'))) {
+      return;
+    }
+    event.preventDefault();
+    shell.openExternal(url);
+  });
+
+  // F5 / Ctrl+R canlı yenileme desteği (cPanel güncellemelerini anında çekmek için)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r')) {
+      mainWindow.reload();
       event.preventDefault();
-      shell.openExternal(url);
     }
   });
 
@@ -110,10 +124,30 @@ function createWindow() {
     mainWindow.loadURL(devUrl);
     mainWindow.webContents.openDevTools();
   } else {
-    // Production loads dist/index.html
+    // Canlı Web Öncelikli Hibrit Yükleme:
+    // Masaüstü açıldığında doğrudan https://www.evrakplus.com/disiplin-cezasi-programi/ adresini yükler.
+    // Böylece cPanel'de yaptığınız TÜM güncellemeler masaüstüne ANINDA yansır.
+    // İnternet kesilirse veya ulaşılamazsa otomatik olarak yerel dist/index.html'e geçer.
     const indexPath = path.join(__dirname, '../dist/index.html');
-    mainWindow.loadFile(indexPath).catch(err => {
-      console.error('Failed to load local index.html:', err);
+    let hasFallbackRun = false;
+
+    const fallbackToLocal = () => {
+      if (hasFallbackRun) return;
+      hasFallbackRun = true;
+      console.log('Sunucuya ulaşılamadı. Yerel çevrimdışı kopya açılıyor...');
+      mainWindow.loadFile(indexPath).catch(err => {
+        console.error('Yerel dosya yükleme hatası:', err);
+      });
+    };
+
+    mainWindow.loadURL(REMOTE_WEB_URL).catch(() => {
+      fallbackToLocal();
+    });
+
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+      if (validatedURL.startsWith(REMOTE_WEB_URL)) {
+        fallbackToLocal();
+      }
     });
   }
 
