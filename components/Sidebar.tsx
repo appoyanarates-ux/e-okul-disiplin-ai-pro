@@ -3,11 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, AlertTriangle, Gavel, BarChart3, 
   BookOpen, Settings, ChevronDown, ChevronRight, LifeBuoy, Scale, Info, Wifi, WifiOff, AlertCircle, RotateCcw, X,
-  Briefcase, FileSpreadsheet
+  Briefcase, FileSpreadsheet, Cloud, RefreshCw
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 import { useStudents } from '../context/StudentContext';
+import { getCloudSyncConfig, performCloudSync } from '../services/cloudSyncService';
+import { CloudSyncModal } from './CloudSyncModal';
 
 interface MenuItem {
   title: string;
@@ -28,17 +30,32 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
   const mesemCount = students.filter(s => s.isMesem || (s.grade && s.grade.toUpperCase().includes('MES'))).length;
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['decisions']);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [cloudConfig, setCloudConfig] = useState(getCloudSyncConfig());
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
+    const handleConfigChange = (e: any) => {
+      setCloudConfig(e.detail || getCloudSyncConfig());
+    };
+
+    const handleSyncStatus = (e: any) => {
+      setIsSyncingCloud(e.detail?.status === 'syncing');
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('cloud-sync-config-changed', handleConfigChange);
+    window.addEventListener('cloud-sync-status', handleSyncStatus);
 
     return () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
+        window.removeEventListener('cloud-sync-config-changed', handleConfigChange);
+        window.removeEventListener('cloud-sync-status', handleSyncStatus);
     };
   }, []);
 
@@ -298,6 +315,26 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
             <p className="px-3 text-xs font-bold text-slate-600 uppercase mb-2 tracking-wider">Sistem</p>
             {bottomMenuItems.map(renderMenuItem)}
              
+            <button
+              onClick={() => setIsSyncModalOpen(true)}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            >
+              <div className="flex items-center gap-3">
+                <Cloud className={`w-5 h-5 ${cloudConfig.user ? 'text-sky-400' : 'text-slate-500'}`} />
+                <span>Bulut Senkronizasyon</span>
+              </div>
+              {cloudConfig.user ? (
+                <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Aktif
+                </span>
+              ) : (
+                <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">
+                  Giriş
+                </span>
+              )}
+            </button>
+
             <Link
               to="/about"
               onClick={handleLinkClick}
@@ -315,6 +352,31 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
 
         {/* User Info / Footer */}
         <div className="bg-slate-950 border-t border-slate-800">
+           {/* Cloud Sync Status Strip */}
+           <div 
+             onClick={() => setIsSyncModalOpen(true)}
+             className="px-3.5 py-2 bg-slate-900/90 border-t border-slate-800/80 flex items-center justify-between cursor-pointer hover:bg-slate-850 transition-colors text-[11px]"
+           >
+             <div className="flex items-center gap-2 text-slate-300">
+               <Cloud className={`w-3.5 h-3.5 ${cloudConfig.user ? 'text-sky-400' : 'text-slate-500'}`} />
+               <span className="truncate max-w-[130px] font-medium">
+                 {cloudConfig.user ? (cloudConfig.user.displayName || cloudConfig.user.username) : 'Bulut: Giriş Yap'}
+               </span>
+             </div>
+             {cloudConfig.user && (
+               <button
+                 title="Şimdi Senkronize Et"
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   performCloudSync();
+                 }}
+                 className="p-1 hover:text-white text-slate-400 rounded transition-colors"
+               >
+                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin text-blue-400' : ''}`} />
+               </button>
+             )}
+           </div>
+
            <div className={`px-4 py-2 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider ${status.colorClass}`}>
               {status.icon}
               {status.text}
@@ -325,11 +387,13 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
               </div>
               <div className="flex-1 overflow-hidden">
                   <p className="text-xs font-bold text-slate-200 truncate">By Abdullah Yanarateş</p>
-                  <p className="text-[10px] text-slate-400 truncate">E-Okul Disiplin AI Pro v1.1.6</p>
+                  <p className="text-[10px] text-slate-400 truncate">E-Okul Disiplin AI Pro v1.1.7</p>
               </div>
            </div>
         </div>
       </div>
+
+      <CloudSyncModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} />
     </>
   );
 };

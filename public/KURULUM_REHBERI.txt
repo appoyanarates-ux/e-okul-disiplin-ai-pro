@@ -1,0 +1,44 @@
+========================================================================
+E-OKUL DİSİPLİN AI PRO (v1.1.7) - cPANEL & EVRAKPLUS TAM ENTEGRASYON REHBERİ
+========================================================================
+
+1. cPANEL KURULUMU (https://www.evrakplus.com/disiplin-cezasi-programi/):
+------------------------------------------------------------------------
+1) cPanel Dosya Yöneticisi'ne (File Manager) girin.
+2) "public_html" klasörünü açın.
+3) Burada "disiplin-cezasi-programi" klasörünü oluşturun (varsa içine girin).
+4) "cpanel_public_html_disiplin_v1.1.7.zip" dosyasını bu klasöre yükleyin.
+5) Dosyaya sağ tıklayıp "Extract" (Çıkar) seçeneğine tıklayın.
+6) Klasör içeriğinde index.html, sync-api.php, assets/ ve bu rehber yer alacaktır.
+
+2. EVRAKPLUS.COM ÜYELİK SİSTEMİ İLE %100 TAM SENKRONİZASYON:
+-------------------------------------------------------------
+Program artık doğrudan "https://www.evrakplus.com/" sitesinin kendi kullanıcı
+veritabanına (WordPress wp_users) entegre çalışır:
+
+* TEK HESAP İLE HER YERDEN ERİŞİM:
+  https://www.evrakplus.com/ sitesine kayıt olan tüm öğretmenler ve yöneticiler,
+  başka hiçbir kayıt işlemine gerek kalmadan, aynı e-posta ve şifre ile:
+  - Hem https://www.evrakplus.com/disiplin-cezasi-programi/ web adresine,
+  - Hem de bilgisayarlarındaki Masaüstü (.exe) uygulamasına giriş yapabilirler.
+
+* WEB SÜRÜMÜNDE TEK TIKLA OTOMATİK OTURUM:
+  Kullanıcı zaten evrakplus.com sitesinde giriş yapmış durumdaysa,
+  web sürümü bunu otomatik olarak tanır ve tek tıkla hesabını bağlar.
+
+* İKİ YÖNLÜ CANLI EŞİTLEME (SMART MERGE):
+  - Öğrenciler, disiplin olayları, kurul kararları, tutanaklar ve kurum ayarları
+    kullanıcının WordPress ID'sine özel güvenli alanda tutulur.
+  - Masaüstünde girilen bir tutanak veya öğrenci kaydı anında web sürümüne,
+    webden yapılan bir işlem anında masaüstüne senkronize edilir.
+
+3. BAĞLANTI VE API DOĞRULAMA TESTİ:
+-----------------------------------
+Tarayıcınızdan şu adresi açarak WordPress ve senkronizasyon durumunu test edebilirsiniz:
+https://www.evrakplus.com/disiplin-cezasi-programi/sync-api.php?action=ping
+
+Beklenen yanıt:
+{"ok":true,"service":"E-Okul Disiplin AI Pro Sync API","version":"1.1.7","wpIntegrated":true,...}
+("wpIntegrated": true ibaresi WordPress üyeliği ile tam entegre olduğunu doğrular.)
+
+By Abdullah Yanarateş - Copyright © 2026

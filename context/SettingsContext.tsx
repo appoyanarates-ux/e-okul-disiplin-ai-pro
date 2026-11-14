@@ -68,6 +68,20 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {
       console.error("Failed to load settings", e);
     }
+
+    const handleSync = (e: any) => {
+      if (e.detail?.institutionSettings && typeof e.detail.institutionSettings === 'object') {
+        setInstitution(e.detail.institutionSettings);
+      }
+      if (Array.isArray(e.detail?.boardSettings)) {
+        setBoardMembers(e.detail.boardSettings);
+      }
+      if (e.detail?.gemini_api_key !== undefined) {
+        setApiKey(e.detail.gemini_api_key);
+      }
+    };
+    window.addEventListener('app-data-synced', handleSync);
+    return () => window.removeEventListener('app-data-synced', handleSync);
   }, []);
 
   const updateInstitution = (data: Institution) => {

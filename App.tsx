@@ -20,6 +20,7 @@ import { StudentProvider } from './context/StudentContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { IncidentProvider } from './context/IncidentContext';
 import { initPersistenceSync } from './services/persistenceSync';
+import { initCloudSync } from './services/cloudSyncService';
 
 import { UpdateNotificationModal } from './components/UpdateNotificationModal';
 
@@ -28,6 +29,7 @@ const App = () => {
 
   useEffect(() => {
     initPersistenceSync();
+    initCloudSync();
   }, []);
 
   return (

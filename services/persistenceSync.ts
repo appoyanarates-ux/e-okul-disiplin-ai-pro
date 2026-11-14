@@ -102,8 +102,13 @@ export const initPersistenceSync = async () => {
   }
 };
 
-// Debounced save to Electron AppData whenever context states change
+import { triggerAutoCloudSync } from './cloudSyncService';
+
+// Debounced save to Electron AppData and Cloud Sync whenever context states change
 export const triggerPersistenceSync = () => {
+  // Bulut senkronizasyonunu tetikle (hem tarayıcıda hem masaüstünde çalışır)
+  triggerAutoCloudSync();
+
   if (typeof window === 'undefined' || !window.electronAPI) return;
 
   if (syncTimeout) clearTimeout(syncTimeout);

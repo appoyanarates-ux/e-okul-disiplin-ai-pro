@@ -1,7 +1,8 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Student } from '../types';
 import { triggerPersistenceSync } from '../services/persistenceSync';
+import { trackDeletedStudentId } from '../services/cloudSyncService';
 
 interface StudentContextType {
   students: Student[];
@@ -26,6 +27,17 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   });
 
+  // Bulut senkronizasyonundan gelen güncellemeleri anında state'e yansıt
+  useEffect(() => {
+    const handleSync = (e: any) => {
+      if (e.detail?.students && Array.isArray(e.detail.students)) {
+        setStudentsState(e.detail.students);
+      }
+    };
+    window.addEventListener('app-data-synced', handleSync);
+    return () => window.removeEventListener('app-data-synced', handleSync);
+  }, []);
+
   const setStudents = (newStudents: Student[]) => {
     setStudentsState(newStudents);
     localStorage.setItem('students', JSON.stringify(newStudents));
@@ -42,6 +54,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const removeStudent = (id: string) => {
+    trackDeletedStudentId(id);
     setStudentsState(prev => {
         const updated = prev.filter(s => s.id !== id);
         localStorage.setItem('students', JSON.stringify(updated));

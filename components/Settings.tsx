@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Save, Building, Users, Info, AlertTriangle, Sparkles, Eye, EyeOff, CheckCircle, XCircle, Loader2, ExternalLink, RefreshCw, Trash2, Plus, X, Database, Download, Upload, Check, Key } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Save, Building, Users, Info, AlertTriangle, AlertCircle, Sparkles, Eye, EyeOff, CheckCircle, XCircle, Loader2, ExternalLink, RefreshCw, Trash2, Plus, X, Database, Download, Upload, Check, Key, Cloud, ShieldCheck, Laptop, Globe, ArrowRightLeft, LogOut, Lock, User } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { 
   validateApiKeyDetailed, 
@@ -14,8 +15,18 @@ import {
 import { BoardMember } from '../types';
 import { migrateImportedData } from '../services/dataMigrator';
 import { getCurrentAcademicYear, getAcademicYearOptions } from '../services/academicYear';
+import { 
+  getCloudSyncConfig, 
+  saveCloudSyncConfig, 
+  performCloudSync, 
+  loginCloudAccount, 
+  registerCloudAccount, 
+  logoutCloudAccount 
+} from '../services/cloudSyncService';
 
 const Settings = () => {
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as any) || 'institution';
   const { 
     institution, 
     boardMembers, 
@@ -25,8 +36,20 @@ const Settings = () => {
     updateApiKey, 
     clearApiKey 
   } = useSettings();
-  const [activeTab, setActiveTab] = useState<'institution' | 'board' | 'ai' | 'backup'>('institution');
+  const [activeTab, setActiveTab] = useState<'institution' | 'board' | 'ai' | 'backup' | 'sync'>(
+    ['institution', 'board', 'ai', 'backup', 'sync'].includes(initialTab) ? initialTab : 'institution'
+  );
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
+  // Cloud Sync State
+  const [cloudConfig, setCloudConfig] = useState(getCloudSyncConfig());
+  const [cloudMode, setCloudMode] = useState<'login' | 'register'>('login');
+  const [cloudUsername, setCloudUsername] = useState('');
+  const [cloudPassword, setCloudPassword] = useState('');
+  const [cloudDisplayName, setCloudDisplayName] = useState('');
+  const [cloudLoading, setCloudLoading] = useState(false);
+  const [cloudSyncing, setCloudSyncing] = useState(false);
+  const [cloudFeedback, setCloudFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // AI Key State
   const [tempKey, setTempKey] = useState('');
@@ -123,6 +146,109 @@ const Settings = () => {
     } catch (e) {
       alert("Geri yükleme hatası: " + e);
     }
+  };
+
+  useEffect(() => {
+    const handleConfigChange = (e: any) => {
+      setCloudConfig(e.detail || getCloudSyncConfig());
+    };
+    const handleSyncStatus = (e: any) => {
+      if (e.detail?.status === 'syncing') setCloudSyncing(true);
+      if (e.detail?.status === 'synced') {
+        setCloudSyncing(false);
+        setCloudFeedback({ type: 'success', message: 'Tüm veriler başarıyla senkronize edildi!' });
+        setTimeout(() => setCloudFeedback(null), 3500);
+      }
+      if (e.detail?.status === 'error') {
+        setCloudSyncing(false);
+        setCloudFeedback({ type: 'error', message: e.detail.error || 'Senkronizasyon hatası' });
+      }
+    };
+
+    window.addEventListener('cloud-sync-config-changed', handleConfigChange);
+    window.addEventListener('cloud-sync-status', handleSyncStatus);
+
+    return () => {
+      window.removeEventListener('cloud-sync-config-changed', handleConfigChange);
+      window.removeEventListener('cloud-sync-status', handleSyncStatus);
+    };
+  }, []);
+
+  const handleCloudLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cloudUsername.trim() || !cloudPassword) {
+      setCloudFeedback({ type: 'error', message: 'Lütfen kullanıcı adı ve şifre girin.' });
+      return;
+    }
+    setCloudLoading(true);
+    setCloudFeedback(null);
+    try {
+      const res = await loginCloudAccount(cloudUsername.trim(), cloudPassword);
+      if (res.ok) {
+        setCloudFeedback({ type: 'success', message: `Giriş başarılı! Hoş geldiniz, ${res.user?.displayName || res.user?.username}` });
+        setCloudConfig(getCloudSyncConfig());
+      } else {
+        setCloudFeedback({ type: 'error', message: res.error || 'Giriş yapılamadı.' });
+      }
+    } finally {
+      setCloudLoading(false);
+    }
+  };
+
+  const handleCloudRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cloudUsername.trim() || !cloudPassword) {
+      setCloudFeedback({ type: 'error', message: 'Lütfen kullanıcı adı ve şifre girin.' });
+      return;
+    }
+    if (cloudPassword.length < 4) {
+      setCloudFeedback({ type: 'error', message: 'Şifre en az 4 karakter olmalıdır.' });
+      return;
+    }
+    setCloudLoading(true);
+    setCloudFeedback(null);
+    try {
+      const res = await registerCloudAccount(cloudUsername.trim(), cloudPassword, cloudDisplayName.trim());
+      if (res.ok) {
+        setCloudFeedback({ type: 'success', message: 'Bulut hesabı oluşturuldu ve ilk veriler senkronize edildi!' });
+        setCloudConfig(getCloudSyncConfig());
+      } else {
+        setCloudFeedback({ type: 'error', message: res.error || 'Kayıt başarısız oldu.' });
+      }
+    } finally {
+      setCloudLoading(false);
+    }
+  };
+
+  const handleCloudManualSync = async () => {
+    setCloudSyncing(true);
+    setCloudFeedback(null);
+    try {
+      const res = await performCloudSync();
+      if (res.ok) {
+        setCloudFeedback({ type: 'success', message: 'Tüm öğrenci, olay ve ayar verileri başarıyla eşitlendi!' });
+        setTimeout(() => setCloudFeedback(null), 3500);
+      } else {
+        setCloudFeedback({ type: 'error', message: res.error || 'Senkronizasyon hatası' });
+      }
+    } finally {
+      setCloudSyncing(false);
+    }
+  };
+
+  const handleCloudLogout = () => {
+    if (window.confirm('Bulut hesabından çıkış yapmak istediğinize emin misiniz? Yerel verileriniz korunacaktır.')) {
+      logoutCloudAccount();
+      setCloudConfig(getCloudSyncConfig());
+      setCloudFeedback({ type: 'success', message: 'Çıkış yapıldı. Program yalnızca yerel modda çalışıyor.' });
+      setTimeout(() => setCloudFeedback(null), 3000);
+    }
+  };
+
+  const handleToggleAutoSync = () => {
+    const nextVal = !cloudConfig.autoSync;
+    saveCloudSyncConfig({ autoSync: nextVal });
+    setCloudConfig(prev => ({ ...prev, autoSync: nextVal }));
   };
 
   useEffect(() => {
@@ -541,6 +667,17 @@ const Settings = () => {
         >
           <Database className="w-4 h-4" />
           Veri Yedekleme (JSON)
+        </button>
+        <button
+          onClick={() => setActiveTab('sync')}
+          className={`flex items-center gap-2 px-6 py-3 font-medium text-sm transition-colors border-b-2 ${
+            activeTab === 'sync' 
+              ? 'border-blue-600 text-blue-600' 
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Cloud className="w-4 h-4" />
+          Bulut Senkronizasyon (Web & Masaüstü)
         </button>
       </div>
 
@@ -1205,6 +1342,214 @@ const Settings = () => {
                     </div>
                 )}
             </div>
+        )}
+
+        {/* TAB 5: BULUT & WEB SENKRONİZASYON */}
+        {activeTab === 'sync' && (
+          <div className="animate-fade-in space-y-6 max-w-3xl">
+            {/* Header Card */}
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-lg">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300">
+                  <Cloud className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold tracking-tight">Bulut & Web Senkronizasyonu</h3>
+                  <p className="text-xs text-blue-200/80 mt-1">
+                    Masaüstü uygulaması ile <span className="font-mono text-blue-300 font-semibold">https://www.evrakplus.com/disiplin-cezasi-programi</span> arasında tam iki yönlü senkronizasyon sağlar.
+                  </p>
+                </div>
+              </div>
+
+              {/* Sync Diagram */}
+              <div className="mt-5 pt-4 border-t border-white/10 grid grid-cols-3 gap-2 text-center text-xs text-slate-300">
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex flex-col items-center gap-1.5">
+                  <Laptop className="w-5 h-5 text-emerald-400" />
+                  <span className="font-semibold text-white">Masaüstü Uygulaması</span>
+                  <span className="text-[10px] text-slate-400">Windows (.exe)</span>
+                </div>
+                <div className="flex flex-col items-center justify-center gap-1 text-blue-300">
+                  <ArrowRightLeft className="w-5 h-5 animate-pulse" />
+                  <span className="text-[11px] font-mono font-bold text-sky-300">evrakplus.com</span>
+                  <span className="text-[10px] text-slate-400">Canlı Eşitleme</span>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex flex-col items-center gap-1.5">
+                  <Globe className="w-5 h-5 text-sky-400" />
+                  <span className="font-semibold text-white">Web Sürümü</span>
+                  <span className="text-[10px] text-slate-400">Tarayıcı / Mobil</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Feedback Message */}
+            {cloudFeedback && (
+              <div className={`p-4 rounded-xl flex items-start gap-3 text-sm animate-in fade-in ${
+                cloudFeedback.type === 'success' 
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                  : 'bg-red-50 text-red-800 border border-red-200'
+              }`}>
+                {cloudFeedback.type === 'success' ? (
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 font-medium">{cloudFeedback.message}</div>
+              </div>
+            )}
+
+            {cloudConfig.user ? (
+              /* AKTİF BULUT HESABI */
+              <div className="space-y-6">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center font-bold">
+                        <User className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="text-base font-bold text-slate-900">
+                          {cloudConfig.user.displayName || cloudConfig.user.username}
+                        </div>
+                        <div className="text-xs text-slate-500 font-mono">
+                          Hesap: {cloudConfig.user.username}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <ShieldCheck className="w-4 h-4" />
+                      Bulut Aktif
+                    </span>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200 grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span className="text-slate-500">Son Senkronizasyon:</span>
+                      <div className="font-semibold text-slate-800 mt-0.5">
+                        {cloudConfig.lastSyncedAt 
+                          ? new Date(cloudConfig.lastSyncedAt).toLocaleString('tr-TR') 
+                          : 'Henüz yapılmadı'}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Senkronizasyon Sunucusu:</span>
+                      <div className="font-mono text-slate-700 mt-0.5 truncate">
+                        {cloudConfig.endpointUrl}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Otomatik Senkronizasyon Ayarı */}
+                <div className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800">Otomatik Arka Plan Senkronizasyonu</div>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      Herhangi bir öğrenci, olay veya ayar güncellendiğinde verileri otomatik olarak buluta eşitler.
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleToggleAutoSync}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      cloudConfig.autoSync ? 'bg-blue-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        cloudConfig.autoSync ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Butonlar */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={handleCloudManualSync}
+                    disabled={cloudSyncing}
+                    className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${cloudSyncing ? 'animate-spin' : ''}`} />
+                    {cloudSyncing ? 'Senkronize Ediliyor...' : 'Şimdi Senkronize Et (İki Yönlü Eşitle)'}
+                  </button>
+
+                  <button
+                    onClick={handleCloudLogout}
+                    className="px-5 py-3.5 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 border border-slate-200 rounded-xl font-medium text-sm transition-all flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Çıkış Yap
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* EVRAKPLUS.COM GİRİŞ FORMU */
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100 text-xs text-blue-900 leading-relaxed">
+                  <div className="font-bold flex items-center gap-1.5 text-blue-950 mb-1">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    Tek Üyelik, Çift Yönlü Tam Senkronizasyon
+                  </div>
+                  <strong>evrakplus.com</strong> sitesindeki mevcut üyeliğinizle giriş yaptığınızda; hem masaüstü uygulamanız hem de web sürümünüz aynı veritabanına bağlanır. Yeni veya ayrı bir hesap açmanıza gerek yoktur.
+                </div>
+
+                <form onSubmit={handleCloudLogin} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      evrakplus.com E-Posta Adresi veya Kullanıcı Adı
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={cloudUsername}
+                      onChange={e => setCloudUsername(e.target.value)}
+                      placeholder="ornek@okul.k12.tr veya kullanici_adi"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      evrakplus.com Şifresi
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={cloudPassword}
+                      onChange={e => setCloudPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs text-slate-600 leading-relaxed">
+                    🔒 <strong>Güvenli ve KVKK Uyumlu:</strong> Verileriniz doğrudan <span className="font-semibold text-slate-800">evrakplus.com</span> üzerindeki şifreli ve korumalı alanda depolanır.
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={cloudLoading}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition-all disabled:opacity-60"
+                  >
+                    {cloudLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Evrakplus Hesabıyla Giriş Yap ve Senkronizasyonu Başlat
+                  </button>
+
+                  <div className="pt-2 text-center">
+                    <a
+                      href="https://www.evrakplus.com/giris/?sekme=kayit"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      <span>Henüz evrakplus.com üyesi değil misiniz? Buradan ücretsiz kayıt olun</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
         )}
 
       </div>

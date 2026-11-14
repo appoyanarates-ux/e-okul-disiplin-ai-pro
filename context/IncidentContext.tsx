@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Incident, InvolvedStudent } from '../types';
 import { triggerPersistenceSync } from '../services/persistenceSync';
+import { trackDeletedIncidentId } from '../services/cloudSyncService';
 
 interface IncidentContextType {
   incidents: Incident[];
@@ -26,6 +27,17 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return [];
     }
   });
+
+  // Bulut senkronizasyonundan gelen güncellemeleri anında state'e yansıt
+  useEffect(() => {
+    const handleSync = (e: any) => {
+      if (e.detail?.incidents && Array.isArray(e.detail.incidents)) {
+        setIncidents(e.detail.incidents);
+      }
+    };
+    window.addEventListener('app-data-synced', handleSync);
+    return () => window.removeEventListener('app-data-synced', handleSync);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('incidents', JSON.stringify(incidents));
@@ -61,6 +73,7 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteIncident = (id: string) => {
+    trackDeletedIncidentId(id);
     setIncidents(prev => prev.filter(inc => inc.id !== id));
   };
 
