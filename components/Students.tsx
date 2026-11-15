@@ -428,24 +428,31 @@ const Students = () => {
               </div>
               <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-sm font-bold text-blue-950 flex items-center gap-1.5">
+                      <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                           Öğrenci Veri Yükleme Standardı: e-Okul Künye Defteri
                       </h2>
-                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-300">
+                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md border border-emerald-300">
                           Excel (.xlsx / .xls) Desteği
                       </span>
-                      <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md border border-blue-200">
+                      <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300">
+                          Sadece Veri İçermelidir
+                      </span>
+                      <span className="text-[10px] font-semibold bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md border border-blue-200">
                           Tüm Künye Alanları
                       </span>
                   </div>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                      MEB e-Okul &gt; Öğrenci İşlemleri &gt; Raporlar ekranından aldığınız <strong>Öğrenci Künye Defteri</strong> veya <strong>Sınıf Listesi</strong> çıktısını <strong>Excel (.xlsx / .xls)</strong> formatında yükleyebilirsiniz. <em>Okul No, T.C. Kimlik No, Ad-Soyad, Sınıf/Şube, Anne ve Baba Adı, Doğum Yeri/Tarihi, Veli İletişim (Telefon)</em> ve <em>İkametgâh Adresi</em> gibi tüm künye verileri eksiksiz ayrıştırılır.
+                  <p className="text-xs text-slate-700 mt-1 leading-relaxed">
+                      MEB e-Okul &gt; Öğrenci İşlemleri &gt; Raporlar ekranından aldığınız <strong>Öğrenci Künye Defteri</strong> veya <strong>Sınıf Listesi</strong> çıktısını <strong>Excel (.xlsx / .xls)</strong> formatında doğrudan yükleyebilirsiniz. <em>Okul No, T.C. Kimlik No, Ad-Soyad, Sınıf/Şube, Anne ve Baba Adı, Doğum Yeri/Tarihi, Veli İletişim (Telefon)</em> ve <em>İkametgâh Adresi</em> eksiksiz ayrıştırılır.
                   </p>
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold text-amber-900 bg-amber-50/90 border border-amber-200 px-2.5 py-1 rounded-md">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span><strong>Önemli Kural:</strong> Excel dosyasında <u>yalnızca öğrenci verileri</u> bulunmalıdır. Dosya üzerine fazladan not, manuel açıklama veya özel başlık satırı eklemeyiniz.</span>
+                  </div>
               </div>
           </div>
           <button 
               onClick={() => setShowEokulGuideModal(true)}
-              className="self-start sm:self-center shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white text-blue-700 border border-blue-300 rounded-lg text-xs font-semibold hover:bg-blue-50 transition-colors shadow-2xs cursor-pointer"
+              className="self-start sm:self-center shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white text-blue-700 border border-blue-300 rounded-lg text-xs font-bold hover:bg-blue-50 transition-colors shadow-2xs cursor-pointer"
           >
               <HelpCircle className="w-4 h-4 text-blue-600" />
               Nasıl Alınır? (Rehber)
@@ -462,35 +469,68 @@ const Students = () => {
         </div>
       )}
 
-      {/* --- MAIN LAYOUT --- */}
-      <div className="flex gap-6 flex-1 overflow-hidden">
+      {/* --- MAIN LAYOUT (RESPONSIVE) --- */}
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 overflow-hidden">
           
-          {/* LEFT SIDEBAR: CLASS LIST */}
-          <div className="w-64 bg-white border border-slate-200 rounded-xl flex flex-col shrink-0 overflow-hidden shadow-sm">
-              <div className="p-4 bg-slate-50 border-b border-slate-100 font-bold text-slate-700 text-sm flex items-center gap-2">
-                  <School className="w-4 h-4" />
+          {/* MOBILE CLASS FILTER: HORIZONTAL SCROLL CHIP BAR */}
+          <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto py-1 px-0.5 shrink-0">
+              <button 
+                  onClick={() => setSelectedGrade(null)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      selectedGrade === null 
+                          ? 'bg-blue-600 text-white shadow-xs' 
+                          : 'bg-white text-slate-800 border border-slate-300'
+                  }`}
+              >
+                  <span>Tüm Öğrenciler</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${selectedGrade === null ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                      {students.length}
+                  </span>
+              </button>
+              {classGroups.map(([grade, count]) => (
+                  <button
+                      key={grade}
+                      onClick={() => setSelectedGrade(grade)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                          selectedGrade === grade
+                              ? 'bg-blue-600 text-white shadow-xs font-bold'
+                              : 'bg-white text-slate-800 border border-slate-300'
+                      }`}
+                  >
+                      <span>{grade}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${selectedGrade === grade ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                          {count}
+                      </span>
+                  </button>
+              ))}
+          </div>
+
+          {/* DESKTOP SIDEBAR: CLASS LIST */}
+          <div className="hidden lg:flex w-64 bg-white border border-slate-200 rounded-xl flex-col shrink-0 overflow-hidden shadow-sm">
+              <div className="p-4 bg-slate-50 border-b border-slate-100 font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <School className="w-4 h-4 text-blue-600" />
                   Sınıflar & Gruplar
               </div>
               <div className="flex-1 overflow-y-auto">
                   <button 
                       onClick={() => setSelectedGrade(null)}
-                      className={`w-full text-left px-4 py-3 text-sm flex justify-between items-center border-b border-slate-50 hover:bg-slate-50 transition-colors ${selectedGrade === null ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-600'}`}
+                      className={`w-full text-left px-4 py-3 text-sm flex justify-between items-center border-b border-slate-50 hover:bg-slate-50 transition-colors ${selectedGrade === null ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 font-medium'}`}
                   >
                       <span>Tüm Öğrenciler</span>
-                      <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs">{students.length}</span>
+                      <span className="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full text-xs">{students.length}</span>
                   </button>
                   
                   {classGroups.map(([grade, count]) => (
                       <div 
                         key={grade} 
                         onClick={() => setSelectedGrade(grade)}
-                        className={`w-full text-left px-4 py-3 text-sm flex justify-between items-center border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors group ${selectedGrade === grade ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-600'}`}
+                        className={`w-full text-left px-4 py-3 text-sm flex justify-between items-center border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors group ${selectedGrade === grade ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700'}`}
                       >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 font-medium">
                               <span>{grade}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                              <span className={`px-2 py-0.5 rounded-full text-xs ${selectedGrade === grade ? 'bg-blue-200 text-blue-800' : 'bg-slate-100 text-slate-500'}`}>{count}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${selectedGrade === grade ? 'bg-blue-200 text-blue-900' : 'bg-slate-100 text-slate-700'}`}>{count}</span>
                               <button 
                                 onClick={(e) => handleDeleteClassRequest(grade, e)}
                                 className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
@@ -503,27 +543,27 @@ const Students = () => {
                   ))}
                   
                   {classGroups.length === 0 && (
-                      <div className="p-4 text-xs text-slate-400 text-center">Henüz sınıf oluşmadı.</div>
+                      <div className="p-4 text-xs text-slate-500 text-center font-medium">Henüz sınıf oluşmadı.</div>
                   )}
               </div>
           </div>
 
-          {/* RIGHT CONTENT: TABLE */}
+          {/* RIGHT CONTENT: TABLE & CARDS */}
           <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 {/* Search Bar */}
-                <div className="p-4 border-b border-slate-100 flex items-center gap-3 shrink-0">
-                    <Search className="w-5 h-5 text-slate-400" />
+                <div className="p-3 sm:p-4 border-b border-slate-100 flex items-center gap-3 shrink-0">
+                    <Search className="w-5 h-5 text-slate-500 shrink-0" />
                     <input 
                         type="text" 
-                        placeholder={selectedGrade ? `${selectedGrade} sınıfı içinde ara...` : "Tüm öğrencilerde ara..."}
+                        placeholder={selectedGrade ? `${selectedGrade} sınıfı içinde ara...` : "Tüm öğrencilerde ara (No, İsim, TC)..."}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-1 outline-none text-sm text-slate-700 placeholder:text-slate-400"
+                        className="flex-1 outline-none text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                     />
                     {selectedGrade && (
-                        <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold flex items-center gap-1">
+                        <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold flex items-center gap-1 shrink-0">
                             {selectedGrade}
-                            <button onClick={() => setSelectedGrade(null)}><X className="w-3 h-3 hover:text-blue-900" /></button>
+                            <button onClick={() => setSelectedGrade(null)}><X className="w-3 h-3 hover:text-blue-950" /></button>
                         </div>
                     )}
                 </div>
@@ -534,49 +574,59 @@ const Students = () => {
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        className={`flex-1 m-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center transition-all p-6 ${
+                        className={`flex-1 m-3 sm:m-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-center transition-all p-4 sm:p-6 ${
                             isDragging ? 'border-blue-500 bg-blue-50/80 shadow-inner' : 'border-slate-300 bg-slate-50'
                         }`}
                     >
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="bg-emerald-100 p-4 rounded-2xl shadow-2xs border border-emerald-200">
-                                <FileSpreadsheet className={`w-10 h-10 ${isDragging ? 'text-blue-600' : 'text-emerald-700'}`} />
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-emerald-100 p-3 sm:p-4 rounded-2xl shadow-2xs border border-emerald-300">
+                                <FileSpreadsheet className={`w-8 h-8 sm:w-10 sm:h-10 ${isDragging ? 'text-blue-600' : 'text-emerald-700'}`} />
                             </div>
                         </div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-1">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
                             e-Okul Künye Defteri Excel Dosyası Yükleyin
                         </h3>
-                        <p className="font-normal text-slate-600 max-w-lg mx-auto mb-4 text-sm leading-relaxed">
+                        <p className="font-medium text-slate-700 max-w-lg mx-auto mb-3 text-xs sm:text-sm leading-relaxed">
                             MEB e-Okul sisteminden indirdiğiniz <strong>Öğrenci Künye Defteri</strong> veya <strong>Öğrenci Listesini</strong> 
-                            <span className="inline-block mx-1 font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Excel (.xlsx / .xls)</span> 
-                            formatında buraya sürükleyip bırakın.
+                            <span className="inline-block mx-1 font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">Excel (.xlsx / .xls)</span> 
+                            formatında buraya yükleyin.
                         </p>
-                        <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
-                            <span className="text-[11px] font-medium bg-white text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">
+
+                        {/* Excel Rule Notice */}
+                        <div className="w-full max-w-lg mx-auto bg-amber-50 border border-amber-300 rounded-xl p-3 mb-4 text-amber-950 text-xs text-left flex items-start gap-2.5 shadow-2xs">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                                <strong className="font-bold text-amber-900 block">Önemli Kural (Sadece Veri):</strong>
+                                Yükleyeceğiniz Excel dosyasında <u>sadece öğrenci verileri</u> bulunmalıdır. e-Okul'dan aldığınız orijinal Excel dosyasının yapısını bozmadan, üzerine manuel açıklama, ek not veya özel biçimlendirme eklemeden doğrudan yükleyiniz.
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-5">
+                            <span className="text-[11px] font-bold bg-white text-slate-800 px-2.5 py-1 rounded-full border border-slate-300 shadow-2xs">
                                 ✓ Okul No & T.C. Kimlik No
                             </span>
-                            <span className="text-[11px] font-medium bg-white text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">
+                            <span className="text-[11px] font-bold bg-white text-slate-800 px-2.5 py-1 rounded-full border border-slate-300 shadow-2xs">
                                 ✓ Anne & Baba Adı
                             </span>
-                            <span className="text-[11px] font-medium bg-white text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">
+                            <span className="text-[11px] font-bold bg-white text-slate-800 px-2.5 py-1 rounded-full border border-slate-300 shadow-2xs">
                                 ✓ Veli & Telefon Bilgisi
                             </span>
-                            <span className="text-[11px] font-medium bg-white text-slate-700 px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">
+                            <span className="text-[11px] font-bold bg-white text-slate-800 px-2.5 py-1 rounded-full border border-slate-300 shadow-2xs">
                                 ✓ İkametgâh Adresi & Nüfus
                             </span>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
                             <button 
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isProcessingFile}
-                                className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-lg text-sm font-semibold hover:from-emerald-700 hover:to-teal-800 shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                                className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-lg text-xs sm:text-sm font-bold hover:from-emerald-700 hover:to-teal-800 shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                             >
                                 <Upload className="w-4 h-4" />
                                 Dosya Seçin (Excel .xlsx / .xls)
                             </button>
                             <button 
                                 onClick={() => setShowEokulGuideModal(true)}
-                                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+                                className="w-full sm:w-auto px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
                             >
                                 e-Okul Rehberi
                             </button>
@@ -584,96 +634,201 @@ const Students = () => {
                     </div>
                 ) : (
                     <div className="flex-1 overflow-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="sticky top-0 z-10">
-                                <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider shadow-sm">
-                                    <th className="p-4 font-semibold border-b border-slate-100">No</th>
-                                    <th className="p-4 font-semibold border-b border-slate-100">Ad Soyad</th>
-                                    <th className="p-4 font-semibold border-b border-slate-100">Sınıf</th>
-                                    <th className="p-4 font-semibold border-b border-slate-100">TC Kimlik</th>
-                                    <th className="p-4 font-semibold border-b border-slate-100">Durum</th>
-                                    <th className="p-4 font-semibold border-b border-slate-100">Davranış Notu</th>
-                                    <th className="p-4 font-semibold border-b border-slate-100 text-right">İşlem</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-sm divide-y divide-slate-100">
-                                {filteredStudents.length > 0 ? filteredStudents.map((student) => (
-                                    <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setSelectedStudent(student)}>
-                                        <td className="p-4 font-medium text-slate-700">{student.number}</td>
-                                        <td className="p-4 text-slate-800 font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                                    <User className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span>{student.name}</span>
-                                                        {(student.isMesem || (student.grade && student.grade.toUpperCase().includes('MES'))) && (
-                                                            <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded border border-indigo-200">
-                                                                MESEM
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-xs text-slate-400 font-normal">
-                                                        {student.companyName ? `İşletme: ${student.companyName}` : student.fatherName ? `Baba: ${student.fatherName}` : ''}
-                                                    </div>
+                        {/* MOBILE STUDENT CARDS (block md:hidden) */}
+                        <div className="block md:hidden divide-y divide-slate-100">
+                            {filteredStudents.length > 0 ? filteredStudents.map((student) => {
+                                const score = getStudentBehaviorScore(student, incidents);
+                                let scoreBadge = "bg-emerald-100 text-emerald-900 border-emerald-300";
+                                if (score < 60) scoreBadge = "bg-rose-100 text-rose-900 border-rose-300";
+                                else if (score < 85) scoreBadge = "bg-amber-100 text-amber-900 border-amber-300";
+                                
+                                return (
+                                    <div 
+                                        key={student.id} 
+                                        onClick={() => setSelectedStudent(student)}
+                                        className="p-3.5 hover:bg-blue-50/40 active:bg-blue-50 transition-colors cursor-pointer space-y-2 bg-white"
+                                    >
+                                        {/* Header: No, Name, Score */}
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <span className="font-mono font-bold text-xs bg-indigo-100 text-indigo-950 border border-indigo-200 px-2 py-0.5 rounded-md shrink-0">
+                                                    #{student.number}
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <h4 className="font-bold text-sm text-slate-950 truncate">
+                                                        {student.name}
+                                                    </h4>
+                                                    {(student.isMesem || (student.grade && student.grade.toUpperCase().includes('MES'))) && (
+                                                        <span className="inline-block text-[9px] bg-indigo-100 text-indigo-950 font-bold px-1.5 py-0.2 rounded border border-indigo-200">
+                                                            MESEM
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
-                                        </td>
-                                        <td className="p-4 text-slate-600">
-                                            <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">
+                                            <span className={`text-xs font-mono font-bold border px-2 py-0.5 rounded-full shrink-0 ${scoreBadge}`}>
+                                                {score} / 100
+                                            </span>
+                                        </div>
+
+                                        {/* Info Chips: Sınıf, TC, Durum */}
+                                        <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                                            <span className="bg-blue-100 text-blue-950 font-bold px-2 py-0.5 rounded border border-blue-200">
                                                 {student.grade}
                                             </span>
-                                        </td>
-                                        <td className="p-4 text-slate-500 font-mono">{student.tcNo || '-'}</td>
-                                        <td className="p-4">
-                                            <span className="text-xs border border-slate-200 px-2 py-1 rounded text-slate-500">
-                                                {student.boardingStatus}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            {(() => {
-                                                const score = getStudentBehaviorScore(student, incidents);
-                                                let scoreColor = "bg-green-50 text-green-700 border-green-200";
-                                                if (score < 60) scoreColor = "bg-red-50 text-red-700 border-red-200";
-                                                else if (score < 85) scoreColor = "bg-amber-50 text-amber-700 border-amber-200";
-                                                return (
-                                                    <span className={`text-xs font-mono font-bold border px-2 py-1 rounded-full ${scoreColor}`}>
-                                                        {score} / 100
-                                                    </span>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
-                                                <button 
-                                                    onClick={() => setSelectedStudent(student)}
-                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Detaylar"
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                </button>
-                                                <button 
-                                                    onClick={() => {
-                                                        if(window.confirm('Silmek istediğinize emin misiniz?')) removeStudent(student.id);
-                                                    }}
-                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Sil"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                            {student.tcNo && (
+                                                <span className="bg-slate-100 text-slate-900 font-mono font-bold px-2 py-0.5 rounded border border-slate-300 text-[11px]">
+                                                    TC: {student.tcNo}
+                                                </span>
+                                            )}
+                                            {student.boardingStatus && (
+                                                <span className="bg-slate-50 text-slate-700 px-2 py-0.5 rounded border border-slate-200 text-[10px] font-medium">
+                                                    {student.boardingStatus}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Sub-info: Anne, Baba, Veli */}
+                                        {(student.fatherName || student.motherName || student.parentPhone || student.parentName) && (
+                                            <div className="text-[11px] text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-0.5">
+                                                {(student.fatherName || student.motherName) && (
+                                                    <div>
+                                                        <span className="text-slate-500 font-bold">Anne/Baba: </span>
+                                                        <span className="font-medium text-slate-900">
+                                                            {[student.motherName, student.fatherName].filter(Boolean).join(' / ')}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {(student.parentName || student.parentPhone) && (
+                                                    <div>
+                                                        <span className="text-slate-500 font-bold">Veli: </span>
+                                                        <span className="font-medium text-slate-900">{student.parentName || ''}</span>
+                                                        {student.parentPhone && <span className="ml-1 font-mono font-bold text-slate-900">({student.parentPhone})</span>}
+                                                    </div>
+                                                )}
                                             </div>
-                                        </td>
+                                        )}
+
+                                        {/* Action buttons */}
+                                        <div className="flex items-center justify-between pt-1 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+                                            <button 
+                                                onClick={() => setSelectedStudent(student)}
+                                                className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 py-1 px-2 rounded-lg hover:bg-blue-50 cursor-pointer"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                Künye & Detaylar
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    if(window.confirm(`${student.name} isimli öğrenciyi silmek istediğinize emin misiniz?`)) removeStudent(student.id);
+                                                }}
+                                                className="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1.5 py-1 px-2 rounded-lg hover:bg-rose-50 cursor-pointer"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                Sil
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            }) : (
+                                <div className="p-8 text-center text-slate-500 text-xs font-medium">
+                                    {selectedGrade ? `${selectedGrade} sınıfında öğrenci bulunamadı.` : 'Aranan kriterde öğrenci bulunamadı.'}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* DESKTOP STUDENT TABLE (hidden md:block) */}
+                        <div className="hidden md:block">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="sticky top-0 z-10">
+                                    <tr className="bg-slate-100 text-slate-800 text-xs uppercase tracking-wider shadow-xs border-b border-slate-200">
+                                        <th className="p-3.5 font-bold">No</th>
+                                        <th className="p-3.5 font-bold">Ad Soyad</th>
+                                        <th className="p-3.5 font-bold">Sınıf</th>
+                                        <th className="p-3.5 font-bold">TC Kimlik</th>
+                                        <th className="p-3.5 font-bold">Durum</th>
+                                        <th className="p-3.5 font-bold">Davranış Notu</th>
+                                        <th className="p-3.5 font-bold text-right">İşlem</th>
                                     </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={6} className="p-8 text-center text-slate-400">
-                                            {selectedGrade ? `${selectedGrade} sınıfında öğrenci bulunamadı.` : 'Aranan kriterde öğrenci bulunamadı.'}
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="text-sm divide-y divide-slate-100">
+                                    {filteredStudents.length > 0 ? filteredStudents.map((student) => (
+                                        <tr key={student.id} className="hover:bg-blue-50/30 transition-colors group cursor-pointer" onClick={() => setSelectedStudent(student)}>
+                                            <td className="p-3.5 font-bold text-slate-900 font-mono">{student.number}</td>
+                                            <td className="p-3.5 text-slate-900 font-medium">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                                                        <User className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-bold text-slate-950">{student.name}</span>
+                                                            {(student.isMesem || (student.grade && student.grade.toUpperCase().includes('MES'))) && (
+                                                                <span className="text-[10px] bg-indigo-100 text-indigo-900 font-bold px-1.5 py-0.5 rounded border border-indigo-200">
+                                                                    MESEM
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 font-medium">
+                                                            {student.companyName ? `İşletme: ${student.companyName}` : student.fatherName ? `Baba: ${student.fatherName}` : ''}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-3.5 text-slate-800">
+                                                <span className="bg-blue-100 text-blue-900 px-2.5 py-1 rounded text-xs font-bold border border-blue-200">
+                                                    {student.grade}
+                                                </span>
+                                            </td>
+                                            <td className="p-3.5 text-slate-900 font-mono font-medium">{student.tcNo || '-'}</td>
+                                            <td className="p-3.5">
+                                                <span className="text-xs border border-slate-300 px-2 py-0.5 rounded text-slate-800 font-medium bg-slate-50">
+                                                    {student.boardingStatus}
+                                                </span>
+                                            </td>
+                                            <td className="p-3.5">
+                                                {(() => {
+                                                    const score = getStudentBehaviorScore(student, incidents);
+                                                    let scoreColor = "bg-emerald-100 text-emerald-900 border-emerald-300";
+                                                    if (score < 60) scoreColor = "bg-rose-100 text-rose-900 border-rose-300";
+                                                    else if (score < 85) scoreColor = "bg-amber-100 text-amber-900 border-amber-300";
+                                                    return (
+                                                        <span className={`text-xs font-mono font-bold border px-2.5 py-1 rounded-full ${scoreColor}`}>
+                                                            {score} / 100
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td className="p-3.5 text-right">
+                                                <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                                                    <button 
+                                                        onClick={() => setSelectedStudent(student)}
+                                                        className="p-1.5 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                                        title="Detaylar"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => {
+                                                            if(window.confirm(`${student.name} isimli öğrenciyi silmek istediğinize emin misiniz?`)) removeStudent(student.id);
+                                                        }}
+                                                        className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                                        title="Sil"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={7} className="p-8 text-center text-slate-500 font-medium">
+                                                {selectedGrade ? `${selectedGrade} sınıfında öğrenci bulunamadı.` : 'Aranan kriterde öğrenci bulunamadı.'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
           </div>
@@ -820,24 +975,24 @@ const Students = () => {
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 relative flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="bg-slate-800 text-white p-6 rounded-t-xl flex justify-between items-start shrink-0">
-                    <div className="flex gap-4">
-                        <div className="w-16 h-16 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 shrink-0">
-                            <User className="w-8 h-8" />
+                <div className="bg-slate-800 text-white p-4 sm:p-6 rounded-t-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shrink-0">
+                    <div className="flex gap-3 sm:gap-4 items-center">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-700 rounded-lg flex items-center justify-center text-slate-300 shrink-0">
+                            <User className="w-6 h-6 sm:w-8 sm:h-8" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold">{selectedStudent.name}</h2>
-                            <p className="text-slate-300 text-sm mt-1">{selectedStudent.number} • {selectedStudent.grade}</p>
-                            <div className="flex gap-2 mt-2 flex-wrap">
-                                <span className="bg-blue-500/20 text-blue-200 text-xs px-2 py-0.5 rounded border border-blue-500/30">{selectedStudent.registrationType || 'Normal Kayıt'}</span>
-                                <span className="bg-emerald-500/20 text-emerald-200 text-xs px-2 py-0.5 rounded border border-emerald-500/30">{selectedStudent.boardingStatus}</span>
+                            <h2 className="text-lg sm:text-xl font-bold">{selectedStudent.name}</h2>
+                            <p className="text-slate-300 text-xs sm:text-sm mt-0.5">{selectedStudent.number} • {selectedStudent.grade}</p>
+                            <div className="flex gap-1.5 sm:gap-2 mt-1.5 flex-wrap">
+                                <span className="bg-blue-500/20 text-blue-200 text-[11px] px-2 py-0.5 rounded border border-blue-500/30">{selectedStudent.registrationType || 'Normal Kayıt'}</span>
+                                <span className="bg-emerald-500/20 text-emerald-200 text-[11px] px-2 py-0.5 rounded border border-emerald-500/30">{selectedStudent.boardingStatus}</span>
                                 {(() => {
                                     const score = getStudentBehaviorScore(selectedStudent, incidents);
-                                    let scoreBg = "bg-green-500/20 text-green-205 text-green-300 border-green-500/30";
-                                    if (score < 60) scoreBg = "bg-red-500/20 text-red-305 text-red-300 border-red-500/30";
-                                    else if (score < 85) scoreBg = "bg-amber-500/20 text-amber-305 text-amber-300 border-amber-500/30";
+                                    let scoreBg = "bg-green-500/20 text-green-300 border-green-500/30";
+                                    if (score < 60) scoreBg = "bg-red-500/20 text-red-300 border-red-500/30";
+                                    else if (score < 85) scoreBg = "bg-amber-500/20 text-amber-300 border-amber-500/30";
                                     return (
-                                        <span className={`text-xs px-2 py-0.5 rounded border font-bold ${scoreBg}`}>
+                                        <span className={`text-[11px] px-2 py-0.5 rounded border font-bold ${scoreBg}`}>
                                             Davranış Notu: {score} / 100
                                         </span>
                                     );
@@ -845,22 +1000,22 @@ const Students = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="flex items-start gap-2.5">
+                    <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
                         <button 
                             onClick={() => exportStudentToDocx(selectedStudent, incidents, institution, boardMembers)}
-                            className="text-slate-300 hover:text-white px-3 py-1.5 bg-blue-700/60 hover:bg-blue-600 rounded flex items-center gap-1.5 text-xs font-semibold transition-colors border border-blue-500/50 cursor-pointer"
+                            className="text-slate-300 hover:text-white px-2.5 py-1.5 bg-blue-700/60 hover:bg-blue-600 rounded flex items-center gap-1.5 text-xs font-semibold transition-colors border border-blue-500/50 cursor-pointer"
                             title="Öğrenci Disiplin Kaydı (Word .docx)"
                         >
-                            <FileText className="w-3.5 h-3.5" /> Word (.docx)
+                            <FileText className="w-3.5 h-3.5" /> Word
                         </button>
                         <button 
                             onClick={() => exportStudentToPDF(selectedStudent, incidents, institution, boardMembers)}
-                            className="text-slate-300 hover:text-white px-3 py-1.5 bg-red-700/60 hover:bg-red-600 rounded flex items-center gap-1.5 text-xs font-semibold transition-colors border border-red-500/50 cursor-pointer"
+                            className="text-slate-300 hover:text-white px-2.5 py-1.5 bg-red-700/60 hover:bg-red-600 rounded flex items-center gap-1.5 text-xs font-semibold transition-colors border border-red-500/50 cursor-pointer"
                             title="Öğrenci Disiplin Kaydı (PDF)"
                         >
-                            <FileText className="w-3.5 h-3.5" /> PDF Al
+                            <FileText className="w-3.5 h-3.5" /> PDF
                         </button>
-                        <button onClick={() => setSelectedStudent(null)} className="text-slate-400 hover:text-white p-1">
+                        <button onClick={() => setSelectedStudent(null)} className="text-slate-400 hover:text-white p-1 cursor-pointer">
                             <X className="w-6 h-6" />
                         </button>
                     </div>
@@ -1284,287 +1439,463 @@ const Students = () => {
 
       {/* Excel / PDF Review Modal */}
       {showReviewModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 backdrop-blur-xs">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-fade-in max-h-[92vh] flex flex-col border border-slate-200">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-fade-in max-h-[94vh] flex flex-col border border-slate-200">
                 
                 {/* Header */}
-                <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-start bg-gradient-to-r from-slate-50 to-blue-50/40">
+                <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-start bg-gradient-to-r from-slate-50 via-blue-50/50 to-indigo-50/30">
                     <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                                 e-Okul Künye Defteri Verilerini İncele & Onayla
                             </h3>
                             {detectedFormatName && (
-                                <span className="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                                <span className="text-[11px] bg-emerald-100 text-emerald-900 font-bold px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3 text-emerald-700" />
                                     {detectedFormatName}
                                 </span>
                             )}
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Yüklenen belgeden toplam <strong>{parsedStudents.length}</strong> öğrenci künyesi ayrıştırıldı. Bilgileri gözden geçirip sisteme aktarabilirsiniz.
+                        <p className="text-xs text-slate-600 mt-1 font-medium">
+                            Yüklenen belgeden toplam <strong>{parsedStudents.length}</strong> öğrenci künyesi başarıyla ayrıştırıldı.
                         </p>
                     </div>
                     <button 
                         onClick={() => { setShowReviewModal(false); setExpandedReviewId(null); }} 
-                        className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+                        className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
+
+                {/* Important Rule Banner */}
+                <div className="mx-3 sm:mx-4 mt-3 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-2.5 text-xs text-amber-950 shadow-2xs">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                        <strong className="font-bold text-amber-900">Veri Formatı Kuralı (Sadece Veri):</strong> Excel dosyasında <u>yalnızca öğrenci verileri</u> yer almalıdır. e-Okul'dan çekilen künye verileri aşağıda net ve yüksek kontrastla listelenmiştir. Lütfen sınıfları kontrol edip <strong>"Seçilenleri Kaydet"</strong> butonuna basınız.
+                    </div>
+                </div>
                 
-                {/* Künye Extraction Statistics Badges */}
-                <div className="bg-white px-4 py-2.5 border-b border-slate-100 flex items-center gap-2 overflow-x-auto text-[11px]">
-                    <span className="font-semibold text-slate-400 uppercase tracking-wider shrink-0 text-[10px]">
-                        Çekilen Künye Verileri:
+                {/* Künye Extraction Statistics Badges (High Contrast) */}
+                <div className="bg-slate-50 px-3 sm:px-4 py-2 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-xs no-scrollbar mt-3">
+                    <span className="font-bold text-slate-800 uppercase tracking-wider shrink-0 text-[10px]">
+                        Ayrıştırılan Künye:
                     </span>
-                    <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-md font-semibold shrink-0">
+                    <span className="bg-blue-100 text-blue-950 border border-blue-300 px-2.5 py-0.5 rounded-md font-bold shrink-0 text-[11px]">
                         TC Kimlik: {parseSummary?.withTc || parsedStudents.filter(s => s.tcNo).length}/{parsedStudents.length}
                     </span>
-                    <span className="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-md font-semibold shrink-0">
+                    <span className="bg-purple-100 text-purple-950 border border-purple-300 px-2.5 py-0.5 rounded-md font-bold shrink-0 text-[11px]">
                         Anne & Baba: {parseSummary?.withParents || parsedStudents.filter(s => s.fatherName || s.motherName).length}/{parsedStudents.length}
                     </span>
-                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-semibold shrink-0">
+                    <span className="bg-emerald-100 text-emerald-950 border border-emerald-300 px-2.5 py-0.5 rounded-md font-bold shrink-0 text-[11px]">
                         Veli & İletişim: {parseSummary?.withContact || parsedStudents.filter(s => s.parentPhone || s.parentName).length}/{parsedStudents.length}
                     </span>
-                    <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md font-semibold shrink-0">
+                    <span className="bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-0.5 rounded-md font-bold shrink-0 text-[11px]">
                         Doğum Bilgisi: {parseSummary?.withBirthInfo || parsedStudents.filter(s => s.birthPlaceDate).length}/{parsedStudents.length}
                     </span>
-                    <span className="bg-cyan-50 text-cyan-800 border border-cyan-200 px-2 py-0.5 rounded-md font-semibold shrink-0">
+                    <span className="bg-cyan-100 text-cyan-950 border border-cyan-300 px-2.5 py-0.5 rounded-md font-bold shrink-0 text-[11px]">
                         Adres & Nüfus: {parseSummary?.withAddress || parsedStudents.filter(s => s.address || s.province).length}/{parsedStudents.length}
                     </span>
                 </div>
 
                 {/* Bulk Actions and Search Bar */}
-                <div className="p-3 sm:p-4 bg-slate-50 border-b border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1">
-                        <div className="flex items-center gap-1.5 flex-1 max-w-xs">
+                <div className="p-3 sm:p-4 bg-slate-100 border-b border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
+                        <div className="flex items-center gap-1.5 flex-1 sm:max-w-xs">
                             <input 
                                 type="text" 
                                 placeholder="Toplu sınıf ata (Örn: 9-A)"
                                 value={bulkGrade}
                                 onChange={(e) => setBulkGrade(e.target.value.toUpperCase())}
-                                className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:border-blue-500 font-medium"
+                                className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:border-blue-600 font-bold text-slate-900"
                             />
                             <button 
                                 onClick={applyBulkGrade}
-                                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors shrink-0 shadow-2xs"
+                                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shrink-0 shadow-2xs cursor-pointer"
                             >
                                 Uygula
                             </button>
                         </div>
 
-                        <div className="relative flex-1 max-w-xs hidden md:block">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                        <div className="relative flex-1 sm:max-w-xs">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
                             <input 
                                 type="text"
                                 placeholder="Ayrıştırılanlarda ara (No, Ad, TC)..."
                                 value={reviewFilterQuery}
                                 onChange={(e) => setReviewFilterQuery(e.target.value)}
-                                className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:border-blue-500"
+                                className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:border-blue-600 font-medium text-slate-900"
                             />
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 text-right">
-                        <span className="text-xs text-slate-500">
-                            Seçili Öğrenci:
-                        </span>
-                        <span className="text-sm font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
-                            {selectedParsedIds.length} / {parsedStudents.length}
+                    <div className="flex items-center justify-between sm:justify-end gap-3">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer select-none">
+                            <input 
+                                type="checkbox" 
+                                checked={selectedParsedIds.length > 0 && selectedParsedIds.length === parsedStudents.length}
+                                onChange={(e) => {
+                                    if (e.target.checked) setSelectedParsedIds(parsedStudents.map(s => s.id!));
+                                    else setSelectedParsedIds([]);
+                                }}
+                                className="w-4 h-4 rounded border-slate-400 text-blue-600 focus:ring-0 cursor-pointer"
+                            />
+                            <span>Tümünü Seç ({parsedStudents.length})</span>
+                        </label>
+                        <span className="text-xs font-bold text-blue-900 bg-blue-100 border border-blue-300 px-2.5 py-1 rounded-lg">
+                            {selectedParsedIds.length} / {parsedStudents.length} Seçili
                         </span>
                     </div>
                 </div>
 
-                {/* Student Table */}
+                {/* Student Content: Mobile Cards + Desktop Table */}
                 <div className="flex-1 overflow-auto p-2 sm:p-4">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
-                                <th className="p-3 border-b border-slate-200 w-10">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={selectedParsedIds.length > 0 && selectedParsedIds.length === parsedStudents.length}
-                                        onChange={(e) => {
-                                            if (e.target.checked) setSelectedParsedIds(parsedStudents.map(s => s.id!));
-                                            else setSelectedParsedIds([]);
-                                        }}
-                                        className="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer"
-                                    />
-                                </th>
-                                <th className="p-3 border-b border-slate-200">No</th>
-                                <th className="p-3 border-b border-slate-200">Ad Soyad</th>
-                                <th className="p-3 border-b border-slate-200">Sınıf / Şube</th>
-                                <th className="p-3 border-b border-slate-200">T.C. Kimlik</th>
-                                <th className="p-3 border-b border-slate-200">Anne & Baba</th>
-                                <th className="p-3 border-b border-slate-200">Veli & Telefon</th>
-                                <th className="p-3 border-b border-slate-200 text-center">Künye Detayı</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-xs divide-y divide-slate-100">
-                            {parsedStudents
-                              .filter(s => {
-                                if (!reviewFilterQuery) return true;
-                                const q = reviewFilterQuery.toLowerCase();
-                                return (
-                                  s.name?.toLowerCase().includes(q) ||
-                                  s.number?.includes(q) ||
-                                  s.tcNo?.includes(q) ||
-                                  s.grade?.toLowerCase().includes(q)
-                                );
-                              })
-                              .map((s) => {
-                                const isSelected = selectedParsedIds.includes(s.id!);
-                                const isExpanded = expandedReviewId === s.id;
-                                const fieldCount = s._extractedFieldCount || countExtractedFields(s);
+                    {/* MOBILE REVIEW CARDS (block md:hidden) */}
+                    <div className="block md:hidden divide-y divide-slate-200">
+                        {parsedStudents
+                          .filter(s => {
+                            if (!reviewFilterQuery) return true;
+                            const q = reviewFilterQuery.toLowerCase();
+                            return (
+                              s.name?.toLowerCase().includes(q) ||
+                              s.number?.includes(q) ||
+                              s.tcNo?.includes(q) ||
+                              s.grade?.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((s) => {
+                            const isSelected = selectedParsedIds.includes(s.id!);
+                            const isExpanded = expandedReviewId === s.id;
+                            const fieldCount = s._extractedFieldCount || countExtractedFields(s);
 
-                                return (
-                                  <React.Fragment key={s.id}>
-                                    <tr className={`hover:bg-blue-50/40 transition-colors ${isSelected ? 'bg-blue-50/20' : ''}`}>
-                                        <td className="p-3">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={isSelected}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) setSelectedParsedIds([...selectedParsedIds, s.id!]);
-                                                    else setSelectedParsedIds(selectedParsedIds.filter(id => id !== s.id));
-                                                }}
-                                                className="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer"
-                                            />
-                                        </td>
-                                        <td className="p-3 font-bold text-slate-800 font-mono">{s.number}</td>
-                                        <td className="p-3 font-semibold text-slate-900">{s.name}</td>
-                                        <td className="p-3">
-                                            <input 
-                                                type="text" 
-                                                value={s.grade || ''}
-                                                placeholder="Sınıf gir..."
-                                                onChange={(e) => updateParsedStudent(s.id!, 'grade', e.target.value.toUpperCase())}
-                                                className="w-24 p-1.5 border border-slate-300 rounded-md text-xs outline-none focus:border-blue-500 font-medium"
-                                            />
-                                        </td>
-                                        <td className="p-3 font-mono text-slate-700">
-                                            {s.tcNo ? (
-                                                <span className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                                    {s.tcNo}
-                                                </span>
-                                            ) : (
-                                                <span className="text-slate-300">-</span>
-                                            )}
-                                        </td>
-                                        <td className="p-3 text-slate-700">
-                                            {s.motherName || s.fatherName ? (
-                                                <div className="space-y-0.5">
-                                                    {s.fatherName && <div className="text-[11px]"><span className="text-slate-400">B:</span> {s.fatherName}</div>}
-                                                    {s.motherName && <div className="text-[11px]"><span className="text-slate-400">A:</span> {s.motherName}</div>}
-                                                </div>
-                                            ) : (
-                                                <span className="text-slate-300">-</span>
-                                            )}
-                                        </td>
-                                        <td className="p-3 text-slate-700">
-                                            {s.parentName || s.parentPhone ? (
-                                                <div className="space-y-0.5">
-                                                    {s.parentName && <div className="font-medium text-slate-800">{s.parentName}</div>}
-                                                    {s.parentPhone && <div className="text-[10px] text-slate-500 font-mono">{s.parentPhone}</div>}
-                                                </div>
-                                            ) : (
-                                                <span className="text-slate-300">-</span>
-                                            )}
-                                        </td>
-                                        <td className="p-3 text-center">
-                                            <button 
-                                                onClick={() => setExpandedReviewId(isExpanded ? null : s.id!)}
-                                                className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors inline-flex items-center gap-1 cursor-pointer ${
-                                                    isExpanded 
-                                                        ? 'bg-blue-600 text-white border-blue-600' 
-                                                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                                                }`}
-                                            >
-                                                <span>{fieldCount} Alan</span>
-                                                {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                            </button>
-                                        </td>
-                                    </tr>
+                            return (
+                              <div key={s.id} className={`p-3 transition-colors rounded-xl mb-2 border ${isSelected ? 'bg-blue-50/40 border-blue-300' : 'bg-white border-slate-200'}`}>
+                                  {/* Header: Checkbox, No, Name, Sınıf input */}
+                                  <div className="flex items-start justify-between gap-2">
+                                      <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
+                                          <input 
+                                              type="checkbox" 
+                                              checked={isSelected}
+                                              onChange={(e) => {
+                                                  if (e.target.checked) setSelectedParsedIds([...selectedParsedIds, s.id!]);
+                                                  else setSelectedParsedIds(selectedParsedIds.filter(id => id !== s.id));
+                                              }}
+                                              className="w-4 h-4 rounded border-slate-400 text-blue-600 focus:ring-0 cursor-pointer shrink-0 mt-0.5"
+                                          />
+                                          <div className="min-w-0">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                  <span className="font-mono font-bold text-xs bg-indigo-100 text-indigo-950 border border-indigo-200 px-2 py-0.5 rounded">
+                                                      #{s.number}
+                                                  </span>
+                                                  <span className="text-sm font-black text-slate-950 truncate">
+                                                      {s.name}
+                                                  </span>
+                                              </div>
+                                          </div>
+                                      </label>
 
-                                    {/* Expanded Künye Card View */}
-                                    {isExpanded && (
-                                        <tr className="bg-gradient-to-r from-blue-50/50 via-slate-50 to-indigo-50/40">
-                                            <td colSpan={8} className="p-4 border-b border-blue-200/60">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-blue-100 shadow-xs">
-                                                    <div>
-                                                        <span className="block text-[10px] font-bold text-slate-400 uppercase">Doğum Bilgileri</span>
-                                                        <p className="text-xs font-semibold text-slate-800 mt-0.5">
-                                                            {s.birthPlaceDate || 'Belirtilmedi'}
-                                                        </p>
-                                                        <span className="block text-[10px] text-slate-500 mt-1">Cinsiyet: {s.gender || 'Belirtilmedi'}</span>
+                                      {/* Sınıf Input */}
+                                      <div className="flex items-center gap-1 shrink-0">
+                                          <span className="text-[10px] font-bold text-slate-500 uppercase">Sınıf:</span>
+                                          <input 
+                                              type="text" 
+                                              value={s.grade || ''}
+                                              placeholder="9-A"
+                                              onChange={(e) => updateParsedStudent(s.id!, 'grade', e.target.value.toUpperCase())}
+                                              className="w-16 p-1 text-center border border-slate-300 rounded font-bold text-xs text-slate-900 bg-white focus:border-blue-600 outline-none"
+                                          />
+                                      </div>
+                                  </div>
+
+                                  {/* Sub-info: TC, Anne/Baba, Veli */}
+                                  <div className="mt-2 space-y-1.5 text-xs text-slate-800">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                          {s.tcNo ? (
+                                              <span className="font-mono font-bold text-blue-950 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded text-[11px]">
+                                                  TC: {s.tcNo}
+                                              </span>
+                                          ) : (
+                                              <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-semibold">
+                                                  TC Belirtilmedi
+                                              </span>
+                                          )}
+                                          {s.gender && (
+                                              <span className="text-[11px] text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-medium">
+                                                  {s.gender}
+                                              </span>
+                                          )}
+                                      </div>
+
+                                      {(s.motherName || s.fatherName || s.parentName || s.parentPhone) && (
+                                          <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-0.5 text-[11px]">
+                                              {(s.motherName || s.fatherName) && (
+                                                  <div>
+                                                      <span className="font-bold text-slate-600">Anne / Baba: </span>
+                                                      <span className="font-semibold text-slate-950">
+                                                          {[s.motherName && `Anne: ${s.motherName}`, s.fatherName && `Baba: ${s.fatherName}`].filter(Boolean).join(' • ')}
+                                                      </span>
+                                                  </div>
+                                              )}
+                                              {(s.parentName || s.parentPhone) && (
+                                                  <div>
+                                                      <span className="font-bold text-slate-600">Veli: </span>
+                                                      <span className="font-semibold text-slate-950">{s.parentName || ''}</span>
+                                                      {s.parentPhone && <span className="ml-1 font-mono font-bold text-slate-900">({s.parentPhone})</span>}
+                                                  </div>
+                                              )}
+                                          </div>
+                                      )}
+                                  </div>
+
+                                  {/* Accordion trigger button for Künye Detay */}
+                                  <div className="mt-2 flex items-center justify-between">
+                                      <button 
+                                          onClick={() => setExpandedReviewId(isExpanded ? null : s.id!)}
+                                          className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 cursor-pointer ${
+                                              isExpanded 
+                                                  ? 'bg-blue-600 text-white border-blue-600' 
+                                                  : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50'
+                                          }`}
+                                      >
+                                          <span>{fieldCount} Künye Alanı Çekildi</span>
+                                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                      </button>
+                                      {s.address && (
+                                          <span className="text-[10px] text-slate-600 font-medium truncate max-w-[140px]">
+                                              {s.province ? `${s.province} / ` : ''}{s.address}
+                                          </span>
+                                      )}
+                                  </div>
+
+                                  {/* Expanded mobile panel */}
+                                  {isExpanded && (
+                                      <div className="mt-2.5 p-3 bg-gradient-to-br from-blue-50/70 to-slate-50 rounded-xl border border-blue-200 space-y-2 text-xs animate-fade-in">
+                                          <div>
+                                              <span className="block text-[10px] font-bold text-slate-500 uppercase">Doğum Bilgileri</span>
+                                              <p className="font-bold text-slate-900">{s.birthPlaceDate || 'Belirtilmedi'}</p>
+                                              <span className="text-[11px] text-slate-700">Cinsiyet: {s.gender || 'Belirtilmedi'}</span>
+                                          </div>
+                                          <div>
+                                              <span className="block text-[10px] font-bold text-slate-500 uppercase">Nüfus Kaydı</span>
+                                              <p className="font-bold text-slate-900">
+                                                  {[s.province, s.district, s.neighborhood].filter(Boolean).join(' / ') || 'Belirtilmedi'}
+                                              </p>
+                                              {(s.volumeNo || s.familyOrderNo || s.orderNo) && (
+                                                  <p className="text-[11px] font-mono text-slate-800">
+                                                      Cilt: {s.volumeNo || '-'} | Aile: {s.familyOrderNo || '-'} | Sıra: {s.orderNo || '-'}
+                                                  </p>
+                                              )}
+                                          </div>
+                                          <div>
+                                              <span className="block text-[10px] font-bold text-slate-500 uppercase">Kayıt, Pansiyon & Burs</span>
+                                              <p className="font-bold text-slate-900">
+                                                  {s.registrationType || 'Yeni Kayıt'} • {s.boardingStatus || 'GÜNDÜZLÜ'} • {s.scholarshipStatus || 'BURSSUZ'}
+                                              </p>
+                                              {s.previousSchoolInfo && (
+                                                  <p className="text-[11px] text-indigo-900">Önceki Okul: {s.previousSchoolInfo}</p>
+                                              )}
+                                          </div>
+                                          <div>
+                                              <span className="block text-[10px] font-bold text-slate-500 uppercase">İkametgâh Adresi</span>
+                                              <p className="text-slate-900 font-medium">{s.address || 'Adres bilgisi bulunamadı'}</p>
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                            );
+                          })}
+                    </div>
+
+                    {/* DESKTOP REVIEW TABLE (hidden md:block) */}
+                    <div className="hidden md:block">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-200 text-slate-900 text-xs uppercase tracking-wider sticky top-0 z-10 shadow-2xs font-bold">
+                                    <th className="p-3 border-b border-slate-300 w-10">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedParsedIds.length > 0 && selectedParsedIds.length === parsedStudents.length}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setSelectedParsedIds(parsedStudents.map(s => s.id!));
+                                                else setSelectedParsedIds([]);
+                                            }}
+                                            className="rounded border-slate-400 text-blue-600 focus:ring-0 cursor-pointer"
+                                        />
+                                    </th>
+                                    <th className="p-3 border-b border-slate-300">No</th>
+                                    <th className="p-3 border-b border-slate-300">Ad Soyad</th>
+                                    <th className="p-3 border-b border-slate-300">Sınıf / Şube</th>
+                                    <th className="p-3 border-b border-slate-300">T.C. Kimlik</th>
+                                    <th className="p-3 border-b border-slate-300">Anne & Baba</th>
+                                    <th className="p-3 border-b border-slate-300">Veli & Telefon</th>
+                                    <th className="p-3 border-b border-slate-300 text-center">Künye Detayı</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-xs divide-y divide-slate-100">
+                                {parsedStudents
+                                  .filter(s => {
+                                    if (!reviewFilterQuery) return true;
+                                    const q = reviewFilterQuery.toLowerCase();
+                                    return (
+                                      s.name?.toLowerCase().includes(q) ||
+                                      s.number?.includes(q) ||
+                                      s.tcNo?.includes(q) ||
+                                      s.grade?.toLowerCase().includes(q)
+                                    );
+                                  })
+                                  .map((s) => {
+                                    const isSelected = selectedParsedIds.includes(s.id!);
+                                    const isExpanded = expandedReviewId === s.id;
+                                    const fieldCount = s._extractedFieldCount || countExtractedFields(s);
+
+                                    return (
+                                      <React.Fragment key={s.id}>
+                                        <tr className={`hover:bg-blue-50/40 transition-colors ${isSelected ? 'bg-blue-50/20' : ''}`}>
+                                            <td className="p-3">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) setSelectedParsedIds([...selectedParsedIds, s.id!]);
+                                                        else setSelectedParsedIds(selectedParsedIds.filter(id => id !== s.id));
+                                                    }}
+                                                    className="rounded border-slate-400 text-blue-600 focus:ring-0 cursor-pointer"
+                                                />
+                                            </td>
+                                            <td className="p-3 font-bold text-slate-900 font-mono">{s.number}</td>
+                                            <td className="p-3 font-bold text-slate-950">{s.name}</td>
+                                            <td className="p-3">
+                                                <input 
+                                                    type="text" 
+                                                    value={s.grade || ''}
+                                                    placeholder="Sınıf gir..."
+                                                    onChange={(e) => updateParsedStudent(s.id!, 'grade', e.target.value.toUpperCase())}
+                                                    className="w-24 p-1.5 border border-slate-300 rounded-md text-xs outline-none focus:border-blue-500 font-bold text-slate-900 bg-white"
+                                                />
+                                            </td>
+                                            <td className="p-3 font-mono">
+                                                {s.tcNo ? (
+                                                    <span className="text-blue-950 bg-blue-100 px-2 py-0.5 rounded border border-blue-200 font-bold">
+                                                        {s.tcNo}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-medium">Belirtilmedi</span>
+                                                )}
+                                            </td>
+                                            <td className="p-3 text-slate-900">
+                                                {s.motherName || s.fatherName ? (
+                                                    <div className="space-y-0.5">
+                                                        {s.fatherName && <div className="text-[11px]"><span className="text-slate-500 font-bold">B:</span> {s.fatherName}</div>}
+                                                        {s.motherName && <div className="text-[11px]"><span className="text-slate-500 font-bold">A:</span> {s.motherName}</div>}
                                                     </div>
-
-                                                    <div>
-                                                        <span className="block text-[10px] font-bold text-slate-400 uppercase">Nüfus Kaydı</span>
-                                                        <p className="text-xs text-slate-800 mt-0.5">
-                                                            {[s.province, s.district, s.neighborhood].filter(Boolean).join(' / ') || 'Belirtilmedi'}
-                                                        </p>
-                                                        {(s.volumeNo || s.familyOrderNo || s.orderNo) && (
-                                                            <span className="block text-[10px] text-slate-500 font-mono mt-0.5">
-                                                                Cilt:{s.volumeNo || '-'} / Aile:{s.familyOrderNo || '-'} / Sıra:{s.orderNo || '-'}
-                                                            </span>
-                                                        )}
+                                                ) : (
+                                                    <span className="text-slate-400">-</span>
+                                                )}
+                                            </td>
+                                            <td className="p-3 text-slate-900">
+                                                {s.parentName || s.parentPhone ? (
+                                                    <div className="space-y-0.5">
+                                                        {s.parentName && <div className="font-bold text-slate-950">{s.parentName}</div>}
+                                                        {s.parentPhone && <div className="text-[11px] text-slate-800 font-mono font-medium">{s.parentPhone}</div>}
                                                     </div>
-
-                                                    <div>
-                                                        <span className="block text-[10px] font-bold text-slate-400 uppercase">Kayıt & Pansiyon</span>
-                                                        <p className="text-xs text-slate-800 mt-0.5">
-                                                            {s.registrationType || 'Yeni Kayıt'} • {s.boardingStatus || 'GÜNDÜZLÜ'}
-                                                        </p>
-                                                        <span className="block text-[10px] text-slate-500 mt-0.5">
-                                                            Burs: {s.scholarshipStatus || 'BURSSUZ'}{s.registrationDate ? ` • Kayıt: ${s.registrationDate}` : ''}
-                                                        </span>
-                                                        {s.previousSchoolInfo && (
-                                                            <span className="block text-[10px] text-indigo-600 mt-0.5 truncate" title={s.previousSchoolInfo}>
-                                                                Geldiği: {s.previousSchoolInfo}
-                                                            </span>
-                                                        )}
-                                                        {s.healthStatus && (
-                                                            <span className="block text-[10px] text-rose-600 mt-0.5">
-                                                                Kan Grubu / Sağlık: {s.healthStatus}
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    <div>
-                                                        <span className="block text-[10px] font-bold text-slate-400 uppercase">İkametgâh Adresi</span>
-                                                        <p className="text-xs text-slate-700 mt-0.5 line-clamp-2">
-                                                            {s.address || 'Adres bilgisi bulunamadı'}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                                ) : (
+                                                    <span className="text-slate-400">-</span>
+                                                )}
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                <button 
+                                                    onClick={() => setExpandedReviewId(isExpanded ? null : s.id!)}
+                                                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-colors inline-flex items-center gap-1 cursor-pointer ${
+                                                        isExpanded 
+                                                            ? 'bg-blue-600 text-white border-blue-600' 
+                                                            : 'bg-slate-50 text-slate-800 border-slate-300 hover:bg-slate-100'
+                                                    }`}
+                                                >
+                                                    <span>{fieldCount} Alan</span>
+                                                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                                </button>
                                             </td>
                                         </tr>
-                                    )}
-                                  </React.Fragment>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+
+                                        {/* Expanded Künye Card View */}
+                                        {isExpanded && (
+                                            <tr className="bg-gradient-to-r from-blue-50/50 via-slate-50 to-indigo-50/40">
+                                                <td colSpan={8} className="p-4 border-b border-blue-200/60">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-blue-200 shadow-xs">
+                                                        <div>
+                                                            <span className="block text-[10px] font-bold text-slate-500 uppercase">Doğum Bilgileri</span>
+                                                            <p className="text-xs font-bold text-slate-900 mt-0.5">
+                                                                {s.birthPlaceDate || 'Belirtilmedi'}
+                                                            </p>
+                                                            <span className="block text-[10px] text-slate-600 font-medium mt-1">Cinsiyet: {s.gender || 'Belirtilmedi'}</span>
+                                                        </div>
+
+                                                        <div>
+                                                            <span className="block text-[10px] font-bold text-slate-500 uppercase">Nüfus Kaydı</span>
+                                                            <p className="text-xs font-bold text-slate-900 mt-0.5">
+                                                                {[s.province, s.district, s.neighborhood].filter(Boolean).join(' / ') || 'Belirtilmedi'}
+                                                            </p>
+                                                            {(s.volumeNo || s.familyOrderNo || s.orderNo) && (
+                                                                <span className="block text-[10px] text-slate-700 font-mono mt-0.5 font-medium">
+                                                                    Cilt:{s.volumeNo || '-'} / Aile:{s.familyOrderNo || '-'} / Sıra:{s.orderNo || '-'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <div>
+                                                            <span className="block text-[10px] font-bold text-slate-500 uppercase">Kayıt & Pansiyon</span>
+                                                            <p className="text-xs font-bold text-slate-900 mt-0.5">
+                                                                {s.registrationType || 'Yeni Kayıt'} • {s.boardingStatus || 'GÜNDÜZLÜ'}
+                                                            </p>
+                                                            <span className="block text-[10px] text-slate-700 font-medium mt-0.5">
+                                                                Burs: {s.scholarshipStatus || 'BURSSUZ'}{s.registrationDate ? ` • Kayıt: ${s.registrationDate}` : ''}
+                                                            </span>
+                                                            {s.previousSchoolInfo && (
+                                                                <span className="block text-[10px] text-indigo-900 font-semibold mt-0.5 truncate" title={s.previousSchoolInfo}>
+                                                                    Geldiği: {s.previousSchoolInfo}
+                                                                </span>
+                                                            )}
+                                                            {s.healthStatus && (
+                                                                <span className="block text-[10px] text-rose-700 font-semibold mt-0.5">
+                                                                    Kan Grubu / Sağlık: {s.healthStatus}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <div>
+                                                            <span className="block text-[10px] font-bold text-slate-500 uppercase">İkametgâh Adresi</span>
+                                                            <p className="text-xs text-slate-800 font-medium mt-0.5 line-clamp-2">
+                                                                {s.address || 'Adres bilgisi bulunamadı'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                      </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-4 border-t border-slate-100 flex items-center justify-between gap-3 bg-slate-50">
-                    <span className="text-xs text-slate-500">
-                        Seçilen <strong>{selectedParsedIds.length}</strong> öğrenci sisteminize eklenecektir.
+                <div className="p-3 sm:p-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 shrink-0">
+                    <span className="text-xs text-slate-700 font-medium">
+                        Seçilen <strong className="text-blue-900 font-bold">{selectedParsedIds.length}</strong> öğrenci sisteminize eklenecektir.
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                         <button 
                             onClick={() => { setShowReviewModal(false); setExpandedReviewId(null); }}
-                            className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors text-xs font-semibold cursor-pointer"
+                            className="px-4 py-2 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold cursor-pointer"
                         >
                             İptal
                         </button>
                         <button 
                             onClick={handleFinalizeUpload}
                             disabled={selectedParsedIds.length === 0}
-                            className="bg-emerald-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-sm text-xs cursor-pointer disabled:opacity-50"
+                            className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-sm text-xs cursor-pointer disabled:opacity-50"
                         >
                             <Save className="w-4 h-4" />
                             Seçilenleri Kaydet ({selectedParsedIds.length})
@@ -1713,13 +2044,15 @@ const Students = () => {
 
                 <div className="p-6 overflow-y-auto space-y-4">
                     {/* Bilgi Kutusu */}
-                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-900 text-xs leading-relaxed">
+                    <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 text-amber-950 text-xs leading-relaxed shadow-2xs">
                         <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                         <div>
-                            <strong className="font-semibold block text-amber-950 mb-1">Zorunlu Veri Formatı Bilgisi:</strong>
+                            <strong className="font-bold block text-amber-950 mb-1">Önemli Kural: Excel Dosyası Sadece Veri İçermelidir!</strong>
                             Disiplin kurulu süreçleri ve resmi MEB evrakları (Savunma, İfade, Çağrı Pusulası, Kurul Kararı, Tebligat vb.); 
-                            <strong> T.C. Kimlik No, Okul No, Ad-Soyad, Sınıf, Anne/Baba Adı, Doğum Yeri/Tarihi, Veli Bilgileri ve İkametgah</strong> gibi 
-                            tüm resmi verileri bu dosyadan çeker. Bu nedenle öğrenci veri aktarımı <strong>sadece e-Okul Künye Defteri verilerine göre</strong> yapılmalıdır.
+                            <strong> T.C. Kimlik No, Okul No, Ad-Soyad, Sınıf, Anne/Baba Adı, Doğum Yeri/Tarihi, Veli Bilgileri ve İkametgâh</strong> gibi 
+                            tüm resmi verileri bu dosyadan çeker.
+                            <br className="my-1"/>
+                            <strong>Önemli Dikkat:</strong> Yükleyeceğiniz Excel dosyasının içine manuel not, ek açıklama, ara başlık veya özel biçimlendirme <u>eklemeyiniz</u>. MEB e-Okul'dan aldığınız orijinal Excel dosyasını (yalnızca verileri barındıran haliyle) doğrudan yükleyiniz.
                         </div>
                     </div>
 
