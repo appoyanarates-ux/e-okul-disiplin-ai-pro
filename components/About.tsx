@@ -14,7 +14,10 @@ import {
   CheckCircle,
   FileText,
   RefreshCw,
-  Globe
+  Globe,
+  Layers,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { UpdateNotificationModal } from './UpdateNotificationModal';
 
@@ -250,6 +253,95 @@ const About = () => {
             </h4>
             <p>
               Google Gemini AI desteği ile olay metinlerini analiz eder, ilgili mevzuat maddelerini ve objektif ceza tekliflerini otomatik olarak önerir.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      
+      {/* Sürüm Geçmişi & Özellik Kataloğu */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+          <h2 className="font-bold text-slate-800 text-base flex items-center gap-2">
+            <Layers className="w-5 h-5 text-indigo-600" />
+            Sürüm Geçmişi & Özellikler Kataloğu
+          </h2>
+          <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 w-fit">
+            Aktif Sürüm: v1.1.8
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          {/* v1.1.8 */}
+          <div className="border border-indigo-200 bg-gradient-to-r from-indigo-50/60 to-blue-50/40 rounded-xl p-4.5 space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-indigo-950 text-sm">v1.1.8</span>
+                <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">En Yeni / Canlı Web</span>
+              </div>
+              <span className="text-xs text-slate-500 font-medium">15 Kasım 2026</span>
+            </div>
+            <ul className="text-xs text-slate-700 space-y-1.5 list-disc list-inside leading-relaxed font-medium">
+              <li><strong>Canlı Web-First Hibrit Mimari:</strong> cPanel üzerinden yayınlanan tüm arayüz, evrak şablonu ve tasarım güncellemeleri masaüstü kullanıcılarına anında yansır (yeni kurulum gerektirmez).</li>
+              <li><strong>Karar ve Evrak Modülü Yenilendi:</strong> AI Analiz, Toplantı Yönetimi, Tutanak ve Formlar, Karar & Tebligat sekmeleri mobilde ve masaüstünde yüksek kontrastlı, modern ve dokunmatik uyumlu hale getirildi.</li>
+              <li><strong>e-Okul Künye Defteri Excel Yükleme:</strong> Mobildeki donuk renkler canlı ve yüksek kontrastlı renklerle değiştirildi; mobilde sıkışan tablo yerine tek dokunuşla sınıf atanan ve künye detayını gösteren Mobil Kart Görünümü eklendi.</li>
+              <li><strong>Yalnızca Veri Standardı:</strong> e-Okul'dan alınan orijinal Excel dosyasının yapısını bozmadan doğrudan yüklenmesi kuralı arayüze ve rehbere eklendi.</li>
+              <li><strong>Önbellek Kilidi Kırıldı:</strong> Açılışta taze dosya çekilmesini sağlayan no-cache kuralları ve F5 / Ctrl+R zorla yenileme (reloadIgnoringCache) desteği eklendi.</li>
+            </ul>
+          </div>
+
+          {/* v1.1.7 */}
+          <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 space-y-1.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-bold text-slate-900 text-xs">v1.1.7 - evrakplus.com Bulut Senkronizasyonu</span>
+              <span className="text-[11px] text-slate-500 font-medium">14 Kasım 2026</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              evrakplus.com üyelik entegrasyonu ve tam bulut senkronizasyonu devreye alındı. Web ve masaüstü verileri çift yönlü eşitlenerek veri kaybı riski ortadan kaldırıldı.
+            </p>
+          </div>
+
+          {/* v1.1.6 */}
+          <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 space-y-1.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-bold text-slate-900 text-xs">v1.1.6 - Gelişmiş Öğrenci & Künye Ayrıştırma</span>
+              <span className="text-[11px] text-slate-500 font-medium">13 Kasım 2026</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Öğrenci Yönetimi ve e-Okul Künye Defteri çok sütunlu Excel ayrıştırma motoru güçlendirildi; T.C. Kimlik, veli iletişimi, anne-baba ve ikametgâh alanları eksiksiz çekilmeye başlandı.
+            </p>
+          </div>
+
+          {/* v1.1.5 */}
+          <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 space-y-1.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-bold text-slate-900 text-xs">v1.1.5 - Otomatik Yerel Yedekleme & Kurtarma</span>
+              <span className="text-[11px] text-slate-500 font-medium">11 Kasım 2026</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Windows AppData klasöründe son 20 veri tabanı yedeğini otomatik olarak saklayan yerel kurtarma mekanizması sisteme kazandırıldı.
+            </p>
+          </div>
+
+          {/* v1.1.1 & v1.1.2 */}
+          <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 space-y-1.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-bold text-slate-900 text-xs">v1.1.1 & v1.1.2 - Toplu Öğrenci Çağrı Pusulaları</span>
+              <span className="text-[11px] text-slate-500 font-medium">9 Kasım 2026</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Olaydaki tüm öğrenciler (Fail, Tanık, Mağdur) için bağımsız tebellüğ imza bloklu çağrı pusulalarını tek tıkla toplu üretme, ön izleme ve yazdırma yeteneği eklendi.
+            </p>
+          </div>
+
+          {/* v1.0.2 - v1.0.4 */}
+          <div className="border border-slate-200 bg-slate-50 rounded-xl p-4 space-y-1.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-bold text-slate-900 text-xs">v1.0.2 - v1.0.4 - Vektörel PDF, Sabit 12 Punto & Gemini AI</span>
+              <span className="text-[11px] text-slate-500 font-medium">Kasım 2026 Başı</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Chromium native printToPDF vektörel baskı motoru, sabit 12 punto Times New Roman resmi yazışma kilidi ve Google Gemini 2.5/2.0/1.5 Flash Free Tier kesintisiz yedekleme mimarisi devreye alındı.
             </p>
           </div>
         </div>

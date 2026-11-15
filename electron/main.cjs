@@ -109,10 +109,10 @@ function createWindow() {
     shell.openExternal(url);
   });
 
-  // F5 / Ctrl+R canlı yenileme desteği (cPanel güncellemelerini anında çekmek için)
+  // F5 / Ctrl+R canlı yenileme desteği (cPanel güncellemelerini önbelleği yok sayarak anında çekmek için)
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r')) {
-      mainWindow.reload();
+      mainWindow.webContents.reloadIgnoringCache();
       event.preventDefault();
     }
   });
@@ -140,7 +140,9 @@ function createWindow() {
       });
     };
 
-    mainWindow.loadURL(REMOTE_WEB_URL).catch(() => {
+    mainWindow.loadURL(REMOTE_WEB_URL, {
+      extraHeaders: 'pragma: no-cache\ncache-control: no-cache\n'
+    }).catch(() => {
       fallbackToLocal();
     });
 
