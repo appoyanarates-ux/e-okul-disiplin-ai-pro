@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bot, FileText, ChevronRight, Loader2, PenTool, User, AlertCircle, 
   Calendar, Clock, List, Printer, Users, Scale, Mail, Download, Calculator, ZoomIn, ZoomOut, RotateCcw, MessageSquare, ScrollText, Sparkles, CheckCircle, RefreshCw, Check, Minimize2,
-  Layout, ChevronDown, Sliders, Edit3, X, Save, ChevronUp, GraduationCap
+  Layout, ChevronDown, Sliders, Edit3, X, Save, ChevronUp, GraduationCap, Search, Shield, ArrowRight, ArrowDown, ArrowUp, Copy, Layers, BookOpen, AlertTriangle
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { analyzeIncident, generateDecisionReason } from '../services/geminiService';
@@ -655,6 +655,10 @@ const DecisionAssistant = () => {
   const [loading, setLoading] = useState(false);
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [isGeneratingReason, setIsGeneratingReason] = useState(false);
+  const [isCopiedAiResult, setIsCopiedAiResult] = useState(false);
+  const [formSubCategory, setFormSubCategory] = useState<'all' | 'guidance' | 'statement' | 'opinion'>('all');
+  const [formSearchQuery, setFormSearchQuery] = useState('');
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
   // --- LOAD DATA EFFECTS ---
   const prevIncidentIdRef = useRef<string | null>(null);
@@ -839,6 +843,43 @@ const DecisionAssistant = () => {
           setDecisionForm(prev => ({...prev, reason: result}));
       }
       setIsGeneratingReason(false);
+  };
+
+  const handleApplyAiToDecision = () => {
+    if (!aiResult) return;
+    let detectedPenalty = decisionForm.penalty;
+    if (/örgün eğitim dışına/i.test(aiResult)) detectedPenalty = 'ÖRGÜN EĞİTİM DIŞINA ÇIKARMA';
+    else if (/okul değiştirme/i.test(aiResult)) detectedPenalty = 'OKUL DEĞİŞTİRME';
+    else if (/kısa süreli uzaklaştırma|uzaklaştırma/i.test(aiResult)) detectedPenalty = 'KISA SÜRELİ UZAKLAŞTIRMA';
+    else if (/kinama|kınama/i.test(aiResult)) detectedPenalty = 'KINAMA';
+    else if (/uyarma/i.test(aiResult)) detectedPenalty = 'UYARMA';
+
+    let s = decisionForm.score;
+    if (detectedPenalty.includes('UYARMA')) s = '0';
+    else if (detectedPenalty.includes('KINAMA')) s = '10';
+    else if (detectedPenalty.includes('UZAKLAŞTIRMA')) s = '20';
+    else if (detectedPenalty.includes('DEĞİŞTİRME')) s = '40';
+    else if (detectedPenalty.includes('ÖRGÜN')) s = '80';
+
+    setDecisionForm(prev => ({
+      ...prev,
+      penalty: detectedPenalty,
+      score: s,
+      reason: prev.reason || (aiResult.length > 250 ? aiResult.slice(0, 250) + '...' : aiResult)
+    }));
+
+    setActiveTab('decision');
+    setSearchParams({ tab: 'decision' });
+    setMobileViewMode('form');
+    setSuccessMessage('AI Analiz sonucu Karar ve Tebligat bölümüne başarıyla aktarıldı.');
+    setTimeout(() => setSuccessMessage(null), 3500);
+  };
+
+  const handleCopyAiResult = () => {
+    if (!aiResult) return;
+    navigator.clipboard.writeText(aiResult);
+    setIsCopiedAiResult(true);
+    setTimeout(() => setIsCopiedAiResult(false), 2500);
   };
 
   const getFilenameFromDoc = (
@@ -1653,6 +1694,45 @@ const DecisionAssistant = () => {
                  </div>
              </div>
           );
+      }
+      if (activeTab === 'analysis' && !aiResult) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[360px] max-w-lg mx-auto p-6 sm:p-8 bg-white border border-indigo-100/90 rounded-3xl shadow-sm text-center my-auto animate-in fade-in duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-indigo-100 mb-4">
+              <Bot className="w-8 h-8" />
+            </div>
+            <h3 className="text-base sm:text-lg font-extrabold text-slate-800">Yapay Zeka Analizine Hazır</h3>
+            <p className="text-xs text-slate-500 mt-2 max-w-sm leading-relaxed">
+              Mevzuat analiz motoru; öğrencinin eylemini MEB Yönetmelik maddeleriyle karşılaştırıp ceza derecesi, indirim ve gerekçe önerisi hazırlar.
+            </p>
+            <div className="grid grid-cols-3 gap-2 w-full mt-6 text-left">
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-wider block">1. Adım</span>
+                <span className="text-[11px] font-bold text-slate-700">Olay Seç</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-wider block">2. Adım</span>
+                <span className="text-[11px] font-bold text-slate-700">Öğrenci Seç</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-wider block">3. Adım</span>
+                <span className="text-[11px] font-bold text-slate-700">Analizi Başlat</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                  setMobileViewMode('form');
+                }
+              }}
+              className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-indigo-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>{mobileViewMode === 'preview' ? 'Forma Geç ve Başlat' : 'Soldaki Panelden Seçip Başlatın'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        );
       }
       if (generatedDocs.length === 0) return (
          <div className="flex flex-col items-center justify-center min-h-[300px] h-full text-slate-400 p-6 text-center">
@@ -3533,64 +3613,207 @@ const DecisionAssistant = () => {
         {/* --- TAB 1: AI ANALYSIS --- */}
         {activeTab === 'analysis' && (
              <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'block' : 'hidden lg:block'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-6 overflow-y-auto`}>
-                    <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6 flex gap-3">
-                        <Bot className="w-6 h-6 text-indigo-600 shrink-0" />
-                        <p className="text-xs text-indigo-800">Yapay zeka asistanı, seçilen olay ve öğrenci için disiplin maddelerini analiz eder.</p>
-                    </div>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Olay Seçiniz</label>
-                            <select value={selectedIncidentId} onChange={e => { setSelectedIncidentId(e.target.value); }} className="w-full p-2.5 border rounded-lg bg-slate-50 outline-none text-sm">
-                                <option value="">-- Listeden Seç --</option>
-                                {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.code} - {inc.title}</option>)}
-                            </select>
+                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'block' : 'hidden lg:block'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-5 overflow-y-auto space-y-4`}>
+                    
+                    {/* Üst Bilgi Kartı */}
+                    <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900 text-white p-4 rounded-2xl shadow-md relative overflow-hidden">
+                        <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                        <div className="flex items-start gap-3 relative z-10">
+                            <div className="p-2.5 bg-white/15 backdrop-blur-md rounded-xl text-indigo-200 shrink-0">
+                                <Bot className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-extrabold text-sm text-white">AI Mevzuat & Karar Asistanı</h3>
+                                    <span className="text-[10px] bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.5 rounded-full font-bold">Pro</span>
+                                </div>
+                                <p className="text-xs text-indigo-200/90 mt-1 leading-relaxed">
+                                    Olay anlatısını MEB Disiplin Yönetmeliği ile kıyaslar; yaptırım maddesi, hafifletici sebepler ve gerekçe önerisi hazırlar.
+                                </p>
+                            </div>
                         </div>
+                    </div>
+
+                    {/* Alt Kategori 1: Olay ve Dosya Seçimi */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                                1. Olay / Dosya Seçimi
+                            </label>
+                            <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                                {incidents.length} Kayıtlı Olay
+                            </span>
+                        </div>
+                        <select 
+                            value={selectedIncidentId} 
+                            onChange={e => { setSelectedIncidentId(e.target.value); }} 
+                            className="w-full p-2.5 border border-slate-300 rounded-xl bg-white outline-none text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer shadow-xs"
+                        >
+                            <option value="">-- Listeden Olay Seçiniz --</option>
+                            {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.code ? `${inc.code} - ` : ''}{inc.title}</option>)}
+                        </select>
+
+                        {/* Seçilen Olayın Ayrıntıları ve Düzenlenebilir Açıklama Alanı */}
                         {selectedIncident && (
-                            <div className="flex flex-col gap-1.5">
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">İlgili Öğrenciler (Birden Çok Seçilebilir)</label>
-                                <div className="border rounded-lg max-h-56 overflow-y-auto bg-slate-50">
-                                    <div className="p-2 bg-slate-100 border-b flex items-center justify-between sticky top-0 z-10">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase">Öğrenci Seçimi</span>
-                                        <button onClick={selectAllStudents} className="text-[10px] text-indigo-600 hover:underline font-bold">
-                                            {selectedStudentIds.length === incidentStudents.length ? 'Tümünü Kaldır' : 'Tümünü Seç'}
-                                        </button>
+                            <div className="mt-2 bg-white border border-slate-200/80 rounded-xl p-3 text-xs space-y-2">
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <span className="font-bold text-slate-800 truncate">{selectedIncident.title}</span>
+                                    <span className="text-[10px] font-mono text-slate-400 shrink-0">{selectedIncident.date}</span>
+                                </div>
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[11px] font-bold text-slate-500">Analiz Edilecek Olay Metni:</span>
+                                        <span className="text-[10px] text-slate-400 font-mono">{analysisDescription.length} karakter</span>
                                     </div>
-                                    {incidentStudents.map((s) => (
-                                        <div key={s.id} onClick={() => toggleStudentSelection(s.id)} className={`p-2.5 border-b cursor-pointer hover:bg-white flex items-center gap-2.5 transition-colors ${selectedStudentIds.includes(s.id) ? 'bg-indigo-50/70 font-semibold' : ''}`}>
-                                            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${selectedStudentIds.includes(s.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'}`}>
-                                                {selectedStudentIds.includes(s.id) && <Check className="w-2.5 h-2.5 text-white" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-bold text-xs text-slate-800 truncate">{s.name}</div>
-                                                <div className="text-[10px] text-slate-500 flex gap-2">
-                                                    <span>No: {s.number}</span>
-                                                    <span>•</span>
-                                                    <span>{s.role === 'suspect' ? 'Fail' : s.role === 'witness' ? 'Tanık' : 'Mağdur'}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {incidentStudents.length === 0 && (
-                                        <div className="text-center text-slate-400 text-xs py-4">Bu olaya eklenmiş öğrenci bulunmamaktadır.</div>
-                                    )}
+                                    <textarea
+                                        value={analysisDescription}
+                                        onChange={(e) => setAnalysisDescription(e.target.value)}
+                                        rows={3}
+                                        placeholder="Olayla ilgili detaylı anlatım..."
+                                        className="w-full p-2 text-xs border border-slate-200 rounded-lg bg-slate-50/50 focus:bg-white focus:border-indigo-400 focus:ring-1 focus:ring-indigo-300 outline-none resize-none leading-relaxed"
+                                    />
+                                    <span className="text-[10px] text-slate-400 italic">Farklı senaryoları test etmek için metni değiştirebilirsiniz.</span>
                                 </div>
                             </div>
                         )}
-                        <button 
-                            onClick={handleAnalyze} 
-                            disabled={loading || selectedStudentIds.length === 0} 
-                            className={`w-full text-white py-2.5 rounded-lg flex justify-center items-center gap-2 font-semibold text-sm shadow-sm transition-colors ${
-                                loading 
-                                ? 'bg-slate-400 cursor-not-allowed' 
-                                : aiResult 
-                                ? 'bg-orange-500 hover:bg-orange-600' 
-                                : 'bg-indigo-600 hover:bg-indigo-700'
-                            }`}
-                        >
-                            {loading ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : 'Analiz Başlat'}
-                        </button>
                     </div>
+
+                    {/* Alt Kategori 2: İlgili Öğrenciler (Toplu / Çoklu Seçim) */}
+                    {selectedIncident && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-indigo-600" />
+                                    2. İlgili Öğrenciler ({selectedStudentIds.length}/{incidentStudents.length})
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <button 
+                                        type="button"
+                                        onClick={selectAllStudents} 
+                                        className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline"
+                                    >
+                                        {selectedStudentIds.length === incidentStudents.length ? 'Temizle' : 'Tümünü Seç'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="border border-slate-200 rounded-xl max-h-52 overflow-y-auto bg-white divide-y divide-slate-100">
+                                {incidentStudents.map((s) => {
+                                    const isChecked = selectedStudentIds.includes(s.id);
+                                    return (
+                                        <div 
+                                            key={s.id} 
+                                            onClick={() => toggleStudentSelection(s.id)} 
+                                            className={`p-2.5 cursor-pointer hover:bg-slate-50 flex items-center gap-2.5 transition-colors ${isChecked ? 'bg-indigo-50/70 font-semibold' : ''}`}
+                                        >
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isChecked ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
+                                                {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-bold text-xs text-slate-800 truncate">{s.name}</div>
+                                                <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                                    <span>No: {s.number}</span>
+                                                    <span>•</span>
+                                                    <span>{s.grade}</span>
+                                                    <span>•</span>
+                                                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${s.role === 'suspect' ? 'bg-red-50 text-red-700 border-red-200' : s.role === 'witness' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                                        {s.role === 'suspect' ? 'Fail (Şüpheli)' : s.role === 'witness' ? 'Tanık' : 'Mağdur'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {incidentStudents.length === 0 && (
+                                    <div className="text-center text-slate-400 text-xs py-5">Bu olaya henüz öğrenci eklenmemiştir.</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Alt Kategori 3: Analiz Odak Noktaları */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                            3. Analiz Kapsamı ve Kriterleri
+                        </label>
+                        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                            <div className="bg-white border border-slate-200 rounded-lg p-2 flex items-center gap-1.5 text-slate-700 font-medium shadow-2xs">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                                <span className="truncate">Yönetmelik Maddesi</span>
+                            </div>
+                            <div className="bg-white border border-slate-200 rounded-lg p-2 flex items-center gap-1.5 text-slate-700 font-medium shadow-2xs">
+                                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+                                <span className="truncate">Hafifletici Sebepler</span>
+                            </div>
+                            <div className="bg-white border border-slate-200 rounded-lg p-2 flex items-center gap-1.5 text-slate-700 font-medium shadow-2xs">
+                                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                                <span className="truncate">Tekerrür (Ceza Tekrarı)</span>
+                            </div>
+                            <div className="bg-white border border-slate-200 rounded-lg p-2 flex items-center gap-1.5 text-slate-700 font-medium shadow-2xs">
+                                <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
+                                <span className="truncate">Kurul Karar Gerekçesi</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Analiz Başlat Butonu */}
+                    <button 
+                        onClick={handleAnalyze} 
+                        disabled={loading || selectedStudentIds.length === 0} 
+                        className={`w-full py-3.5 rounded-xl flex justify-center items-center gap-2 font-bold text-sm shadow-md transition-all cursor-pointer ${
+                            loading 
+                            ? 'bg-slate-400 text-white cursor-not-allowed' 
+                            : aiResult 
+                            ? 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white' 
+                            : 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-indigo-200'
+                        }`}
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>Mevzuat Taranıyor & Analiz Ediliyor...</span>
+                            </>
+                        ) : aiResult ? (
+                            <>
+                                <RefreshCw className="w-4 h-4" />
+                                <span>Analizi Yeniden Başlat</span>
+                            </>
+                        ) : (
+                            <>
+                                <Bot className="w-5 h-5" />
+                                <span>Yapay Zeka Analizini Başlat</span>
+                            </>
+                        )}
+                    </button>
+
+                    {/* AI Sonuç Eylem Paneli (aiResult varsa) */}
+                    {aiResult && (
+                        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-4 shadow-xs space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                    Analiz Raporu Hazır
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={handleCopyAiResult}
+                                    className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1"
+                                >
+                                    {isCopiedAiResult ? '✓ Kopyalandı' : 'Kopyala'}
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleApplyAiToDecision}
+                                className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+                            >
+                                <Scale className="w-4 h-4" />
+                                <span>Sonucu 4. Sekmeye (Karar & Tebligat) Aktar →</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <div className={`w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} bg-slate-50 p-2 sm:p-8 overflow-y-auto flex-col items-center`}>
                     {renderDocumentPreview()}
@@ -3601,55 +3824,189 @@ const DecisionAssistant = () => {
         {/* --- TAB 2: MEETING --- */}
         {activeTab === 'meeting' && (
             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'block' : 'hidden lg:block'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-6 overflow-y-auto`}>
+                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'block' : 'hidden lg:block'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-5 overflow-y-auto space-y-4`}>
                     
-                    <div className="mb-6">
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Olay Seçimi (Çağrı İçin)</label>
-                        <select value={selectedIncidentId} onChange={e => { setSelectedIncidentId(e.target.value); }} className="w-full p-2.5 border rounded-lg bg-slate-50 outline-none text-sm">
-                            <option value="">-- Olay Seç --</option>
-                            {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.code} - {inc.title}</option>)}
+                    {/* Üst Bilgi Kartı */}
+                    <div className="bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white p-4 rounded-2xl shadow-md relative overflow-hidden">
+                        <div className="flex items-start gap-3 relative z-10">
+                            <div className="p-2.5 bg-white/15 backdrop-blur-md rounded-xl text-blue-200 shrink-0">
+                                <Calendar className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-extrabold text-sm text-white">Toplantı & Kurul Yönetimi</h3>
+                                    <span className="text-[10px] bg-blue-400/20 text-blue-200 border border-blue-400/30 px-1.5 py-0.5 rounded-full font-bold">EK-1 & Tebliğ</span>
+                                </div>
+                                <p className="text-xs text-blue-200/90 mt-1 leading-relaxed">
+                                    Disiplin Kurulu toplantı tarihi, saati ve yerini belirleyip resmi çağrı yazısı ile öğrenci çağrı pusulalarını oluşturun.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Alt Kategori 1: Olay Seçimi */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                1. İncelenen Olay Dosyası
+                            </label>
+                            {selectedIncident && (
+                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                                    {incidentStudents.length} Öğrenci
+                                </span>
+                            )}
+                        </div>
+                        <select 
+                            value={selectedIncidentId} 
+                            onChange={e => { setSelectedIncidentId(e.target.value); }} 
+                            className="w-full p-2.5 border border-slate-300 rounded-xl bg-white outline-none text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer shadow-xs"
+                        >
+                            <option value="">-- Olay Seçiniz --</option>
+                            {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.code ? `${inc.code} - ` : ''}{inc.title}</option>)}
                         </select>
                     </div>
 
-                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-blue-600" /> Toplantı Bilgileri
-                    </h3>
-                    
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Toplantı Tarihi</label>
-                            <input type="date" value={meetingData.date} onChange={e => setMeetingData({...meetingData, date: e.target.value})} className="w-full p-2 border rounded text-sm" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Toplantı Saati</label>
-                            <input type="time" value={meetingData.time} onChange={e => setMeetingData({...meetingData, time: e.target.value})} className="w-full p-2 border rounded text-sm" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Toplantı Yeri</label>
-                            <input type="text" value={meetingData.location} onChange={e => setMeetingData({...meetingData, location: e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="Toplantı Yeri" />
+                    {/* Alt Kategori 2: Toplantı Zamanı ve Yeri */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3.5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-blue-600" />
+                                2. Toplantı Zamanı & Yeri
+                            </label>
                         </div>
 
-                        {/* NEW UPDATE BUTTON */}
+                        {/* Hızlı Zaman Çipleri */}
+                        <div className="space-y-1.5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Hızlı Tarih / Saat Seç:</span>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const today = new Date().toISOString().split('T')[0];
+                                        setMeetingData(prev => ({ ...prev, date: today, time: '10:00' }));
+                                    }}
+                                    className="p-1.5 bg-white border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 rounded-lg text-[11px] font-semibold transition-all text-left truncate shadow-2xs"
+                                >
+                                    ⚡ Bugün 10:00
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const today = new Date().toISOString().split('T')[0];
+                                        setMeetingData(prev => ({ ...prev, date: today, time: '13:30' }));
+                                    }}
+                                    className="p-1.5 bg-white border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 rounded-lg text-[11px] font-semibold transition-all text-left truncate shadow-2xs"
+                                >
+                                    ⚡ Bugün 13:30
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+                                        setMeetingData(prev => ({ ...prev, date: tomorrow, time: '10:00' }));
+                                    }}
+                                    className="p-1.5 bg-white border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 rounded-lg text-[11px] font-semibold transition-all text-left truncate shadow-2xs"
+                                >
+                                    ⚡ Yarın 10:00
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+                                        setMeetingData(prev => ({ ...prev, date: tomorrow, time: '14:00' }));
+                                    }}
+                                    className="p-1.5 bg-white border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 rounded-lg text-[11px] font-semibold transition-all text-left truncate shadow-2xs"
+                                >
+                                    ⚡ Yarın 14:00
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Standart Tarih & Saat Girdileri */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 mb-1">Toplantı Tarihi</label>
+                                <input 
+                                    type="date" 
+                                    value={meetingData.date} 
+                                    onChange={e => setMeetingData({...meetingData, date: e.target.value})} 
+                                    className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-medium" 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 mb-1">Toplantı Saati</label>
+                                <input 
+                                    type="time" 
+                                    value={meetingData.time} 
+                                    onChange={e => setMeetingData({...meetingData, time: e.target.value})} 
+                                    className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-medium" 
+                                />
+                            </div>
+                        </div>
+
+                        {/* Toplantı Yeri */}
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Toplantı Yeri</label>
+                            <input 
+                                type="text" 
+                                value={meetingData.location} 
+                                onChange={e => setMeetingData({...meetingData, location: e.target.value})} 
+                                className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-medium" 
+                                placeholder="Örn: Disiplin Kurulu Odası" 
+                            />
+                            {/* Hızlı Yer Çipleri */}
+                            <div className="flex flex-wrap gap-1 mt-2">
+                                {['Disiplin Kurulu Odası', 'Müdür Yrd. Odası', 'Öğretmenler Odası', 'Rehberlik Servisi'].map((loc) => (
+                                    <button
+                                        key={loc}
+                                        type="button"
+                                        onClick={() => setMeetingData(prev => ({ ...prev, location: loc }))}
+                                        className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                                            meetingData.location === loc
+                                                ? 'bg-blue-100 text-blue-800 border-blue-300 font-bold'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {loc}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Bilgileri Çağrı Yazısına İşle Butonu */}
                         <button 
+                            type="button"
                             onClick={() => {
-                                if (window.confirm('Toplantı tarihi ve saati evraka işlenecektir. Onaylıyor musunuz?')) {
-                                    generateTemplate('ek1_meeting');
-                                }
+                                generateTemplate('ek1_meeting');
+                                setSuccessMessage('Toplantı bilgileri çağrı yazısına işlendi.');
+                                setTimeout(() => setSuccessMessage(null), 3000);
                             }}
-                            className="w-full mt-2 bg-indigo-50 text-indigo-700 border border-indigo-200 p-2.5 rounded-lg flex items-center justify-center gap-2 text-xs font-bold hover:bg-indigo-100 transition-colors"
+                            className="w-full mt-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-xs cursor-pointer"
                         >
                             <RefreshCw className="w-3.5 h-3.5" />
                             Bilgileri Çağrı Yazısına İşle (Güncelle)
                         </button>
                     </div>
                 </div>
+
                 <div className={`w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} flex-col bg-slate-50/50 overflow-y-auto`}>
-                     <div className="p-4 bg-white border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-2xs">
+                     {/* Üst Evrak Alt Kategorileri */}
+                     <div className="p-3.5 bg-white border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-2xs">
                          <button 
                              onClick={() => generateTemplate('ek1_meeting')} 
-                             className="flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
+                             className="flex items-center justify-between p-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer group"
                          >
-                             <List className="w-4 h-4" /> Kurul Çağrı Yazısı (Genel)
+                             <div className="flex items-center gap-2.5">
+                                 <div className="p-2 bg-white/20 rounded-lg">
+                                     <List className="w-4 h-4 text-white" />
+                                 </div>
+                                 <div className="text-left">
+                                     <div className="font-extrabold text-xs">Kurul Çağrı Yazısı (Genel)</div>
+                                     <div className="text-[10px] text-blue-100 font-normal">Disiplin Kurulu Üyelerine Resmi Davet (EK-1)</div>
+                                 </div>
+                             </div>
+                             <ArrowRight className="w-4 h-4 text-blue-200 group-hover:translate-x-1 transition-transform" />
                          </button>
                          <button 
                              onClick={() => {
@@ -3664,13 +4021,24 @@ const DecisionAssistant = () => {
                                  window.scrollTo({ top: 0, behavior: 'smooth' });
                              }} 
                              disabled={incidentStudents.length === 0}
-                             className="flex items-center justify-center gap-2 p-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors shadow-xs disabled:bg-slate-200 disabled:text-slate-400 cursor-pointer"
+                             className="flex items-center justify-between p-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:bg-slate-200 disabled:text-slate-400 cursor-pointer group"
                          >
-                             <Mail className="w-4 h-4" /> Öğrenci Çağrı Pusulaları (Toplu - {summonsSelectedStudentIds.length > 0 ? summonsSelectedStudentIds.length : incidentStudents.length} Öğrenci)
+                             <div className="flex items-center gap-2.5">
+                                 <div className="p-2 bg-white/20 rounded-lg">
+                                     <Mail className="w-4 h-4 text-white" />
+                                 </div>
+                                 <div className="text-left">
+                                     <div className="font-extrabold text-xs">Öğrenci Çağrı Pusulaları (Toplu)</div>
+                                     <div className="text-[10px] text-indigo-100 font-normal">
+                                         {summonsSelectedStudentIds.length > 0 ? summonsSelectedStudentIds.length : incidentStudents.length} Öğrenci İçin Ayrı Tebliğ
+                                     </div>
+                                 </div>
+                             </div>
+                             <ArrowRight className="w-4 h-4 text-indigo-200 group-hover:translate-x-1 transition-transform" />
                          </button>
                      </div>
 
-                     <div className="flex-1 p-8 overflow-y-auto flex flex-col items-center">
+                     <div className="flex-1 p-2 sm:p-8 overflow-y-auto flex flex-col items-center">
                         {renderDocumentPreview()}
                         
                         {/* Student Summons List Area with Multi-Select */}
@@ -3682,11 +4050,11 @@ const DecisionAssistant = () => {
                                             <Mail className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-slate-800 text-base leading-tight">
-                                                Öğrenci Çağrı Pusulaları
+                                            <h4 className="font-bold text-slate-800 text-sm sm:text-base leading-tight">
+                                                Öğrenci Çağrı ve Tebliğ Pusulaları Listesi
                                             </h4>
                                             <p className="text-xs text-slate-500">
-                                                Seçilen öğrenciler için resmi tebliğ/tebellüğ çağrı pusulaları her biri için ayrı ayrı hazırlanır.
+                                                Her öğrenci için resmi tebliğ/tebellüğ çağrı pusulası tekil veya toplu üretilir.
                                             </p>
                                         </div>
                                     </div>
@@ -3700,9 +4068,9 @@ const DecisionAssistant = () => {
                                                     setSummonsSelectedStudentIds(incidentStudents.map(s => s.id));
                                                 }
                                             }}
-                                            className="text-xs text-indigo-600 hover:text-indigo-800 font-bold hover:underline px-2.5 py-1 cursor-pointer"
+                                            className="text-xs text-indigo-600 hover:text-indigo-800 font-bold hover:underline px-2 py-1 cursor-pointer"
                                         >
-                                            {summonsSelectedStudentIds.length === incidentStudents.length ? 'Tümünü Kaldır' : 'Tümünü Seç'}
+                                            {summonsSelectedStudentIds.length === incidentStudents.length ? 'Temizle' : 'Tümünü Seç'}
                                         </button>
                                         <button
                                             type="button"
@@ -3718,10 +4086,10 @@ const DecisionAssistant = () => {
                                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                                             }}
                                             disabled={incidentStudents.length === 0}
-                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400"
+                                            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400"
                                         >
                                             <FileText className="w-3.5 h-3.5" />
-                                            <span>Seçilenler İçin Toplu Pusula Oluştur ({summonsSelectedStudentIds.length > 0 ? summonsSelectedStudentIds.length : incidentStudents.length})</span>
+                                            <span>Seçilenler İçin Pusula Oluştur ({summonsSelectedStudentIds.length > 0 ? summonsSelectedStudentIds.length : incidentStudents.length})</span>
                                         </button>
                                     </div>
                                 </div>
@@ -3748,8 +4116,8 @@ const DecisionAssistant = () => {
                                                         {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <div className="font-bold text-sm text-slate-800 truncate">{s.name}</div>
-                                                        <div className="text-xs flex items-center gap-2 mt-0.5 text-slate-500">
+                                                        <div className="font-bold text-xs sm:text-sm text-slate-800 truncate">{s.name}</div>
+                                                        <div className="text-[11px] flex flex-wrap items-center gap-2 mt-0.5 text-slate-500">
                                                             <span>No: <b>{s.number}</b></span>
                                                             <span>•</span>
                                                             <span>Sınıf: <b>{s.grade}</b></span>
@@ -3767,7 +4135,7 @@ const DecisionAssistant = () => {
                                                         generateBulkDocuments('student_summons', [s.id]);
                                                         window.scrollTo({ top: 0, behavior: 'smooth' });
                                                     }}
-                                                    className="text-xs bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors font-medium shadow-2xs shrink-0 cursor-pointer"
+                                                    className="text-xs bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors font-medium shadow-2xs shrink-0 cursor-pointer ml-2"
                                                 >
                                                     Tekil Ön İzle
                                                 </button>
@@ -3786,15 +4154,35 @@ const DecisionAssistant = () => {
         )}
 
         {/* --- TAB 3: FORMS --- */}
+        {/* --- TAB 3: FORMS --- */}
         {activeTab === 'forms' && (
             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'flex' : 'hidden lg:flex'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-6 flex-col overflow-y-auto`}>
+                <div className="w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'flex' : 'hidden lg:flex'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-5 flex-col overflow-y-auto space-y-4">
+                    
+                    {/* Üst Bilgi Başlığı */}
+                    <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 text-white p-4 rounded-2xl shadow-md relative overflow-hidden">
+                        <div className="flex items-start gap-3 relative z-10">
+                            <div className="p-2.5 bg-white/15 backdrop-blur-md rounded-xl text-blue-200 shrink-0">
+                                <FileText className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-extrabold text-sm text-white">Tutanak & Resmi Formlar</h3>
+                                    <span className="text-[10px] bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.5 rounded-full font-bold">14 Belge</span>
+                                </div>
+                                <p className="text-xs text-blue-200/90 mt-1 leading-relaxed">
+                                    Rehberlik formları (B.K.G.), savunma/ifade tutanakları ve uzman görüşlerini canlı olarak hazırlayın.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Tarih ve Saat Seçimi Bölümü */}
-                    <div className="mb-5 bg-gradient-to-br from-blue-50/70 to-indigo-50/50 border border-blue-200/80 rounded-xl p-3.5 shadow-2xs">
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                                <Calendar className="w-4 h-4 text-blue-600" />
-                                Tutanak & Form Tarih ve Saati
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                                1. Evrak Tarih & Saati
                             </label>
                             <button
                                 type="button"
@@ -3804,11 +4192,43 @@ const DecisionAssistant = () => {
                                     const t = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                                     setFormDateTime({ date: d, time: t });
                                 }}
-                                className="text-[10px] text-blue-700 hover:text-blue-900 font-semibold underline"
+                                className="text-[10px] text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer"
                             >
                                 Şimdiye Ayarla
                             </button>
                         </div>
+
+                        {/* Hızlı Zaman Çipleri */}
+                        <div className="flex flex-wrap gap-1">
+                            {[
+                                { label: 'Şimdi', action: () => {
+                                    const now = new Date();
+                                    setFormDateTime({ date: now.toISOString().split('T')[0], time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` });
+                                }},
+                                { label: 'Bugün 09:00', action: () => {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    setFormDateTime({ date: today, time: '09:00' });
+                                }},
+                                { label: 'Bugün 13:30', action: () => {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    setFormDateTime({ date: today, time: '13:30' });
+                                }},
+                                { label: 'Dün', action: () => {
+                                    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                                    setFormDateTime(prev => ({ ...prev, date: yesterday }));
+                                }}
+                            ].map((preset, idx) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={preset.action}
+                                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white border border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700 transition-colors shadow-2xs"
+                                >
+                                    {preset.label}
+                                </button>
+                            ))}
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2.5">
                             <div>
                                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">Evrak Tarihi</label>
@@ -3816,7 +4236,7 @@ const DecisionAssistant = () => {
                                     type="date" 
                                     value={formDateTime.date} 
                                     onChange={(e) => setFormDateTime(prev => ({ ...prev, date: e.target.value }))}
-                                    className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none font-medium" 
+                                    className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-medium" 
                                 />
                             </div>
                             <div>
@@ -3828,19 +4248,22 @@ const DecisionAssistant = () => {
                                     type="time" 
                                     value={formDateTime.time} 
                                     onChange={(e) => setFormDateTime(prev => ({ ...prev, time: e.target.value }))}
-                                    className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none font-medium" 
+                                    className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-medium" 
                                 />
                             </div>
                         </div>
-                        <div className="mt-2 text-[10px] text-slate-500 flex items-center gap-1">
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1">
                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span>Seçilen tarih ({formDateTime.date.split('-').reverse().join('.')}) ve saat ({formDateTime.time}) formlara canlı olarak işlenir.</span>
+                            <span>Seçilen tarih ve saat tutanaklara canlı işlenir.</span>
                         </div>
                     </div>
 
                     {/* Olay Seçimi */}
-                    <div className="mb-4">
-                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Olay Seçiniz (İsteğe Bağlı)</label>
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-blue-600" />
+                            2. Olay Seçimi (İsteğe Bağlı)
+                        </label>
                         <select 
                             value={selectedIncidentId} 
                             onChange={e => { 
@@ -3848,74 +4271,101 @@ const DecisionAssistant = () => {
                                 setSelectedStudentId(''); 
                                 setSelectedStudentIds([]);
                             }} 
-                            className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-slate-50 outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full p-2.5 border border-slate-300 rounded-xl bg-white outline-none text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 shadow-xs cursor-pointer"
                         >
-                            <option value="">-- Olay Seçilmedi (Boş Form veya Genel Öğrenci) --</option>
+                            <option value="">-- Olay Seçilmedi (Boş Şablon / Genel Öğrenci) --</option>
                             {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.code ? `${inc.code} - ` : ''}{inc.title}</option>)}
                         </select>
                     </div>
 
                     {/* Öğrenci Seçimi (Olaylı veya Genel) */}
-                    <div className="flex-1 flex flex-col min-h-48 border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50 mb-3 shadow-2xs">
-                        <div className="p-2.5 bg-slate-100/80 border-b flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-700 uppercase">
-                                {selectedIncident ? 'Olaya Karışan Öğrenciler' : 'Öğrenci Seçimi (Kayıtlı Öğrenciler)'}
-                            </span>
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5 flex flex-col min-h-60">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                <Users className="w-3.5 h-3.5 text-blue-600" />
+                                3. {selectedIncident ? 'Olaya Karışan Öğrenciler' : 'Öğrenci Seçimi'} ({selectedStudentIds.length})
+                            </label>
                             <button 
                                 onClick={selectAllStudents} 
                                 className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-bold"
                             >
                                 {(selectedIncident ? incidentStudents : students).length > 0 && selectedStudentIds.length === (selectedIncident ? incidentStudents : students).length 
-                                    ? 'Tümünü Kaldır' 
+                                    ? 'Temizle' 
                                     : 'Tümünü Seç'}
                             </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-1.5 space-y-1 max-h-64">
-                            {(selectedIncident ? incidentStudents : students).map((s) => {
-                                const isChecked = selectedStudentIds.includes(s.id);
-                                const isSelected = selectedStudentId === s.id;
-                                return (
-                                    <div 
-                                        key={s.id} 
-                                        onClick={() => {
-                                            setSelectedStudentId(s.id);
-                                            setSelectedStudentIds([s.id]);
-                                        }} 
-                                        className={`p-2.5 rounded-lg border cursor-pointer hover:bg-white flex items-center gap-2.5 text-xs transition-all ${
-                                            isSelected 
-                                                ? 'bg-blue-50/90 border-blue-400 font-semibold shadow-2xs' 
-                                                : isChecked 
-                                                    ? 'bg-blue-50/40 border-blue-200' 
-                                                    : 'border-transparent hover:border-slate-200'
-                                        }`}
-                                    >
-                                        <div 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleStudentSelection(s.id);
-                                            }}
-                                            title="Toplu evrak hazırlamak için çoklu seç"
-                                            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 hover:border-blue-400'}`}
-                                        >
-                                            {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+
+                        {/* Öğrenci Arama Kutusu */}
+                        <div className="relative">
+                            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Öğrenci ara (isim veya no)..."
+                                value={studentSearchQuery}
+                                onChange={(e) => setStudentSearchQuery(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300"
+                            />
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-1 max-h-56 divide-y divide-slate-100 bg-white border border-slate-200 rounded-xl p-1">
+                            {(() => {
+                                const sourceList = selectedIncident ? incidentStudents : students;
+                                const filtered = sourceList.filter(s => {
+                                    if (!studentSearchQuery.trim()) return true;
+                                    const q = studentSearchQuery.toLowerCase().trim();
+                                    return (s.name && s.name.toLowerCase().includes(q)) || 
+                                           (s.number && s.number.includes(q)) ||
+                                           (s.grade && s.grade.toLowerCase().includes(q));
+                                });
+
+                                if (filtered.length === 0) {
+                                    return (
+                                        <div className="text-center text-slate-400 text-xs py-6">
+                                            {studentSearchQuery ? 'Aramaya uygun öğrenci bulunamadı.' : (selectedIncident ? 'Bu olaya kayıtlı öğrenci yok.' : 'Kayıtlı öğrenci bulunamadı.')}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-bold text-slate-800 truncate">{s.name}</div>
-                                            <div className="text-[10px] text-slate-500 flex items-center gap-2 mt-0.5">
-                                                <span>{s.grade}</span>
-                                                <span>•</span>
-                                                <span>No: {s.number}</span>
-                                                {s.tc && <><span>•</span><span>TC: {s.tc}</span></>}
+                                    );
+                                }
+
+                                return filtered.map((s) => {
+                                    const isChecked = selectedStudentIds.includes(s.id);
+                                    const isSelected = selectedStudentId === s.id;
+                                    return (
+                                        <div 
+                                            key={s.id} 
+                                            onClick={() => {
+                                                setSelectedStudentId(s.id);
+                                                setSelectedStudentIds([s.id]);
+                                            }} 
+                                            className={`p-2 rounded-lg border cursor-pointer hover:bg-slate-50 flex items-center gap-2 text-xs transition-all ${
+                                                isSelected 
+                                                    ? 'bg-blue-50/90 border-blue-400 font-semibold shadow-2xs' 
+                                                    : isChecked 
+                                                        ? 'bg-blue-50/40 border-blue-200' 
+                                                        : 'border-transparent hover:border-slate-200'
+                                            }`}
+                                        >
+                                            <div 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleStudentSelection(s.id);
+                                                }} 
+                                                title="Çoklu evrak için seç"
+                                                className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 hover:border-blue-400'}`}
+                                            >
+                                                {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-bold text-slate-800 truncate">{s.name}</div>
+                                                <div className="text-[10px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                                    <span>{s.grade}</span>
+                                                    <span>•</span>
+                                                    <span>No: {s.number}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                            {(selectedIncident ? incidentStudents : students).length === 0 && (
-                                <div className="text-center text-slate-400 text-xs py-6">
-                                    {selectedIncident ? 'Bu olaya kayıtlı öğrenci bulunmamaktadır.' : 'Kayıtlı öğrenci bulunamadı.'}
-                                </div>
-                            )}
+                                    );
+                                });
+                            })()}
                         </div>
                     </div>
 
@@ -3942,172 +4392,110 @@ const DecisionAssistant = () => {
                     )}
                 </div>
 
-                <div className={`w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} flex-col bg-slate-50/50 overflow-y-auto`}>
-                    {/* Üst Form Seçim Butonları Paneli */}
-                    <div className="p-3.5 bg-white border-b border-slate-200 overflow-x-auto shadow-2xs">
-                        <div className="space-y-2">
-                            {/* MEB Resmi Rehberlik ve Görüşme Formları */}
-                            <div>
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                    <span>Resmi MEB Görüşme & Rehberlik Formları</span>
-                                </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                    <button 
-                                        onClick={() => generateBulkDocuments('student_meeting')} 
-                                        className={`px-3 py-1.5 border rounded-lg text-xs flex items-center gap-1.5 font-medium transition-all ${
-                                            lastGeneratedFormType === 'student_meeting' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
+                <div className="w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} flex-col bg-slate-50/50 overflow-y-auto">
+                    {/* Üst Form Seçim Paneli (Alt Kategori Sekmeleri & Canlı Arama) */}
+                    <div className="p-3.5 bg-white border-b border-slate-200 shadow-2xs space-y-3">
+                        {/* Kategori Filtre Sekmeleri */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+                            {[
+                                { id: 'all', label: 'Tüm Formlar (14)', icon: Layers },
+                                { id: 'guidance', label: '📘 1. Rehberlik & Görüşme (3)', icon: Users },
+                                { id: 'statement', label: '⚖️ 2. İfade & Savunma (5)', icon: Scale },
+                                { id: 'opinion', label: '📑 3. Tanık & Görüşler (6)', icon: MessageSquare }
+                            ].map((cat) => {
+                                const IconComp = cat.icon;
+                                const isActive = formSubCategory === cat.id;
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        type="button"
+                                        onClick={() => setFormSubCategory(cat.id as any)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                                            isActive 
+                                                ? 'bg-blue-600 text-white shadow-xs' 
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                         }`}
                                     >
-                                        <Users className="w-3.5 h-3.5 text-blue-500" />
-                                        <span>Öğrenci Görüşme Formu (B.K.G.5.c)</span>
+                                        <IconComp className="w-3.5 h-3.5" />
+                                        <span>{cat.label}</span>
                                     </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('parent_meeting')} 
-                                        className={`px-3 py-1.5 border rounded-lg text-xs flex items-center gap-1.5 font-medium transition-all ${
-                                            lastGeneratedFormType === 'parent_meeting' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
-                                        }`}
-                                    >
-                                        <Users className="w-3.5 h-3.5 text-indigo-500" />
-                                        <span>Veli Görüşme Formu (B.K.G.11.c)</span>
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('parent_minute')} 
-                                        className={`px-3 py-1.5 border rounded-lg text-xs flex items-center gap-1.5 font-medium transition-all ${
-                                            lastGeneratedFormType === 'parent_minute' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
-                                        }`}
-                                    >
-                                        <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                                        <span>Veli Görüşme Tutanağı</span>
-                                    </button>
-                                </div>
-                            </div>
+                                );
+                            })}
+                        </div>
 
-                            {/* İfade ve Savunma Belgeleri */}
-                            <div>
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                    <span>İfade & Savunma Belgeleri</span>
-                                </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                    <button 
-                                        onClick={() => generateBulkDocuments('student_summons')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'student_summons' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
+                        {/* Canlı Form Arama */}
+                        <div className="relative">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                value={formSearchQuery}
+                                onChange={(e) => setFormSearchQuery(e.target.value)}
+                                placeholder="Form adı veya belge türü ara (örn: veli, savunma, tanık, rehberlik)..."
+                                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-300 outline-none transition-all"
+                            />
+                        </div>
+
+                        {/* Form Kartları Grid'i */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 max-h-56 overflow-y-auto p-1 custom-scrollbar">
+                            {[
+                                // Kategori 1: Rehberlik & Görüşme
+                                { id: 'student_meeting', category: 'guidance', title: 'Öğrenci Görüşme Formu', code: 'B.K.G.5.c', badge: 'MEB Resmi', icon: Users, color: 'blue', desc: 'İlk görüşme & gelişim' },
+                                { id: 'parent_meeting', category: 'guidance', title: 'Veli Görüşme Formu', code: 'B.K.G.11.c', badge: 'MEB Resmi', icon: Users, color: 'indigo', desc: 'Veli iş birliği tutanağı' },
+                                { id: 'parent_minute', category: 'guidance', title: 'Veli Görüşme Tutanağı', code: 'İdari Belge', badge: 'Tutanak', icon: FileText, color: 'emerald', desc: 'Okul veli görüşme kaydı' },
+                                // Kategori 2: İfade & Savunma
+                                { id: 'student_summons', category: 'statement', title: 'Öğrenci Çağrı Pusulası', code: 'Tebellüğ', badge: 'Tebliğ', icon: Mail, color: 'blue', desc: 'Resmi ifade/savunma çağrısı' },
+                                { id: 'statement_request', category: 'statement', title: 'İfade İsteme Yazısı', code: 'Talep Yazısı', badge: 'Resmi Yazı', icon: FileText, color: 'sky', desc: 'Yazılı ifade isteme yazısı' },
+                                { id: 'defense_request', category: 'statement', title: 'Savunma İsteme Yazısı', code: 'Yasal Süre', badge: 'Savunma Hakkı', icon: Scale, color: 'indigo', desc: 'Yönetmeliğe uygun savunma talebi' },
+                                { id: 'student_statement_doc', category: 'statement', title: 'Öğrenci İfade Belgesi', code: 'İfade Metni', badge: 'Canlı Düzenle', icon: FileText, color: 'violet', desc: 'Öğrenci olay beyan tutanağı' },
+                                { id: 'student_defense_doc', category: 'statement', title: 'Öğrenci Savunma Belgesi', code: 'Savunma Metni', badge: 'Canlı Düzenle', icon: Scale, color: 'purple', desc: 'Öğrencinin yazılı savunması' },
+                                // Kategori 3: Tanık, Görüşler & Sözleşmeler
+                                { id: 'witness_student', category: 'opinion', title: 'Görgü Tanığı Öğrenci', code: 'Tanık Beyanı', badge: 'Öğrenci', icon: Users, color: 'sky', desc: 'Tanık öğrenci ifade tutanağı' },
+                                { id: 'witness_teacher', category: 'opinion', title: 'Tanık Öğretmen Tutanağı', code: 'Resmi Beyan', badge: 'Öğretmen', icon: User, color: 'teal', desc: 'Tanık öğretmen tespit tutanağı' },
+                                { id: 'opinion_counselor', category: 'opinion', title: 'Rehberlik Servisi Görüşü', code: 'PDR Raporu', badge: 'Uzman Görüşü', icon: MessageSquare, color: 'purple', desc: 'Rehber öğretmen gelişim raporu' },
+                                { id: 'opinion_teacher', category: 'opinion', title: 'Sınıf Rehber Öğretmeni Görüşü', code: 'Gözlem Formu', badge: 'Kanaat', icon: MessageSquare, color: 'fuchsia', desc: 'Sınıf öğretmeninin kanaati' },
+                                { id: 'verbal_warning', category: 'opinion', title: 'Sözlü Uyarı Tutanağı', code: 'Önleyici', badge: 'İkaz Kaydı', icon: AlertCircle, color: 'amber', desc: 'Yazılı sözlü uyarı tutanağı' },
+                                { id: 'contract', category: 'opinion', title: 'Öğrenci Sözleşmesi', code: 'Taahhüt', badge: 'Davranış Sözleşmesi', icon: ScrollText, color: 'rose', desc: 'İyileştirme taahhüt belgesi' }
+                            ]
+                            .filter(f => {
+                                if (formSubCategory !== 'all' && f.category !== formSubCategory) return false;
+                                if (!formSearchQuery.trim()) return true;
+                                const q = formSearchQuery.toLowerCase().trim();
+                                return f.title.toLowerCase().includes(q) || f.code.toLowerCase().includes(q) || f.desc.toLowerCase().includes(q);
+                            })
+                            .map((form) => {
+                                const IconComp = form.icon;
+                                const isCurrent = lastGeneratedFormType === form.id;
+                                return (
+                                    <button
+                                        key={form.id}
+                                        type="button"
+                                        onClick={() => generateBulkDocuments(form.id)}
+                                        className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                                            isCurrent 
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-300' 
+                                                : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-800'
                                         }`}
                                     >
-                                        <Mail className="w-3.5 h-3.5 text-blue-500"/> Öğrenci Çağrı Pusulası
+                                        <div className={`p-2 rounded-lg shrink-0 ${isCurrent ? 'bg-white/20 text-white' : 'bg-slate-100 text-blue-600'}`}>
+                                            <IconComp className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold text-xs truncate leading-snug">{form.title}</div>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${isCurrent ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {form.code}
+                                                </span>
+                                                <span className={`text-[9px] truncate ${isCurrent ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                    {form.desc}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('statement_request')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'statement_request' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
-                                        }`}
-                                    >
-                                        <FileText className="w-3.5 h-3.5 text-blue-500"/> İfade Talebi
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('defense_request')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'defense_request' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
-                                        }`}
-                                    >
-                                        <Scale className="w-3.5 h-3.5 text-blue-500"/> Savunma Talebi
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('student_statement_doc')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'student_statement_doc' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
-                                        }`}
-                                    >
-                                        <FileText className="w-3.5 h-3.5 text-indigo-500"/> Öğrenci İfade Belgesi
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('student_defense_doc')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'student_defense_doc' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
-                                        }`}
-                                    >
-                                        <Scale className="w-3.5 h-3.5 text-indigo-500"/> Öğrenci Savunma Belgesi
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('witness_student')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'witness_student' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
-                                        }`}
-                                    >
-                                        <Users className="w-3.5 h-3.5 text-sky-500"/> Görgü Tanığı
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('witness_teacher')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'witness_teacher' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
-                                        }`}
-                                    >
-                                        <User className="w-3.5 h-3.5 text-sky-600"/> Tanık Öğretmen
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('opinion_counselor')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'opinion_counselor' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-300'
-                                        }`}
-                                    >
-                                        <MessageSquare className="w-3.5 h-3.5 text-purple-500"/> Rehberlik Görüş
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('opinion_teacher')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'opinion_teacher' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-300'
-                                        }`}
-                                    >
-                                        <MessageSquare className="w-3.5 h-3.5 text-purple-600"/> Öğretmen Görüş
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('verbal_warning')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'verbal_warning' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-amber-50 hover:border-amber-300'
-                                        }`}
-                                    >
-                                        <AlertCircle className="w-3.5 h-3.5 text-amber-500"/> Sözlü Uyarı
-                                    </button>
-                                    <button 
-                                        onClick={() => generateBulkDocuments('contract')} 
-                                        className={`px-2.5 py-1.5 border rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${
-                                            lastGeneratedFormType === 'contract' 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-amber-50 hover:border-amber-300'
-                                        }`}
-                                    >
-                                        <ScrollText className="w-3.5 h-3.5 text-amber-600"/> Öğrenci Sözleşmesi
-                                    </button>
-                                </div>
-                            </div>
+                                );
+                            })}
                         </div>
                     </div>
+
                     <div className="flex-1 p-2 sm:p-6 overflow-y-auto flex justify-center">
                         {renderDocumentPreview()}
                     </div>
@@ -4118,25 +4506,55 @@ const DecisionAssistant = () => {
         {/* --- TAB 4: DECISION --- */}
         {activeTab === 'decision' && (
              <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <div className={`w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'flex' : 'hidden lg:flex'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-6 flex-col overflow-y-auto`}>
+                <div className="w-full lg:w-1/3 ${mobileViewMode === 'form' ? 'flex' : 'hidden lg:flex'} bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 sm:p-5 flex-col overflow-y-auto space-y-4">
                     
-                    {/* INCIDENT & STUDENT SELECTOR (Added for Tab 4) */}
-                    <div className="mb-6">
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Olay Seçiniz</label>
-                        <select value={selectedIncidentId} onChange={e => { setSelectedIncidentId(e.target.value); setSelectedStudentId(''); }} className="w-full p-2 border rounded text-sm">
-                            <option value="">-- Olay Seç --</option>
-                            {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.title}</option>)}
+                    {/* Üst Bilgi Kartı */}
+                    <div className="bg-gradient-to-br from-red-950 via-rose-900 to-slate-900 text-white p-4 rounded-2xl shadow-md relative overflow-hidden">
+                        <div className="flex items-start gap-3 relative z-10">
+                            <div className="p-2.5 bg-white/15 backdrop-blur-md rounded-xl text-rose-200 shrink-0">
+                                <Scale className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-extrabold text-sm text-white">Karar & Tebligat Yönetimi</h3>
+                                    <span className="text-[10px] bg-rose-400/20 text-rose-200 border border-rose-400/30 px-1.5 py-0.5 rounded-full font-bold">EK-10</span>
+                                </div>
+                                <p className="text-xs text-rose-200/90 mt-1 leading-relaxed">
+                                    Disiplin Kurulu nihai kararını verin, ceza puanı indirimini hesaplayın ve tebligat evraklarını hazırlayın.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Olay Seçiniz */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-rose-600" />
+                            1. İncelenen Olay Dosyası
+                        </label>
+                        <select 
+                            value={selectedIncidentId} 
+                            onChange={e => { setSelectedIncidentId(e.target.value); setSelectedStudentId(''); }} 
+                            className="w-full p-2.5 border border-slate-300 rounded-xl bg-white outline-none text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-rose-500 shadow-xs cursor-pointer"
+                        >
+                            <option value="">-- Olay Seçiniz --</option>
+                            {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.code ? `${inc.code} - ` : ''}{inc.title}</option>)}
                         </select>
                     </div>
+
+                    {/* Olaya Karışan Öğrenciler Listesi */}
                     {selectedIncident && (
-                         <div className="mb-6 border border-slate-200 bg-slate-50/50 rounded-xl p-3 shadow-xs">
-                            <div className="font-bold text-xs text-slate-600 uppercase tracking-wider mb-2.5 flex justify-between items-center">
-                                <span>Olaya Karışan Öğrenciler</span>
-                                <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-md font-mono">
+                         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5">
+                            <div className="font-bold text-xs text-slate-700 uppercase tracking-wide flex justify-between items-center">
+                                <span className="flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-rose-600" />
+                                    2. Olaya Karışan Öğrenciler
+                                </span>
+                                <span className="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full font-bold">
                                     {incidentStudents.length} Öğrenci
                                 </span>
                             </div>
-                            <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                            <div className="space-y-1.5 max-h-56 overflow-y-auto divide-y divide-slate-100 bg-white border border-slate-200 rounded-xl p-1">
                             {incidentStudents.map((s) => {
                                 const invDetail = selectedIncident.involvedStudents?.find(i => i.studentId === s.id);
                                 const isSelected = selectedStudentId === s.id;
@@ -4159,12 +4577,12 @@ const DecisionAssistant = () => {
                                             setSelectedStudentId(s.id); 
                                             setSelectedStudentIds([s.id]); 
                                         }} 
-                                        className={`p-2.5 border rounded-lg cursor-pointer hover:bg-slate-50 transition-all flex flex-col gap-1.5 ${
+                                        className={`p-2.5 rounded-lg cursor-pointer hover:bg-slate-50 transition-all flex flex-col gap-1.5 border ${
                                             isSelected 
-                                                ? 'bg-blue-50/70 border-blue-400 shadow-xs ring-1 ring-blue-400' 
+                                                ? 'bg-rose-50/70 border-rose-400 shadow-xs ring-1 ring-rose-400' 
                                                 : isChecked 
                                                     ? 'bg-white border-slate-200' 
-                                                    : 'bg-white/60 border-slate-150 opacity-75'
+                                                    : 'bg-white/60 border-slate-150 opacity-80'
                                         }`}
                                     >
                                         <div className="flex items-center justify-between gap-2">
@@ -4175,29 +4593,29 @@ const DecisionAssistant = () => {
                                                         toggleStudentSelection(s.id); 
                                                     }} 
                                                     className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${
-                                                        isChecked ? 'bg-blue-600 border-blue-600 shadow-xs text-white' : 'border-slate-300 hover:border-blue-400'
+                                                        isChecked ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-300 hover:border-rose-400'
                                                     }`}
                                                 >
                                                     {isChecked && <Check className="w-2.5 h-2.5 stroke-[3] text-white" />}
                                                 </div>
-                                                <span className={`font-semibold text-sm truncate ${isSelected ? 'text-blue-900 font-bold' : 'text-slate-800'}`}>
+                                                <span className={`font-bold text-xs truncate ${isSelected ? 'text-rose-950' : 'text-slate-800'}`}>
                                                     {s.name}
                                                 </span>
                                             </div>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-bold shrink-0 ${roleBadge}`}>
+                                            <span className={`text-[9px] px-1.5 py-0.2 rounded border font-bold shrink-0 ${roleBadge}`}>
                                                 {roleLabel}
                                             </span>
                                         </div>
                                         
-                                        <div className="flex items-center justify-between text-[11px] text-slate-500 mt-0.5 border-t border-slate-100/75 pt-1">
-                                            <span>Sınıf-No: {s.grade} • {s.number}</span>
+                                        <div className="flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-100 pt-1">
+                                            <span>No: {s.number} • {s.grade}</span>
                                             {invDetail?.decision ? (
-                                                <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-bold uppercase shrink-0">
+                                                <span className="text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-bold uppercase shrink-0">
                                                     Karar: {invDetail.decision}
                                                 </span>
                                             ) : (
-                                                <span className="text-[10px] text-slate-400 italic shrink-0">
-                                                    Karar Girilmemiş
+                                                <span className="text-[9px] text-slate-400 italic shrink-0">
+                                                    Karar Girilmedi
                                                 </span>
                                             )}
                                         </div>
@@ -4208,6 +4626,7 @@ const DecisionAssistant = () => {
                         </div>
                     )}
 
+                    {/* Öğrenci Künye ve İfade/Savunma Girişi */}
                     {selectedStudentId && selectedIncident && (
                         (() => {
                             const curStud = incidentStudents.find(s => s.id === selectedStudentId);
@@ -4215,48 +4634,54 @@ const DecisionAssistant = () => {
                             return (
                                 <>
                                     {renderStudentKunyePanel(curStud)}
-                                    <div className="mb-4 p-3 bg-indigo-50/50 border border-indigo-100/80 rounded-lg space-y-2.5 shrink-0 shadow-2xs">
-                                        <div className="flex items-center gap-1.5 font-bold text-[10.5px] text-indigo-950 uppercase tracking-wide">
-                                            <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
-                                            <span>{curStud.name} • İfade & Savunma Girişi</span>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+                                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-700 uppercase tracking-wide">
+                                            <MessageSquare className="w-3.5 h-3.5 text-rose-600" />
+                                            <span>{curStud.name} • İfade & Savunma Notları</span>
                                         </div>
-                                    <div className="space-y-0.5">
-                                        <label className="block text-[9px] font-bold text-slate-500 uppercase">Öğrenci İfadesi (Yeni Alınan İfade)</label>
-                                        <textarea
-                                            value={curStud.studentStatement || ''}
-                                            onChange={(e) => {
-                                                updateIncidentStudent(selectedIncidentId, selectedStudentId, { studentStatement: e.target.value });
-                                            }}
-                                            placeholder="Öğrencinin olayla ilgili ifadesini buraya yazın..."
-                                            className="w-full p-2 border border-slate-200 rounded text-xs leading-normal bg-white resize-none shadow-2xs focus:border-indigo-400 focus:ring-1 focus:ring-indigo-150 outline-none"
-                                            rows={2}
-                                        />
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-bold text-slate-500 uppercase">Öğrenci İfadesi</label>
+                                            <textarea
+                                                value={curStud.studentStatement || ''}
+                                                onChange={(e) => {
+                                                    updateIncidentStudent(selectedIncidentId, selectedStudentId, { studentStatement: e.target.value });
+                                                }}
+                                                placeholder="Öğrencinin olayla ilgili ifadesini buraya yazın..."
+                                                className="w-full p-2 border border-slate-200 rounded-lg text-xs bg-white resize-none focus:border-rose-400 focus:ring-1 focus:ring-rose-300 outline-none leading-relaxed"
+                                                rows={2}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-bold text-slate-500 uppercase">Öğrenci Savunması</label>
+                                            <textarea
+                                                value={curStud.studentDefense || ''}
+                                                onChange={(e) => {
+                                                    updateIncidentStudent(selectedIncidentId, selectedStudentId, { studentDefense: e.target.value });
+                                                }}
+                                                placeholder="Öğrencinin disiplin kuruluna sunduğu savunma..."
+                                                className="w-full p-2 border border-slate-200 rounded-lg text-xs bg-white resize-none focus:border-rose-400 focus:ring-1 focus:ring-rose-300 outline-none leading-relaxed"
+                                                rows={2}
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 italic">Bu veriler EK-10 Karar ve tebligat evraklarına otomatik yansır.</p>
                                     </div>
-                                    <div className="space-y-0.5">
-                                        <label className="block text-[9px] font-bold text-slate-500 uppercase">Öğrenci Savunması</label>
-                                        <textarea
-                                            value={curStud.studentDefense || ''}
-                                            onChange={(e) => {
-                                                updateIncidentStudent(selectedIncidentId, selectedStudentId, { studentDefense: e.target.value });
-                                            }}
-                                            placeholder="Öğrencinin kurum içi savunma beyanlarını yazın..."
-                                            className="w-full p-2 border border-slate-200 rounded text-xs leading-normal bg-white resize-none shadow-2xs focus:border-indigo-400 focus:ring-1 focus:ring-indigo-150 outline-none"
-                                            rows={2}
-                                        />
-                                    </div>
-                                    <p className="text-[9px] text-slate-400/90 leading-normal italic">Bu veriler, hazırlanan evraklara ve nihai EK-10 Karar belgesine otomatik olarak yansır.</p>
-                                </div>
-                            </>
-                        );
-                    })()
-                )}
+                                </>
+                            );
+                        })()
+                    )}
 
-                    {/* Simplified Form */}
-                    <div className="space-y-4 mb-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Karar ve Ceza Formu */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-4">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                            <Scale className="w-3.5 h-3.5 text-rose-600" />
+                            3. Karar Parametreleri & Puan
+                        </label>
+
+                        {/* Karar No, Tarih, Puan */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                             <div>
                                 <div className="flex justify-between items-center mb-1">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase">Karar No</label>
+                                    <label className="block text-[11px] font-bold text-slate-600 uppercase">Karar No</label>
                                     <button 
                                         type="button" 
                                         onClick={() => {
@@ -4264,307 +4689,155 @@ const DecisionAssistant = () => {
                                             const autoNo = getAutoDecisionNo(incident);
                                             setDecisionForm(prev => ({ ...prev, decisionNo: autoNo }));
                                         }}
-                                        className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline"
+                                        className="text-[9px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline"
                                     >
-                                        Otomatik Üret
+                                        Otomatik
                                     </button>
                                 </div>
-                                <input type="text" value={decisionForm.decisionNo} onChange={e => setDecisionForm({...decisionForm, decisionNo: e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="2025/1" />
+                                <input 
+                                    type="text" 
+                                    value={decisionForm.decisionNo} 
+                                    onChange={e => setDecisionForm({...decisionForm, decisionNo: e.target.value})} 
+                                    className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white font-medium" 
+                                    placeholder="2025/1" 
+                                />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-1"><Calendar className="w-3 h-3"/> Karar Tarihi</label>
-                                <input type="date" value={decisionForm.decisionDate} onChange={e => setDecisionForm({...decisionForm, decisionDate: e.target.value})} className="w-full p-2 border rounded text-sm bg-white" />
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-slate-400"/> Karar Tarihi
+                                </label>
+                                <input 
+                                    type="date" 
+                                    value={decisionForm.decisionDate} 
+                                    onChange={e => setDecisionForm({...decisionForm, decisionDate: e.target.value})} 
+                                    className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white font-medium" 
+                                />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-1"><Calculator className="w-3 h-3"/> Ceza Puanı</label>
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1 flex items-center gap-1">
+                                    <Calculator className="w-3 h-3 text-rose-500"/> Ceza Puanı
+                                </label>
                                 <input 
                                     type="number" 
                                     value={decisionForm.score} 
                                     onChange={e => setDecisionForm({...decisionForm, score: e.target.value})} 
-                                    className="w-full p-2 border rounded text-sm font-bold text-blue-700 bg-blue-50 focus:bg-white" 
+                                    className="w-full p-2 border border-rose-300 rounded-lg text-xs font-bold text-rose-700 bg-rose-50/50 focus:bg-white" 
                                     placeholder="10" 
                                 />
                             </div>
                         </div>
-                        
+
+                        {/* Canlı Davranış Puanı Göstergesi (Visual Score Gauge & Progress Bar) */}
                         {selectedStudentId && (() => {
                             const currentStudent = students.find(s => s.id === selectedStudentId);
-                            const systemPenalties = incidents.filter(inc => 
-                                inc.id !== selectedIncidentId &&
-                                inc.involvedStudents.some(inv => 
-                                    inv.studentId === selectedStudentId && 
-                                    inv.decision && 
-                                    !inv.decision.includes('YER OLMADIĞINA') &&
-                                    inv.role === 'suspect'
-                                )
-                            ).map(inc => {
-                                const inv = inc.involvedStudents.find(i => i.studentId === selectedStudentId);
-                                return {
-                                    id: 'sys-' + inc.id,
-                                    decision: inv?.decision || '',
-                                    decisionNo: inv?.decisionNo || 'Girilmemiş',
-                                    date: inc.date,
-                                    type: 'Sistem Kaydı',
-                                    isManual: false,
-                                    penaltyScore: inv?.penaltyScore || '10',
-                                    isRemoved: inv?.isRemoved || false,
-                                    removedDecisionNo: inv?.removedDecisionNo
-                                };
-                            });
-
-                            const manualPenalties = (currentStudent?.previousPenalties || []).map(p => ({
-                                id: p.id,
-                                decision: p.decision,
-                                decisionNo: p.decisionNo || 'Girilmemiş',
-                                date: p.date || '',
-                                type: 'Geçmiş Kayıt (Sistem Dışı)',
-                                isManual: true,
-                                penaltyScore: p.penaltyScore || '10',
-                                isRemoved: p.isRemoved || false,
-                                removedDecisionNo: p.removedDecisionNo
-                            }));
-
-                            const combinedPenalties = [...systemPenalties, ...manualPenalties];
                             const currentScore = currentStudent ? getStudentBehaviorPoints(currentStudent, incidents, selectedIncidentId) : 100;
                             const deductionVal = parseInt(decisionForm.score || '0', 10);
                             const finalScore = Math.max(0, currentScore - (isNaN(deductionVal) ? 0 : deductionVal));
 
                             return (
-                                <div className="space-y-3">
-                                    {/* Davranış Puanı Hesaplama Özeti */}
-                                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-3 text-xs leading-relaxed space-y-1.5 shadow-xs">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-slate-600 font-medium">Bu Karardan Önce Kalan Puan:</span>
-                                            <strong className="text-slate-800 font-bold font-mono text-[12px]">{currentScore} / 100</strong>
+                                <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl p-4 shadow-sm space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                                            <Calculator className="w-3.5 h-3.5 text-blue-400" />
+                                            Davranış & Ceza Puanı Durumu
+                                        </span>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                            finalScore >= 85 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' :
+                                            finalScore >= 60 ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30' :
+                                            'bg-red-500/20 text-red-300 border border-red-400/30'
+                                        }`}>
+                                            {finalScore >= 85 ? 'Çok İyi' : finalScore >= 60 ? 'Takip Gerekir' : 'Kritik Düzey'}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Puan Formülü */}
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="bg-white/10 rounded-xl p-2">
+                                            <span className="text-[10px] text-slate-300 block">Önceki Puan</span>
+                                            <span className="text-sm font-extrabold font-mono text-white">{currentScore}</span>
                                         </div>
-                                        <div className="flex justify-between items-center border-t border-blue-100/50 pt-1.5">
-                                            <span className="text-slate-600 font-medium">Bu Karar Ceza Puanı İndirimi:</span>
-                                            <strong className="text-red-600 font-bold font-mono">-{isNaN(deductionVal) ? 0 : deductionVal} Puan</strong>
+                                        <div className="bg-white/10 rounded-xl p-2">
+                                            <span className="text-[10px] text-slate-300 block">Ceza Kesintisi</span>
+                                            <span className="text-sm font-extrabold font-mono text-red-400">-{isNaN(deductionVal) ? 0 : deductionVal}</span>
                                         </div>
-                                        <div className="flex justify-between items-center border-t border-indigo-150 pt-1.5">
-                                            <span className="text-indigo-900 font-bold uppercase tracking-wide">Bu Kararla Birlikte Kalan Puan:</span>
-                                            <span className={`font-mono text-[12px] font-bold px-2 py-0.5 rounded ${finalScore < 60 ? 'bg-red-100 text-red-850' : finalScore < 85 ? 'bg-amber-100 text-amber-850' : 'bg-green-100 text-green-800'}`}>
-                                                {finalScore} / 100
-                                            </span>
+                                        <div className="bg-white/15 rounded-xl p-2 border border-white/20">
+                                            <span className="text-[10px] text-blue-200 block">Kalan Puan</span>
+                                            <span className="text-sm font-extrabold font-mono text-emerald-300">{finalScore} / 100</span>
                                         </div>
                                     </div>
 
-                                    {/* Geçmiş Cezalar Listesi ve Yönetimi */}
-                                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                                        <div className="flex justify-between items-center mb-2 border-b pb-1">
-                                            <span className="text-xs font-bold text-slate-750 uppercase tracking-wide flex items-center gap-1.5">
-                                                <ScrollText className="w-4 h-4 text-indigo-600" />
-                                                Öğrencinin Cezaları ({combinedPenalties.length})
-                                            </span>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${currentScore < 60 ? 'bg-red-50 text-red-700 border border-red-100' : currentScore < 85 ? 'bg-amber-50 text-amber-705 border border-amber-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
-                                                    Kalan Puan: {currentScore} / 100
-                                                </span>
-                                                <button 
-                                                    onClick={() => setShowAddPastPenalty(!showAddPastPenalty)} 
-                                                    className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
-                                                    type="button"
-                                                >
-                                                    {showAddPastPenalty ? 'Formu Kapat' : '+ Geçmiş Ceza Ekle'}
-                                                </button>
-                                            </div>
+                                    {/* Canlı İlerleme Çubuğu */}
+                                    <div className="space-y-1">
+                                        <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden p-0.5">
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-300 ${
+                                                    finalScore >= 85 ? 'bg-emerald-400' :
+                                                    finalScore >= 60 ? 'bg-amber-400' :
+                                                    'bg-red-500'
+                                                }`}
+                                                style={{ width: `${Math.min(100, Math.max(0, finalScore))}%` }}
+                                            />
                                         </div>
-
-                                        {/* Geçmiş Ceza Ekleme Formu */}
-                                        {showAddPastPenalty && (
-                                            <div className="bg-white border rounded-lg p-3 mb-2.5 space-y-2.5 shadow-sm border-indigo-100">
-                                                <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">
-                                                    {editingPastPenaltyId ? 'Geçmiş Cezayı Düzenle / Güncelle' : 'Mevcut Sistem Dışı Geçmiş Ceza Ekle'}
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div>
-                                                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Ceza / Karar</label>
-                                                        <select 
-                                                            value={pastPenaltyForm.decision}
-                                                            onChange={e => setPastPenaltyForm({...pastPenaltyForm, decision: e.target.value})}
-                                                            className="w-full p-1 border rounded text-[11px] font-medium"
-                                                        >
-                                                            <option value="KINAMA">KINAMA</option>
-                                                            <option value="UYARMA">UYARMA</option>
-                                                            <option value="KISA SÜRELİ UZAKLAŞTIRMA">KISA SÜRELİ UZAKLAŞTIRMA</option>
-                                                            <option value="OKUL DEĞİŞTİRME">OKUL DEĞİŞTİRME</option>
-                                                            <option value="ÖRGÜN EĞİTİM DIŞINA ÇIKARMA">ÖRGÜN EĞİTİM DIŞINA ÇIKARMA</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Karar No / Sayı</label>
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder="Örn: 2024/05"
-                                                            value={pastPenaltyForm.decisionNo}
-                                                            onChange={e => setPastPenaltyForm({...pastPenaltyForm, decisionNo: e.target.value})}
-                                                            className="w-full p-1.5 border rounded text-[11px]"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div>
-                                                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Tarih</label>
-                                                        <input 
-                                                            type="date"
-                                                            value={pastPenaltyForm.date}
-                                                            onChange={e => setPastPenaltyForm({...pastPenaltyForm, date: e.target.value})}
-                                                            className="w-full p-1 border rounded text-[11px]"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Ceza Puanı</label>
-                                                        <input 
-                                                            type="number"
-                                                            placeholder="10"
-                                                            value={pastPenaltyForm.penaltyScore}
-                                                            onChange={e => setPastPenaltyForm({...pastPenaltyForm, penaltyScore: e.target.value})}
-                                                            className="w-full p-1 border rounded text-[11px]"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex justify-end gap-1.5 pt-1.5 border-t">
-                                                    <button 
-                                                        onClick={() => {
-                                                            setShowAddPastPenalty(false);
-                                                            setEditingPastPenaltyId(null);
-                                                            setPastPenaltyForm({
-                                                                decision: 'KINAMA',
-                                                                decisionNo: '',
-                                                                date: new Date().toISOString().split('T')[0],
-                                                                penaltyScore: '10',
-                                                                description: ''
-                                                            });
-                                                        }}
-                                                        className="px-2 py-1 text-[10px] bg-slate-100 text-slate-600 rounded hover:bg-slate-200"
-                                                        type="button"
-                                                    >
-                                                        Vazgeç
-                                                    </button>
-                                                    <button 
-                                                        onClick={handleAddPastPenalty}
-                                                        className="px-2 py-1 text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold border border-indigo-200"
-                                                        type="button"
-                                                    >
-                                                        {editingPastPenaltyId ? 'Güncelle' : 'Kaydet/Ekle'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Ceza Listesi */}
-                                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                            {combinedPenalties.map((pen, pIdx) => (
-                                                <div key={pen.id || pIdx} className="bg-white border rounded p-2 text-[11px] flex justify-between items-start gap-2 shadow-xs hover:border-slate-300 transition-colors">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                            {pen.isRemoved ? (
-                                                                <>
-                                                                    <span className="font-bold line-through text-slate-400 shrink-0">{pen.decision}</span>
-                                                                    <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-bold shrink-0">✓ Kaldırıldı (İade Edildi)</span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <span className="font-bold text-red-650 shrink-0 text-red-600">{pen.decision}</span>
-                                                                    <span className="text-[9px] bg-red-50 text-red-700 border border-red-100 px-1.5 py-0.2 rounded font-bold shrink-0">-{getDeductionForDecision(pen.decision, pen.penaltyScore)} Puan</span>
-                                                                </>
-                                                            )}
-                                                            <span className="text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 px-1 py-0.2 rounded font-medium shrink-0">{pen.type}</span>
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-500 mt-0.5 flex gap-2">
-                                                            <span>Karar No: {pen.decisionNo}</span>
-                                                            <span>•</span>
-                                                            <span>Tarih: {formatDateForDisplay(pen.date)}</span>
-                                                        </div>
-                                                    </div>
-                                                    {pen.isManual && (
-                                                        <div className="flex items-center gap-1 shrink-0 font-medium text-slate-400">
-                                                            <button 
-                                                                onClick={() => {
-                                                                    const rawPen = currentStudent?.previousPenalties?.find(p => p.id === pen.id);
-                                                                    if (rawPen) handleEditClickPastPenalty(rawPen);
-                                                                }}
-                                                                className="text-indigo-600 hover:text-indigo-800 transition-colors p-0.5"
-                                                                type="button"
-                                                            >
-                                                                Düzenle
-                                                            </button>
-                                                            <span>•</span>
-                                                            <button 
-                                                                onClick={() => handleDeletePastPenalty(pen.id)}
-                                                                className="hover:text-red-500 transition-colors p-0.5"
-                                                                title="SİL"
-                                                                type="button"
-                                                            >
-                                                                Sil
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            {combinedPenalties.length === 0 && (
-                                                <div className="text-center py-2 text-[10px] text-slate-400">
-                                                    Öğrencinin geçmişte aldığı herhangi bir yaptırım bulunmamaktadır. Program öncesi eski cezaları yukarıdan ekleyebilirsiniz.
-                                                </div>
-                                            )}
+                                        <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                                            <span>0 (İhraç)</span>
+                                            <span>60 (Kurul Sınırı)</span>
+                                            <span>100 (Tam Puan)</span>
                                         </div>
                                     </div>
-
-                                    {/* Tekerrür Uyarısı */}
-                                    {combinedPenalties.length > 0 && (() => {
-                                        const penaltyNames = combinedPenalties.map(p => p.decision).join(', ');
-                                        const isCurrentPenaltyRepeat = combinedPenalties.some(p => p.decision.toUpperCase().trim() === decisionForm.penalty.toUpperCase().trim());
-                                        const nextPenaltyForCurrent = getOneDegreeHeavierPenalty(decisionForm.penalty, institution.type);
-                                        
-                                        return (
-                                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-950 leading-relaxed space-y-2">
-                                                <div className="flex items-center gap-1.5 font-bold">
-                                                    <AlertCircle className="w-4 h-4 text-amber-600 animate-pulse" />
-                                                    <span>Yönetmelik Tekerrür (Tekrar) Uyarısı</span>
-                                                </div>
-                                                <div>
-                                                    Bu öğrencinin geçmişte aldığı disiplin yaptırımları bulunmaktadır: <strong className="text-amber-950 font-bold">{penaltyNames}</strong>.
-                                                </div>
-                                                <p className="font-medium text-slate-700">
-                                                    MEB Ortaöğretim ve İlköğretim Kurumları Yönetmeliği uyarınca; <strong>"Verilmiş bir cezanın bir öğretim yılı içerisinde tekrarında bir derece ağır ceza uygulanır."</strong>
-                                                </p>
-                                                
-                                                {isCurrentPenaltyRepeat ? (
-                                                    <div className="bg-red-50 text-red-900 p-2.5 rounded border border-red-200 mt-1">
-                                                        <span className="font-bold block text-[11px] mb-0.5 text-red-800">⚠️ AKTİF TEKERRÜR TESPİT EDİLDİ</span>
-                                                        Öğrenci daha önce de <strong className="underline">{decisionForm.penalty}</strong> cezası almıştır. Aynı derece cezayı gerektirecek bir fiilde bulunulmuşsa yönetmelik gereğince uygulanacak ceza bir derece ağırlaştırılarak <strong className="font-bold text-red-750 underline">{nextPenaltyForCurrent}</strong> olarak belirlenmeli ve uygulanmalıdır.
-                                                    </div>
-                                                ) : (
-                                                    <div className="bg-amber-100/60 p-2.5 rounded border border-amber-250 mt-1">
-                                                        <span className="font-bold block text-[11px] mb-1 text-amber-900">💡 Tekerrür Durumunda Uygulanacak Cezalar:</span>
-                                                        <div className="space-y-1">
-                                                            {Array.from(new Set(combinedPenalties.map(p => p.decision.toUpperCase().trim()))).map((pastDec, idx) => (
-                                                                <div key={idx} className="text-xs">
-                                                                    Daha önce <strong className="underline">{pastDec}</strong> alan öğrenci aynı davranışı tekrarlayıp yine aynı cezayı gerektiren fiilde bulunursa, bir üst yaptırım olan <strong className="font-bold text-red-700">{getOneDegreeHeavierPenalty(pastDec, institution.type)}</strong> uygulanmalıdır.
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
                                 </div>
                             );
                         })()}
 
+                        {/* Akıllı Derecelendirme Eylemleri: 1 Derece Hafiflet / 1 Derece Ağırlaştır */}
+                        <div className="space-y-1.5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Yönetmelik Derecelendirme Araçları:</span>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const lighter = getOneDegreeLighterPenalty(decisionForm.penalty, institution.type);
+                                        if (lighter && lighter !== 'BİR ALT DERECE CEZA') {
+                                            handlePenaltyChange(lighter);
+                                            setSuccessMessage(`Ceza 1 alt dereceye (${lighter}) indirildi.`);
+                                            setTimeout(() => setSuccessMessage(null), 3000);
+                                        }
+                                    }}
+                                    className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                                    title="MEB Yönetmeliği 1 Alt Derece Cezası Uygula"
+                                >
+                                    <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>1 Derece Hafiflet</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const heavier = getOneDegreeHeavierPenalty(decisionForm.penalty, institution.type);
+                                        if (heavier && heavier !== 'BİR ÜST DERECE CEZA') {
+                                            handlePenaltyChange(heavier);
+                                            setSuccessMessage(`Ceza 1 üst dereceye (${heavier}) ağırlaştırıldı.`);
+                                            setTimeout(() => setSuccessMessage(null), 3000);
+                                        }
+                                    }}
+                                    className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                                    title="MEB Yönetmeliği Tekerrür / Ağırlaştırma Uygula"
+                                >
+                                    <ArrowUp className="w-3.5 h-3.5 text-rose-600" />
+                                    <span>1 Derece Ağırlaştır</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Hafifletici Nedenler Uyarısı */}
                         {selectedIncident?.mitigatingFactors && (
-                            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900 leading-relaxed mb-3 space-y-2 col-span-1 md:col-span-1">
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 space-y-2">
                                 <div className="flex items-center gap-1.5 font-bold text-emerald-800">
-                                    <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
-                                    <span>Yaptırımı Hafifleten Nedenler Algılandı</span>
+                                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                                    <span>Yaptırımı Hafifleten Nedenler Mevcut</span>
                                 </div>
-                                <p className="text-[11px] text-emerald-700 italic bg-white/60 p-2 rounded border border-emerald-100">
+                                <p className="text-[11px] text-emerald-700 italic bg-white/70 p-2 rounded-lg border border-emerald-100">
                                     "{selectedIncident.mitigatingFactors}"
                                 </p>
-                                <div className="flex items-center gap-2 py-1">
+                                <div className="flex items-center gap-2">
                                     <input 
                                         type="checkbox" 
                                         id="use_mitigating_decision" 
@@ -4576,33 +4849,20 @@ const DecisionAssistant = () => {
                                         }}
                                     />
                                     <label htmlFor="use_mitigating_decision" className="text-[11px] font-semibold text-slate-700 select-none cursor-pointer">
-                                        Bu hafifletici nedenler Karar ve Tebligat belgelerinde gösterilsin (Aktif)
+                                        Hafifletici nedenler Karar ve Tebligat belgelerinde gösterilsin
                                     </label>
-                                </div>
-                                <div className="pt-2 border-t border-emerald-200 flex items-center justify-between gap-2">
-                                    <div>
-                                       <span className="font-semibold text-[11px] text-slate-700 block">1 Alt Derece Ceza Teklifi:</span>
-                                       <span className="text-[10px] text-slate-500 font-medium select-none">Önerilen: {getOneDegreeLighterPenalty(decisionForm.penalty, institution.type)}</span>
-                                    </div>
-                                    <button
-                                       type="button"
-                                       onClick={() => {
-                                          const lighter = getOneDegreeLighterPenalty(decisionForm.penalty, institution.type);
-                                          if (lighter && lighter !== 'BİR ALT DERECE CEZA') {
-                                             handlePenaltyChange(lighter);
-                                          }
-                                       }}
-                                       className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-[11px] px-2.5 py-1.5 rounded transition-colors shadow-xs"
-                                    >
-                                       1 Derece Hafiflet
-                                    </button>
                                 </div>
                             </div>
                         )}
 
+                        {/* Verilen Ceza */}
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Verilen Ceza</label>
-                            <select value={decisionForm.penalty} onChange={e => handlePenaltyChange(e.target.value)} className="w-full p-2 border rounded text-sm">
+                            <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Verilen Ceza</label>
+                            <select 
+                                value={decisionForm.penalty} 
+                                onChange={e => handlePenaltyChange(e.target.value)} 
+                                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-rose-500"
+                            >
                                 <option value="KINAMA">KINAMA</option>
                                 <option value="UYARMA">UYARMA</option>
                                 <option value="KISA SÜRELİ UZAKLAŞTIRMA">KISA SÜRELİ UZAKLAŞTIRMA</option>
@@ -4611,71 +4871,347 @@ const DecisionAssistant = () => {
                             </select>
                         </div>
 
+                        {/* Gerekçe & AI Butonu */}
                         <div>
                             <div className="flex justify-between items-center mb-1">
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Gerekçe / Madde</label>
+                                <label className="block text-xs font-bold text-slate-600 uppercase">Karar Gerekçesi / Açıklama</label>
                                 <button 
                                     onClick={handleAutoGenerateReason}
                                     disabled={isGeneratingReason || !selectedIncidentId}
-                                    className="text-[10px] flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-100 hover:bg-purple-100 disabled:opacity-50 transition-colors"
+                                    className="text-[10px] flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded-lg border border-purple-200 hover:bg-purple-100 disabled:opacity-50 transition-colors font-bold cursor-pointer"
                                 >
                                     {isGeneratingReason ? <Loader2 className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3"/>}
                                     AI ile Gerekçe Yaz
                                 </button>
                             </div>
-                            <textarea value={decisionForm.reason} onChange={e => setDecisionForm({...decisionForm, reason: e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="Gerekçe" rows={4}></textarea>
+                            <textarea 
+                                value={decisionForm.reason} 
+                                onChange={e => setDecisionForm({...decisionForm, reason: e.target.value})} 
+                                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white outline-none focus:ring-2 focus:ring-rose-500 leading-relaxed" 
+                                placeholder="Disiplin Kurulu nihai karar gerekçesi..." 
+                                rows={3}
+                            />
                         </div>
 
+                        {/* Dayanak Yönetmelik Maddesi */}
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Dayağı Yönetmelik Maddesi (Dayanak)</label>
+                            <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Dayanak Yönetmelik Maddesi</label>
                             <input 
                                 type="text" 
                                 value={decisionForm.regulationArticle || ''} 
                                 onChange={e => setDecisionForm({...decisionForm, regulationArticle: e.target.value})} 
-                                className="w-full p-2 border rounded text-sm bg-slate-50 focus:bg-white" 
+                                className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-rose-500 font-medium" 
                                 placeholder="Örn: MEB Ortaöğretim Kurumları Yönetmeliği Madde 164-1/a" 
                             />
                         </div>
 
+                        {/* Yaptırımı Gerektiren Davranışın Nedeni */}
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Yaptırımı Gerektiren Davranışın Nedeni (Sebep)</label>
+                            <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Davranışın Nedeni / Fiil</label>
                             <textarea 
                                 value={decisionForm.behaviorReason || ''} 
                                 onChange={e => setDecisionForm({...decisionForm, behaviorReason: e.target.value})} 
-                                className="w-full p-2 border rounded text-sm bg-slate-50 focus:bg-white" 
-                                placeholder="Örn: Arkadaşları ile uyumsuzluk yaşaması ve kurallara uymama eğilimi." 
+                                className="w-full p-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-rose-500 font-medium leading-relaxed resize-none" 
+                                placeholder="Örn: Arkadaşları ile tartışması ve okul düzenini ihlal etmesi." 
                                 rows={2}
                             />
                         </div>
                         
-                        {/* Success Message Banner */}
+                        {/* Başarı Bildirimi */}
                         {successMessage && (
-                            <div className="bg-green-50 text-green-700 px-3 py-2 rounded text-xs font-bold flex items-center gap-2 animate-fade-in border border-green-100 mb-2">
-                                <CheckCircle className="w-4 h-4"/>
+                            <div className="bg-emerald-50 text-emerald-800 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border border-emerald-200">
+                                <CheckCircle className="w-4 h-4 text-emerald-600"/>
                                 {successMessage}
                             </div>
                         )}
 
+                        {/* Kararı Kaydet Butonu */}
                         <button 
                             onClick={handleSaveDecision} 
                             disabled={isBlankMode}
-                            className={`w-full py-2 rounded text-sm font-medium transition-colors shadow-sm ${isBlankMode ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                            className={`w-full py-3 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
+                                isBlankMode 
+                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                                    : 'bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white shadow-rose-200'
+                            }`}
                         >
-                            Kararı Kaydet
+                            <Save className="w-4 h-4" />
+                            <span>Kararı Kaydet & Evraklara İşle</span>
                         </button>
-                        <div className="text-[10px] text-slate-400 italic text-center mt-1">Ceza puanını manuel düzenleyebilirsiniz.</div>
                     </div>
+
+                    {/* Öğrencinin Geçmiş Cezaları & Tekerrür Denetimi */}
+                    {selectedStudentId && (() => {
+                        const currentStudent = students.find(s => s.id === selectedStudentId);
+                        const systemPenalties = incidents.filter(inc => 
+                            inc.id !== selectedIncidentId &&
+                            inc.involvedStudents.some(inv => 
+                                inv.studentId === selectedStudentId && 
+                                inv.decision && 
+                                !inv.decision.includes('YER OLMADIĞINA') &&
+                                inv.role === 'suspect'
+                            )
+                        ).map(inc => {
+                            const inv = inc.involvedStudents.find(i => i.studentId === selectedStudentId);
+                            return {
+                                id: 'sys-' + inc.id,
+                                decision: inv?.decision || '',
+                                decisionNo: inv?.decisionNo || 'Girilmemiş',
+                                date: inc.date,
+                                type: 'Sistem Kaydı',
+                                isManual: false,
+                                penaltyScore: inv?.penaltyScore || '10',
+                                isRemoved: inv?.isRemoved || false,
+                                removedDecisionNo: inv?.removedDecisionNo
+                            };
+                        });
+
+                        const manualPenalties = (currentStudent?.previousPenalties || []).map(p => ({
+                            id: p.id,
+                            decision: p.decision,
+                            decisionNo: p.decisionNo || 'Girilmemiş',
+                            date: p.date || '',
+                            type: 'Geçmiş Kayıt (Sistem Dışı)',
+                            isManual: true,
+                            penaltyScore: p.penaltyScore || '10',
+                            isRemoved: p.isRemoved || false,
+                            removedDecisionNo: p.removedDecisionNo
+                        }));
+
+                        const combinedPenalties = [...systemPenalties, ...manualPenalties];
+                        const currentScore = currentStudent ? getStudentBehaviorPoints(currentStudent, incidents, selectedIncidentId) : 100;
+
+                        return (
+                            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+                                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                        <ScrollText className="w-4 h-4 text-indigo-600" />
+                                        Öğrencinin Sicili ({combinedPenalties.length} Ceza)
+                                    </span>
+                                    <button 
+                                        onClick={() => setShowAddPastPenalty(!showAddPastPenalty)} 
+                                        className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
+                                        type="button"
+                                    >
+                                        {showAddPastPenalty ? 'Formu Kapat' : '+ Eski Ceza Ekle'}
+                                    </button>
+                                </div>
+
+                                {/* Geçmiş Ceza Ekleme Formu */}
+                                {showAddPastPenalty && (
+                                    <div className="bg-white border rounded-xl p-3 space-y-2.5 shadow-sm border-indigo-100">
+                                        <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">
+                                            {editingPastPenaltyId ? 'Geçmiş Cezayı Düzenle' : 'Eski / Sistem Dışı Ceza Ekle'}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Ceza</label>
+                                                <select 
+                                                    value={pastPenaltyForm.decision}
+                                                    onChange={e => setPastPenaltyForm({...pastPenaltyForm, decision: e.target.value})}
+                                                    className="w-full p-1.5 border rounded-lg text-xs font-medium"
+                                                >
+                                                    <option value="KINAMA">KINAMA</option>
+                                                    <option value="UYARMA">UYARMA</option>
+                                                    <option value="KISA SÜRELİ UZAKLAŞTIRMA">KISA SÜRELİ UZAKLAŞTIRMA</option>
+                                                    <option value="OKUL DEĞİŞTİRME">OKUL DEĞİŞTİRME</option>
+                                                    <option value="ÖRGÜN EĞİTİM DIŞINA ÇIKARMA">ÖRGÜN EĞİTİM DIŞINA ÇIKARMA</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Karar No</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="2024/05"
+                                                    value={pastPenaltyForm.decisionNo}
+                                                    onChange={e => setPastPenaltyForm({...pastPenaltyForm, decisionNo: e.target.value})}
+                                                    className="w-full p-1.5 border rounded-lg text-xs"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Tarih</label>
+                                                <input 
+                                                    type="date"
+                                                    value={pastPenaltyForm.date}
+                                                    onChange={e => setPastPenaltyForm({...pastPenaltyForm, date: e.target.value})}
+                                                    className="w-full p-1.5 border rounded-lg text-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Ceza Puanı</label>
+                                                <input 
+                                                    type="number"
+                                                    placeholder="10"
+                                                    value={pastPenaltyForm.penaltyScore}
+                                                    onChange={e => setPastPenaltyForm({...pastPenaltyForm, penaltyScore: e.target.value})}
+                                                    className="w-full p-1.5 border rounded-lg text-xs font-bold text-rose-600"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end gap-1.5 pt-1.5 border-t">
+                                            <button 
+                                                onClick={() => {
+                                                    setShowAddPastPenalty(false);
+                                                    setEditingPastPenaltyId(null);
+                                                }}
+                                                className="px-2.5 py-1 text-[10px] bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200"
+                                                type="button"
+                                            >
+                                                Vazgeç
+                                            </button>
+                                            <button 
+                                                onClick={handleAddPastPenalty}
+                                                className="px-2.5 py-1 text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold"
+                                                type="button"
+                                            >
+                                                {editingPastPenaltyId ? 'Güncelle' : 'Kaydet'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Ceza Listesi */}
+                                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                    {combinedPenalties.map((pen, pIdx) => (
+                                        <div key={pen.id || pIdx} className="bg-white border border-slate-200 rounded-xl p-2.5 text-xs flex justify-between items-start gap-2 shadow-2xs">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    {pen.isRemoved ? (
+                                                        <>
+                                                            <span className="font-bold line-through text-slate-400 shrink-0">{pen.decision}</span>
+                                                            <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-bold shrink-0">✓ Kaldırıldı</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="font-bold text-red-600 shrink-0">{pen.decision}</span>
+                                                            <span className="text-[9px] bg-red-50 text-red-700 border border-red-100 px-1.5 py-0.2 rounded font-bold shrink-0">-{getDeductionForDecision(pen.decision, pen.penaltyScore)} Puan</span>
+                                                        </>
+                                                    )}
+                                                    <span className="text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 px-1 py-0.2 rounded font-medium shrink-0">{pen.type}</span>
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 mt-0.5 flex gap-2">
+                                                    <span>Karar: {pen.decisionNo}</span>
+                                                    <span>•</span>
+                                                    <span>Tarih: {formatDateForDisplay(pen.date)}</span>
+                                                </div>
+                                            </div>
+                                            {pen.isManual && (
+                                                <div className="flex items-center gap-1 shrink-0 font-medium text-slate-400 text-[10px]">
+                                                    <button 
+                                                        onClick={() => {
+                                                            const rawPen = currentStudent?.previousPenalties?.find(p => p.id === pen.id);
+                                                            if (rawPen) handleEditClickPastPenalty(rawPen);
+                                                        }}
+                                                        className="text-indigo-600 hover:text-indigo-800"
+                                                        type="button"
+                                                    >
+                                                        Düzenle
+                                                    </button>
+                                                    <span>•</span>
+                                                    <button 
+                                                        onClick={() => handleDeletePastPenalty(pen.id)}
+                                                        className="hover:text-red-500"
+                                                        type="button"
+                                                    >
+                                                        Sil
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {combinedPenalties.length === 0 && (
+                                        <div className="text-center py-3 text-[11px] text-slate-400">
+                                            Öğrencinin geçmişte aldığı ceza bulunmamaktadır.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
-                <div className={`w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} flex-col bg-slate-50/50 overflow-y-auto`}>
-                    <div className="p-4 bg-white border-b border-slate-200 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                        <button onClick={() => generateBulkDocuments('ek10_decision')} className="p-2 border rounded hover:bg-red-50 text-red-700 text-xs font-bold">EK-10 Karar</button>
-                        <button onClick={() => generateBulkDocuments('dizi_pusulasi')} className="p-2 border rounded hover:bg-slate-50 text-xs">Dizi Pusulası</button>
-                        <button onClick={() => generateBulkDocuments('sanction_student')} className="p-2 border rounded hover:bg-slate-50 text-xs">Yaptırım Tebliği (Öğr)</button>
-                        <button onClick={() => generateBulkDocuments('sanction_parent')} className="p-2 border rounded hover:bg-slate-50 text-xs">Yaptırım Tebliği (Veli)</button>
-                        <button onClick={() => generateBulkDocuments('penalty_removal_call')} className="p-2 border rounded hover:bg-amber-50 text-amber-700 text-xs">Ceza Silme Çağrı</button>
-                        <button onClick={() => generateBulkDocuments('penalty_removal_decision')} className="p-2 border rounded hover:bg-amber-50 text-amber-700 text-xs bg-amber-50 border-amber-200 font-semibold">Ceza Kal. Kararı</button>
+                <div className="w-full lg:flex-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'} flex-col bg-slate-50/50 overflow-y-auto">
+                    {/* Üst Karar ve Tebligat Evrak Seçimi (Kategorili Grid) */}
+                    <div className="p-3.5 bg-white border-b border-slate-200 shadow-2xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            {/* Kategori 1: Nihai Kararlar */}
+                            <div className="bg-rose-50/60 border border-rose-200/80 rounded-xl p-2 space-y-1.5">
+                                <div className="text-[10px] font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1">
+                                    <Scale className="w-3 h-3 text-rose-600" />
+                                    <span>1. Nihai Kurul Kararları</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => generateBulkDocuments('ek10_decision')} 
+                                        className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs text-center truncate cursor-pointer"
+                                    >
+                                        EK-10 Karar
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => generateBulkDocuments('dizi_pusulasi')} 
+                                        className="p-2 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all text-center truncate cursor-pointer"
+                                    >
+                                        Dizi Pusulası
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Kategori 2: Tebligat & Bildirimler */}
+                            <div className="bg-blue-50/60 border border-blue-200/80 rounded-xl p-2 space-y-1.5">
+                                <div className="text-[10px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
+                                    <Mail className="w-3 h-3 text-blue-600" />
+                                    <span>2. Resmi Tebligatlar</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => generateBulkDocuments('sanction_student')} 
+                                        className="p-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all text-center truncate cursor-pointer"
+                                    >
+                                        Öğrenci Tebliği
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => generateBulkDocuments('sanction_parent')} 
+                                        className="p-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all text-center truncate cursor-pointer"
+                                    >
+                                        Veli Tebliği
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Kategori 3: Ceza Kaldırma & İade */}
+                            <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-2 space-y-1.5">
+                                <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                                    <ScrollText className="w-3 h-3 text-amber-600" />
+                                    <span>3. Ceza Silme & İade</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => generateBulkDocuments('penalty_removal_call')} 
+                                        className="p-2 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 rounded-lg text-xs font-semibold transition-all text-center truncate cursor-pointer"
+                                    >
+                                        Silme Çağrısı
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => generateBulkDocuments('penalty_removal_decision')} 
+                                        className="p-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all shadow-xs text-center truncate cursor-pointer"
+                                    >
+                                        EK-12 Kaldırma
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <div className="flex-1 p-2 sm:p-6 overflow-y-auto flex justify-center">
                         {renderDocumentPreview()}
                     </div>
