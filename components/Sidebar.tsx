@@ -410,6 +410,10 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
               <div className="flex-1 overflow-hidden">
                   <p className="text-xs font-bold text-slate-200 truncate">By Abdullah Yanarateş</p>
                   <p className="text-[10px] text-slate-400 truncate">E-Okul Disiplin AI Pro v1.1.8</p>
+                  <p className="text-[10px] text-emerald-400 font-bold truncate flex items-center gap-1 mt-0.5">
+                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+                     Güncelleme Test: Canlı Aktif
+                  </p>
               </div>
            </div>
         </div>

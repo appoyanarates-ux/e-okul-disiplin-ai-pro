@@ -45,6 +45,12 @@ const Dashboard = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* Güncelleme Test Rozeti */}
+      <div className="mb-4 inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-xs font-bold shadow-2xs">
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Güncelleme Test: v1.1.8 Canlı Güncelleme Başarılı</span>
+      </div>
+
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Kontrol Paneli</h1>
