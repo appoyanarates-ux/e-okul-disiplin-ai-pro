@@ -3,12 +3,13 @@ import React from 'react';
 import { 
   Users, AlertTriangle, FileCheck, Scale, 
   FileText, TrendingUp, Book, Mail, FilePlus, Settings, RotateCcw, AlertCircle, Briefcase, FileSpreadsheet, Calendar,
-  Globe, ExternalLink, History
+  Globe, ExternalLink, History, HardDrive, Lock, LogIn
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 import IncidentCalendar from './IncidentCalendar';
 import { useWrittenWarnings } from '../context/WrittenWarningContext';
+import { downloadJsonBackup, getMemberLoginUrl, isMemberLoggedIn } from '../services/bridge';
 
 const Card = ({ 
   title, 
@@ -57,6 +58,49 @@ const Dashboard = () => {
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
         <span>v1.1.9 • Yeni: Yazılı Uyarı Takip Sistemi</span>
       </div>
+
+      {/* Güncelleme Öncesi JSON Veri Yedeği Uyarısı Şeridi */}
+      <div className="mb-4 bg-amber-50 border border-amber-300 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-amber-100 text-amber-700 rounded-xl shrink-0">
+            <HardDrive className="w-4 h-4" />
+          </div>
+          <div className="text-xs text-amber-950 leading-relaxed">
+            <strong className="block text-amber-900">⚠️ Güncelleme Öncesi JSON Veri Yedeği Uyarısı</strong>
+            Yeni sürüm güncellemelerinden önce öğrenci, olay ve yazılı uyarı kayıtlarınızı güvende tutmak için mutlaka <strong>JSON veri yedeği</strong> alınız.
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => downloadJsonBackup()}
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs shrink-0"
+        >
+          <HardDrive className="w-3.5 h-3.5" />
+          <span>JSON Yedek İndir</span>
+        </button>
+      </div>
+
+      {/* Üye Girişi Yoksa Döküman Çıktısı Bilgilendirme Şeridi */}
+      {!isMemberLoggedIn() && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div className="text-xs text-blue-950 leading-relaxed">
+              <strong className="block text-blue-900">Döküman Çıktısı Sadece evrakplus.com Üyelerine Özeldir</strong>
+              Programı ücretsiz inceleyebilirsiniz; resmi evrak, tutanak ve karar çıktısı (Yazdır / PDF / Word / Excel) alabilmek için <strong>evrakplus.com</strong> üye girişi yapmanız gerekmektedir.
+            </div>
+          </div>
+          <a
+            href={getMemberLoginUrl()}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs shrink-0"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            <span>Üye Girişi Yap</span>
+          </a>
+        </div>
+      )}
 
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

@@ -9,6 +9,7 @@ import { useIncidents } from '../context/IncidentContext';
 import { useStudents } from '../context/StudentContext';
 import { useSettings } from '../context/SettingsContext';
 import { exportHtmlToWord, printHtmlViaIframe } from '../services/exportService';
+import { requireMemberForDocumentOutput } from '../services/bridge';
 import { MarginType, PAGE_MARGINS, Student } from '../types';
 import { getBoardInfo } from '../services/boardHelpers';
 
@@ -912,6 +913,7 @@ const PenaltyRemoval = () => {
       return;
     }
 
+    if (!requireMemberForDocumentOutput('Yazdırma döküman çıktısı')) return;
     const { html } = docData;
     if (window.electronAPI) {
       try {
@@ -951,6 +953,7 @@ const PenaltyRemoval = () => {
   };
 
   const handleDownloadPdf = async () => {
+    if (!requireMemberForDocumentOutput('PDF döküman çıktısı')) return;
     const docData = buildFullDocumentHtml();
     if (!docData) {
       alert("İndirilecek belge bulunamadı.");

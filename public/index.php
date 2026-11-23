@@ -13,34 +13,9 @@ header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: same-origin');
 
 $appUrl = disiplin_app_url();
-
-if (!is_user_logged_in()) {
-    // Masaüstü uygulaması (Electron) site dışına çıkamadığı için program içi giriş ekranı kullanılır
-    if (disiplin_is_electron()) {
-        wp_safe_redirect(disiplin_app_url('giris.php'));
-        exit;
-    }
-    wp_redirect(disiplin_login_url($appUrl));
-    exit;
-}
-
-$user = wp_get_current_user();
-
-if (!disiplin_user_allowed($user)) {
-    if (DISIPLIN_NO_ACCESS_URL !== '') {
-        wp_redirect(DISIPLIN_NO_ACCESS_URL);
-        exit;
-    }
-    status_header(403);
-    header('Content-Type: text/html; charset=utf-8');
-    echo '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Erişim yok</title></head>'
-        . '<body style="font-family:system-ui,sans-serif;background:#f3f4f6;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0">'
-        . '<div style="background:#fff;padding:28px;border-radius:16px;max-width:420px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.08)">'
-        . '<h2 style="margin:0 0 8px">Üyeliğiniz bu programa erişemiyor</h2>'
-        . '<p style="color:#475569">Programı kullanmak için uygun üyelik gereklidir.</p>'
-        . '<p><a href="' . esc_url(home_url('/')) . '">evrakplus.com ana sayfa</a></p></div></body></html>';
-    exit;
-}
+$loggedIn = is_user_logged_in();
+$user = $loggedIn ? wp_get_current_user() : null;
+$allowed = $loggedIn && $user && disiplin_user_allowed($user);
 
 $shellFile = __DIR__ . '/app-shell.php';
 if (!file_exists($shellFile)) {
@@ -52,13 +27,13 @@ if (!file_exists($shellFile)) {
 $bridge = array(
     'v' => 1,
     'apiUrl' => 'api.php',
-    'nonce' => wp_create_nonce('disiplin_api'),
-    'user' => array(
+    'nonce' => $allowed ? wp_create_nonce('disiplin_api') : '',
+    'user' => $allowed ? array(
         'id' => (int)$user->ID,
         'login' => $user->user_login,
         'displayName' => $user->display_name ? $user->display_name : $user->user_login,
         'email' => $user->user_email,
-    ),
+    ) : null,
     'loginUrl' => disiplin_is_electron() ? disiplin_app_url('giris.php') : disiplin_login_url($appUrl),
     'logoutUrl' => 'cikis.php',
     'homeUrl' => home_url('/'),

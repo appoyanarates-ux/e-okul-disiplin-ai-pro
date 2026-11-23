@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { exportHtmlToWord, printHtmlViaIframe } from '../services/exportService';
+import { requireMemberForDocumentOutput } from '../services/bridge';
 import { Student } from '../types';
 import { useStudents } from '../context/StudentContext';
 import { useIncidents } from '../context/IncidentContext';
@@ -543,6 +544,7 @@ const MesemManagement: React.FC = () => {
   };
 
   const handlePrintNotice = () => {
+    if (!requireMemberForDocumentOutput('Yazdırma döküman çıktısı')) return;
     const html = getMesemNoticeHtml();
     if (!html) return;
     if (window.electronAPI) {
@@ -558,6 +560,7 @@ const MesemManagement: React.FC = () => {
   };
 
   const handleDownloadPdfNotice = async () => {
+    if (!requireMemberForDocumentOutput('PDF döküman çıktısı')) return;
     const html = getMesemNoticeHtml();
     if (!html || !notifStudent) return;
     const filename = `MESEM_Isletme_Yazisi_${notifStudent.number}_${notifStudent.name.replace(/\s+/g, '_')}.pdf`;

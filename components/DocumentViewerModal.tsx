@@ -14,6 +14,7 @@ import {
 import { DocumentDefinition, renderDocDefToHtml } from '../services/documentEngine';
 import { generateDocxBlob, generateDocxBuffer } from '../services/docxGenerator';
 import { printHtmlViaIframe } from '../services/exportService';
+import { requireMemberForDocumentOutput } from '../services/bridge';
 
 interface DocumentViewerModalProps {
   document: DocumentDefinition;
@@ -55,6 +56,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   };
 
   const handlePrint = async () => {
+    if (!requireMemberForDocumentOutput('Yazdırma döküman çıktısı')) return;
     const html = getCleanDocumentHtml();
     if (window.electronAPI) {
       try {
@@ -72,6 +74,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   };
 
   const handleSavePdf = async () => {
+    if (!requireMemberForDocumentOutput('PDF döküman çıktısı')) return;
     setIsExportingPdf(true);
     setStatusMessage('PDF oluşturuluyor...');
     try {
@@ -110,6 +113,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   };
 
   const handleDownloadDocx = async () => {
+    if (!requireMemberForDocumentOutput('Word (.docx) döküman çıktısı')) return;
     setIsExportingDocx(true);
     setStatusMessage('Word (.docx) belgesi hazırlanıyor...');
     try {

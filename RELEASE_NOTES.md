@@ -8,10 +8,13 @@
 
 ## 🌟 Sürüm 1.1.9 Yenilikleri (Önemli Güncelleme)
 
+> **⚠️ ÖNEMLİ UYARI:** Güncelleme işlemine başlamadan önce olası veri kayıplarına karşı **Ayarlar > Yedekleme** veya güncelleme ekranındaki **"JSON Veri Yedeği İndir"** butonundan mutlaka `.json` veri yedeğinizi alınız.
+
 - **Yazılı Uyarı Takip Sistemi:** Öğrenciye verilen her yazılı uyarı kalıcı olarak kaydedilir; öğrenci ve velisine imzalatılan tutanak (tarama/fotoğraf/PDF) kayda eklenebilir ve imza durumları işaretlenir.
 - **Öğrenci Sorgulama ve Uyarı Geçmişi:** Numara veya ad soyadla sorgulama; davranış bazında tekrar sayısı, tarihler ve tutanaklar tek ekranda. Yazılı uyarılar disiplin cezası kayıtlarından ayrı tutulur (e-Okul'a işlenmez, davranış puanını etkilemez).
 - **Tekrar Eden Davranışta Otomatik Bilgilendirme:** Aynı davranış yeniden kaydedilirken veya olay kaydına fail eklenirken önceki uyarı tarihiyle birlikte "DİKKAT" bilgilendirmesi gösterilir.
-- **evrakplus.com Üyelik Köprüsü & Güvenlik:** WordPress üyelik doğrulaması, cihazlar arası kayıt bazında birleştirme (`updatedAt`), eski sürüm verilerinin otomatik taşınması ve güçlendirilmiş senkronizasyon güvenliği.
+- **Döküman Çıktısı Üyelik Koruması & Açık Erişim:** Web uygulaması açılışta herkes tarafından incelenebilir; resmi evrak, tutanak ve karar çıktısı (Yazdır / PDF / Word / Excel) yalnızca `evrakplus.com` üyelerine özeldir.
+- **Güncelleme Öncesi JSON Yedekleme Uyarısı:** Güncelleme bildirimi ve kontrol panelinde tek tıkla JSON veri yedeği indirme uyarısı eklendi.
 - **Telefona ve Bilgisayara Yükleme (PWA):** Manifest, service worker ve simgelerle çevrimdışı çalışma ve uygulama olarak yükleme desteği.
 
 ---

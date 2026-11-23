@@ -4,6 +4,7 @@ import {
   ArrowUpCircle, X, ExternalLink, RefreshCw, Loader2, HardDrive, Globe
 } from 'lucide-react';
 import { checkForAppUpdates, UpdateInfo, DownloadProgress } from '../services/updateService';
+import { downloadJsonBackup } from '../services/bridge';
 
 interface UpdateModalProps {
   // Can be manually opened or auto-checked
@@ -146,6 +147,15 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => downloadJsonBackup()}
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-2.5 py-1 rounded-lg transition-colors shadow-xs flex items-center gap-1"
+              title="Güncelleme öncesi tüm verilerinizi JSON olarak yedekleyin"
+            >
+              <HardDrive className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Önce JSON Yedek Al</span>
+              <span className="md:hidden">Yedek Al</span>
+            </button>
+            <button
               onClick={() => setIsModalOpen(true)}
               className="bg-white text-blue-800 hover:bg-blue-50 font-bold px-3 py-1 rounded-lg transition-colors shadow-xs"
             >
@@ -219,6 +229,25 @@ export const UpdateNotificationModal: React.FC<UpdateModalProps> = ({
                       <span className="text-sm font-extrabold text-emerald-800 flex items-center gap-1.5">
                         v{updateInfo.latestVersion} <span className="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.2 rounded font-bold">Yeni</span>
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Güncelleme Öncesi JSON Veri Yedeği Uyarısı */}
+                  <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-2 flex-1">
+                      <p className="text-xs text-amber-950 leading-relaxed">
+                        <strong className="block text-amber-900 mb-0.5">⚠️ Güncelleme Öncesi JSON Veri Yedeği Alınız!</strong>
+                        Olası veri kayıplarına karşı güncelleme işlemine başlamadan önce tüm öğrenci, disiplin olayı ve yazılı uyarı kayıtlarınızın <strong>JSON yedeğini</strong> bilgisayarınıza indirmeniz önemle tavsiye edilir.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => downloadJsonBackup()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors shadow-xs"
+                      >
+                        <HardDrive className="w-3.5 h-3.5" />
+                        Şimdi JSON Veri Yedeği İndir (.json)
+                      </button>
                     </div>
                   </div>
 

@@ -12,6 +12,7 @@ import { useStudents } from '../context/StudentContext';
 import { useIncidents } from '../context/IncidentContext';
 import { useSettings } from '../context/SettingsContext';
 import { exportHtmlToWord, printHtmlViaIframe } from '../services/exportService';
+import { requireMemberForDocumentOutput } from '../services/bridge';
 import { getBoardInfo } from '../services/boardHelpers';
 
 const getOneDegreeHeavierPenalty = (penalty: string, schoolType: string): string => {
@@ -1227,6 +1228,7 @@ const DecisionAssistant = () => {
   };
 
   const handleDownloadPdf = async () => {
+    if (!requireMemberForDocumentOutput('PDF döküman çıktısı')) return;
     const docData = buildFullDocumentHtml();
     if (!docData) {
       alert("İndirilecek belge bulunamadı.");
@@ -1264,6 +1266,7 @@ const DecisionAssistant = () => {
   };
 
   const handlePrint = async () => {
+    if (!requireMemberForDocumentOutput('Yazdırma döküman çıktısı')) return;
     const docData = buildFullDocumentHtml();
     if (!docData) {
       alert("Yazdırılacak belge bulunamadı.");

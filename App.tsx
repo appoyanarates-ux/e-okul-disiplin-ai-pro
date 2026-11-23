@@ -27,6 +27,7 @@ import { initPersistenceSync } from './services/persistenceSync';
 import { initCloudSync } from './services/cloudSyncService';
 
 import { UpdateNotificationModal } from './components/UpdateNotificationModal';
+import { MemberOutputModal } from './components/MemberOutputModal';
 
 const App = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -44,6 +45,7 @@ const App = () => {
          <WrittenWarningProvider>
           <HashRouter>
             <UpdateNotificationModal />
+            <MemberOutputModal />
             <BridgeBanner />
             <div className="flex bg-[#f3f4f6] min-h-screen font-sans">
               {/* Mobile Header */}

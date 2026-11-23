@@ -18,6 +18,7 @@ import {
   renderDocDefToHtml
 } from './documentEngine';
 import { generateDocxBlob, generateDocxBuffer } from './docxGenerator';
+import { requireMemberForDocumentOutput } from './bridge';
 
 // Backward compatibility helper (kept for legacy calls, but NOT used in our document generators)
 export const turkishToAscii = (text: string): string => {
@@ -35,6 +36,7 @@ export { calculateStudentScore };
 
 // Helper to trigger save/download of a DOCX file
 export const downloadDocx = async (docDef: DocumentDefinition, filenamePrefix?: string) => {
+  if (!requireMemberForDocumentOutput('Word (.docx) döküman çıktısı')) return;
   const cleanTitle = (filenamePrefix || docDef.title).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, '_');
   const filename = `${cleanTitle}.docx`;
 
@@ -60,6 +62,7 @@ export const downloadDocx = async (docDef: DocumentDefinition, filenamePrefix?: 
 
 // Print HTML via invisible iframe with @media print rules (pure vector output, no canvas)
 export const printHtmlViaIframe = (html: string) => {
+  if (!requireMemberForDocumentOutput('Yazdırma / PDF döküman çıktısı')) return;
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.left = '-9999px';
@@ -99,6 +102,7 @@ export const printHtmlViaIframe = (html: string) => {
 
 // Helper to trigger PDF save via Electron Chromium printToPDF / showSaveDialog IPC or CSS @media print fallback
 export const downloadPdf = async (docDef: DocumentDefinition, filenamePrefix?: string) => {
+  if (!requireMemberForDocumentOutput('PDF döküman çıktısı')) return;
   const cleanTitle = (filenamePrefix || docDef.title).replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ]/g, '_');
   const filename = `${cleanTitle}.pdf`;
   const html = renderDocDefToHtml(docDef);
@@ -133,6 +137,7 @@ export const exportIncidentToPDF = async (incident: Incident, students: Student[
 };
 
 export const exportIncidentsToExcel = (incidents: Incident[], students: Student[]) => {
+  if (!requireMemberForDocumentOutput('Excel rapor çıktısı')) return;
   const data = incidents.map(inc => {
     const suspectList = inc.involvedStudents
       .filter(i => i.role === 'suspect')
@@ -185,6 +190,7 @@ export const exportDisciplineRegisterToExcel = (
   students: Student[], 
   institution?: Institution
 ) => {
+  if (!requireMemberForDocumentOutput('Disiplin Karar Defteri Excel çıktısı')) return;
   const rows: Record<string, string | number>[] = [];
 
   incidents.forEach(inc => {
@@ -246,6 +252,7 @@ export const exportDisciplineRegisterToPDF = async (
 // ---------------------------------------------------------------------------
 
 export const exportStudentsToExcel = (students: Student[], incidents: Incident[] = []) => {
+  if (!requireMemberForDocumentOutput('Öğrenci Listesi Excel çıktısı')) return;
   const data = students.map(s => {
     const score = calculateStudentScore(s, incidents);
     return {
@@ -308,6 +315,7 @@ export const exportStudentToPDF = async (student: Student, incidents: Incident[]
 // ---------------------------------------------------------------------------
 
 export const exportMesemReportToExcel = (students: Student[]) => {
+  if (!requireMemberForDocumentOutput('MESEM Raporu Excel çıktısı')) return;
   const mesemOnly = students.filter(s => s.isMesem || (s.grade && s.grade.toUpperCase().includes('MES')));
 
   const data = mesemOnly.map(s => ({
@@ -370,6 +378,7 @@ export const exportDecisionToPDF = async (
 
 // Safe print trigger
 export const triggerSafePrint = (html?: string) => {
+  if (!requireMemberForDocumentOutput('Yazdırma döküman çıktısı')) return;
   try {
     if (html) {
       if (window.electronAPI) {
@@ -408,6 +417,7 @@ export const exportHtmlToWord = async (
     landscape?: boolean;
   } = {}
 ) => {
+  if (!requireMemberForDocumentOutput('Word (.doc) döküman çıktısı')) return;
   const cleanTitle = filenamePrefix.replace(/[^a-zA-Z0-9ığüşöçİĞÜŞÖÇ_ -]/g, '_');
   const filename = `${cleanTitle}.doc`;
   const fontSize = options.fontSize || 10.5;

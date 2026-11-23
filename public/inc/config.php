@@ -12,10 +12,9 @@ if (!defined('DISIPLIN_PROGRAM_CODE')) define('DISIPLIN_PROGRAM_CODE', 'disiplin
 // Sürüm (önbellek ve teşhis için)
 if (!defined('DISIPLIN_APP_VERSION')) define('DISIPLIN_APP_VERSION', '1.1.9');
 
-// Giriş sayfası. Boş bırakılırsa WordPress'in giriş adresi (wp_login_url) kullanılır.
-// Özel bir giriş sayfanız varsa tam adresini yazın, örn: 'https://www.evrakplus.com/giris/'
+// Giriş sayfası. Varsayılan olarak evrakplus.com giriş sayfası kullanılır.
 // (Programa geri dönüş adresi "redirect_to" parametresiyle eklenir.)
-if (!defined('DISIPLIN_LOGIN_PAGE')) define('DISIPLIN_LOGIN_PAGE', '');
+if (!defined('DISIPLIN_LOGIN_PAGE')) define('DISIPLIN_LOGIN_PAGE', 'https://www.evrakplus.com/giris');
 
 // Programı yalnızca belirli üyelik rollerine açmak isterseniz rol adlarını yazın.
 // Boş = giriş yapmış TÜM üyeler kullanabilir. Virgülle ayırın, örnek: 'subscriber,customer,editor'

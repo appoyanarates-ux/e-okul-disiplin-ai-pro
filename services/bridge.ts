@@ -16,7 +16,7 @@ export interface BridgeConfig {
   v: number;
   apiUrl: string;
   nonce: string;
-  user: { id: number; login: string; displayName: string; email?: string };
+  user: { id: number; login: string; displayName: string; email?: string } | null;
   loginUrl: string;
   logoutUrl: string;
   homeUrl: string;
@@ -46,10 +46,79 @@ const APP_DATA_KEYS = [
   REV_KEY, HASH_KEY, LAST_SYNC_KEY,
 ];
 
-export const getBridge = (): BridgeConfig | null =>
+export const getRawBridge = (): BridgeConfig | null =>
   typeof window !== 'undefined' && window.__DISIPLIN_BRIDGE__ && window.__DISIPLIN_BRIDGE__.apiUrl ? window.__DISIPLIN_BRIDGE__ : null;
 
+export const getBridge = (): (BridgeConfig & { user: { id: number; login: string; displayName: string; email?: string } }) | null => {
+  const b = getRawBridge();
+  return b && b.user && b.user.id > 0 ? (b as BridgeConfig & { user: { id: number; login: string; displayName: string; email?: string } }) : null;
+};
+
 export const isBridgeMode = (): boolean => getBridge() !== null;
+
+export const isMemberLoggedIn = (): boolean => {
+  if (getBridge() !== null) return true;
+  try {
+    const raw = localStorage.getItem('eokul_cloud_sync_config');
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      if (cfg && cfg.user && (cfg.user.username || cfg.user.email || cfg.user.wp_id || cfg.user.syncKey)) {
+        return true;
+      }
+    }
+  } catch { /* yoksay */ }
+  return false;
+};
+
+export const getMemberLoginUrl = (): string => {
+  const raw = getRawBridge();
+  if (raw?.loginUrl) return raw.loginUrl;
+  return 'https://www.evrakplus.com/giris';
+};
+
+export const requireMemberForDocumentOutput = (actionName = 'Döküman çıktısı (Yazdır / PDF / Word)'): boolean => {
+  if (isMemberLoggedIn()) return true;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('member-output-blocked', {
+      detail: { actionName, loginUrl: getMemberLoginUrl() },
+    }));
+  }
+  return false;
+};
+
+export const downloadJsonBackup = (): boolean => {
+  try {
+    const backupData = {
+      backup_version: '3.2.0',
+      export_date: new Date().toISOString(),
+      metadata: {
+        app_name: 'Disiplin Asistanı',
+        database_version: '15',
+      },
+      data: {
+        institutionSettings: JSON.parse(localStorage.getItem('institutionSettings') || '{}'),
+        boardSettings: JSON.parse(localStorage.getItem('boardSettings') || '[]'),
+        students: JSON.parse(localStorage.getItem('students') || '[]'),
+        incidents: JSON.parse(localStorage.getItem('incidents') || '[]'),
+        writtenWarnings: JSON.parse(localStorage.getItem('writtenWarnings') || '[]'),
+        gemini_api_key: localStorage.getItem('gemini_api_key') || '',
+      },
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `disiplin_asistani_yedek_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return true;
+  } catch (e) {
+    alert('JSON yedek indirilirken bir hata oluştu: ' + e);
+    return false;
+  }
+};
 
 export type BridgeStatus = 'idle' | 'syncing' | 'synced' | 'offline' | 'error' | 'auth';
 

@@ -33,6 +33,7 @@ import {
 } from '../services/documentEngine';
 import DocumentViewerModal from './DocumentViewerModal';
 import * as XLSX from 'xlsx';
+import { requireMemberForDocumentOutput } from '../services/bridge';
 
 type ReportType = 'decisions' | 'incidents' | 'scores' | 'students' | 'mesem' | 'custom';
 
@@ -237,6 +238,7 @@ const DataExportTool: React.FC = () => {
         return row;
       });
 
+      if (!requireMemberForDocumentOutput('Özel Excel rapor çıktısı')) return;
       const ws = XLSX.utils.json_to_sheet(customData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Özel Rapor");
