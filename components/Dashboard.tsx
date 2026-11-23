@@ -3,11 +3,12 @@ import React from 'react';
 import { 
   Users, AlertTriangle, FileCheck, Scale, 
   FileText, TrendingUp, Book, Mail, FilePlus, Settings, RotateCcw, AlertCircle, Briefcase, FileSpreadsheet, Calendar,
-  Globe, ExternalLink
+  Globe, ExternalLink, History
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 import IncidentCalendar from './IncidentCalendar';
+import { useWrittenWarnings } from '../context/WrittenWarningContext';
 
 const Card = ({ 
   title, 
@@ -42,13 +43,19 @@ const Card = ({
 const Dashboard = () => {
   const { apiKey } = useSettings();
   const showApiWarning = !apiKey || apiKey.trim() === '';
+  const { warnings } = useWrittenWarnings();
+  const repeatCount = (() => {
+    const g = new Map<string, number>();
+    warnings.forEach(w => g.set(`${w.studentId}|${w.behaviorKey}`, (g.get(`${w.studentId}|${w.behaviorKey}`) || 0) + 1));
+    return new Set([...g.entries()].filter(([, c]) => c >= 2).map(([k]) => k.split('|')[0])).size;
+  })();
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Güncelleme Test Rozeti */}
       <div className="mb-4 inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-xs font-bold shadow-2xs">
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span>Güncelleme Test: v1.1.8 Canlı Güncelleme Başarılı</span>
+        <span>v1.1.9 • Yeni: Yazılı Uyarı Takip Sistemi</span>
       </div>
 
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -174,6 +181,20 @@ const Dashboard = () => {
               color="bg-indigo-600" 
               to="/mesem" 
               description="Mesleki Eğitim Merkezi işletme, koordinatör öğretmen ve esnek Excel yükleme işlemleri." 
+            />
+
+            {/* Yazılı Uyarı Takibi (disiplin cezası değildir) */}
+            <Card 
+              title="Yazılı Uyarı Takibi" 
+              icon={History} 
+              color="bg-amber-600" 
+              to="/written-warnings" 
+              description="Öğrenci yazılı uyarı geçmişi, tutanaklar ve tekrar eden davranış kontrolü." 
+              badge={warnings.length > 0 ? (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${repeatCount > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
+                  {repeatCount > 0 ? `${repeatCount} öğrencide tekrar` : `${warnings.length} kayıt`}
+                </span>
+              ) : undefined}
             />
 
             {/* 2. Olay Girişleri */}

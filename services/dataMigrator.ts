@@ -10,6 +10,7 @@ export const migrateImportedData = (rawData: unknown) => {
     let boardMembers: unknown[] = [];
     let students: unknown[] = [];
     let incidents: unknown[] = [];
+    let writtenWarnings: unknown[] = [];
     let apiKey = '';
 
     const extractArray = (data: unknown, possibleKeys: string[]) => {
@@ -47,6 +48,9 @@ export const migrateImportedData = (rawData: unknown) => {
         
         // Incidents
         incidents = extractArray(rawData, ['incidents', 'Olaylar', 'olaylar', 'incidentSettings']);
+
+        // Yazılı Uyarılar (v1.1.9+)
+        writtenWarnings = extractArray(rawData, ['writtenWarnings', 'yaziliUyarilar', 'YaziliUyarilar']);
         
         apiKey = (rawObj.gemini_api_key || rawObj.apiKey || '') as string;
     }
@@ -218,6 +222,10 @@ export const migrateImportedData = (rawData: unknown) => {
         boardMembers: migratedBoardMembers,
         students: migratedStudents,
         incidents: migratedIncidents,
+        // İçe aktarılan kayıtlar geri yükleme amaçlı olduğundan güncel kabul edilir (cihazlar arası eşitlemede öncelik kazanır)
+        writtenWarnings: writtenWarnings
+            .filter((w): w is Record<string, unknown> => !!w && typeof w === 'object' && 'id' in (w as object) && 'studentId' in (w as object))
+            .map(w => ({ ...w, updatedAt: new Date().toISOString() })),
         apiKey: apiKey
     };
 };

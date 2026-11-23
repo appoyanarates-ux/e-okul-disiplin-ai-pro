@@ -10,6 +10,7 @@ export interface AppSyncData {
   boardSettings: any[];
   students: any[];
   incidents: any[];
+  writtenWarnings?: any[];
   gemini_api_key?: string;
 }
 
@@ -22,6 +23,7 @@ export const getLocalStoreData = (): AppSyncData => {
       boardSettings: JSON.parse(localStorage.getItem('boardSettings') || '[]'),
       students: JSON.parse(localStorage.getItem('students') || '[]'),
       incidents: JSON.parse(localStorage.getItem('incidents') || '[]'),
+      writtenWarnings: JSON.parse(localStorage.getItem('writtenWarnings') || '[]'),
       gemini_api_key: localStorage.getItem('gemini_api_key') || ''
     };
   } catch (err) {
@@ -51,6 +53,9 @@ export const applyDataToLocalStorage = (data: AppSyncData) => {
     }
     if (Array.isArray(data.incidents)) {
       localStorage.setItem('incidents', JSON.stringify(data.incidents));
+    }
+    if (Array.isArray(data.writtenWarnings)) {
+      localStorage.setItem('writtenWarnings', JSON.stringify(data.writtenWarnings));
     }
     if (data.gemini_api_key) {
       localStorage.setItem('gemini_api_key', data.gemini_api_key);
@@ -103,11 +108,17 @@ export const initPersistenceSync = async () => {
 };
 
 import { triggerAutoCloudSync } from './cloudSyncService';
+import { isBridgeMode, scheduleBridgeSave } from './bridge';
 
 // Debounced save to Electron AppData and Cloud Sync whenever context states change
 export const triggerPersistenceSync = () => {
-  // Bulut senkronizasyonunu tetikle (hem tarayıcıda hem masaüstünde çalışır)
-  triggerAutoCloudSync();
+  // evrakplus.com WordPress köprüsü etkinse veriler üyenin hesabına (disiplin_data) kaydedilir
+  if (isBridgeMode()) {
+    scheduleBridgeSave();
+  } else {
+    // Eski bulut senkronizasyonu (köprü dışı / masaüstü çevrimdışı kopya)
+    triggerAutoCloudSync();
+  }
 
   if (typeof window === 'undefined' || !window.electronAPI) return;
 

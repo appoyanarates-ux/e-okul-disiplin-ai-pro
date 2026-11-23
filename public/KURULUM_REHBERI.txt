@@ -1,44 +1,67 @@
 ========================================================================
-E-OKUL DİSİPLİN AI PRO (v1.1.7) - cPANEL & EVRAKPLUS TAM ENTEGRASYON REHBERİ
+E-OKUL DİSİPLİN AI PRO v1.1.9 - cPANEL KURULUM / GÜNCELLEME REHBERİ
 ========================================================================
 
-1. cPANEL KURULUMU (https://www.evrakplus.com/disiplin-cezasi-programi/):
+Bu sürümde:
+ - Program yalnızca evrakplus.com'a giriş yapmış üyelere açılır (ayrı şifre yoktur).
+ - Her üyenin verisi kendi WordPress hesabında "disiplin_data" alanında saklanır.
+ - Başka cihazdan girildiğinde kaldığı yerden devam edilir.
+ - Telefona / bilgisayara uygulama olarak yüklenebilir (PWA).
+ - Yeni: Yazılı Uyarı Takip Sistemi.
+
+1. GÜNCELLEME (MEVCUT KURULUMUN ÜZERİNE)
 ------------------------------------------------------------------------
-1) cPanel Dosya Yöneticisi'ne (File Manager) girin.
-2) "public_html" klasörünü açın.
-3) Burada "disiplin-cezasi-programi" klasörünü oluşturun (varsa içine girin).
-4) "cpanel_public_html_disiplin_v1.1.7.zip" dosyasını bu klasöre yükleyin.
-5) Dosyaya sağ tıklayıp "Extract" (Çıkar) seçeneğine tıklayın.
-6) Klasör içeriğinde index.html, sync-api.php, assets/ ve bu rehber yer alacaktır.
+ ÖNCE YEDEK: cPanel Dosya Yöneticisi'nde public_html/disiplin-cezasi-programi
+ klasörünü sağ tıklayıp "Compress" ile yedekleyin (özellikle
+ disiplin_sync_storage klasörü eski üye verilerini içerir).
 
-2. EVRAKPLUS.COM ÜYELİK SİSTEMİ İLE %100 TAM SENKRONİZASYON:
--------------------------------------------------------------
-Program artık doğrudan "https://www.evrakplus.com/" sitesinin kendi kullanıcı
-veritabanına (WordPress wp_users) entegre çalışır:
+ 1) cPanel > Dosya Yöneticisi > public_html/disiplin-cezasi-programi klasörünü açın.
+ 2) Zip dosyasını bu klasöre yükleyin, sağ tıklayıp "Extract" deyin
+    (soru gelirse mevcut dosyaların üzerine yazılmasını onaylayın).
+ 3) disiplin_sync_storage klasörünü SİLMEYİN. Eski veriler buradan taşınır;
+    imzalı tutanak ekleri ve günlük yedekler de bu klasörde tutulur.
+ 4) Tarayıcıda https://www.evrakplus.com/disiplin-cezasi-programi/ adresini açın.
+    Giriş yapmadıysanız evrakplus.com giriş sayfasına yönlendirilirsiniz.
 
-* TEK HESAP İLE HER YERDEN ERİŞİM:
-  https://www.evrakplus.com/ sitesine kayıt olan tüm öğretmenler ve yöneticiler,
-  başka hiçbir kayıt işlemine gerek kalmadan, aynı e-posta ve şifre ile:
-  - Hem https://www.evrakplus.com/disiplin-cezasi-programi/ web adresine,
-  - Hem de bilgisayarlarındaki Masaüstü (.exe) uygulamasına giriş yapabilirler.
+ Not: "index.html" artık yalnızca index.php'ye yönlendirir. Program index.php
+ üzerinden açılır. assets klasöründeki eski index-XXXX.js / .css dosyaları
+ kullanılmaz; isterseniz yalnızca yeni index.html'nin (app-shell.php) andığı
+ dosyalar kalacak şekilde temizleyebilirsiniz (zorunlu değildir).
 
-* WEB SÜRÜMÜNDE TEK TIKLA OTOMATİK OTURUM:
-  Kullanıcı zaten evrakplus.com sitesinde giriş yapmış durumdaysa,
-  web sürümü bunu otomatik olarak tanır ve tek tıkla hesabını bağlar.
+2. ESKİ VERİLERİN TAŞINMASI
+------------------------------------------------------------------------
+ - Otomatik: Her üye programı ilk açtığında disiplin_sync_storage/wp_user_<ID>.json
+   dosyasındaki verisi kendi WordPress hesabına ("disiplin_data") taşınır.
+   Üyenin tarayıcısında eski sürümden kalan veriler de sunucudakiyle birleştirilir
+   (hiçbir kayıt silinmez).
+ - Toplu (isteğe bağlı): Yönetici hesabıyla
+   https://www.evrakplus.com/disiplin-cezasi-programi/migrate.php
+   sayfasını açıp "Bekleyenlerin Hepsini Şimdi Taşı" düğmesine basın.
+ - Eski dosyalar silinmez; güvenlik için yerinde kalır.
 
-* İKİ YÖNLÜ CANLI EŞİTLEME (SMART MERGE):
-  - Öğrenciler, disiplin olayları, kurul kararları, tutanaklar ve kurum ayarları
-    kullanıcının WordPress ID'sine özel güvenli alanda tutulur.
-  - Masaüstünde girilen bir tutanak veya öğrenci kaydı anında web sürümüne,
-    webden yapılan bir işlem anında masaüstüne senkronize edilir.
+3. AYARLAR (inc/config.php)
+------------------------------------------------------------------------
+ - DISIPLIN_PROGRAM_CODE : 'disiplin'  -> veri alanı adı "disiplin_data"
+ - DISIPLIN_LOGIN_PAGE   : Özel giriş sayfanız varsa adresini yazın
+                           (boşsa WordPress giriş sayfası kullanılır).
+ - DISIPLIN_ALLOWED_ROLES: Yalnızca belirli üyelik rollerine açmak için
+                           (ör. 'subscriber,customer'). Boş = tüm üyeler.
 
-3. BAĞLANTI VE API DOĞRULAMA TESTİ:
------------------------------------
-Tarayıcınızdan şu adresi açarak WordPress ve senkronizasyon durumunu test edebilirsiniz:
-https://www.evrakplus.com/disiplin-cezasi-programi/sync-api.php?action=ping
+4. KONTROL
+------------------------------------------------------------------------
+ - https://www.evrakplus.com/disiplin-cezasi-programi/sync-api.php?action=ping
+   Yanıtta "version":"1.1.9" ve "storage":"wp_usermeta:disiplin_data" görünmelidir.
+ - inc/ ve disiplin_sync_storage/ klasörleri tarayıcıdan açılamamalıdır (403).
 
-Beklenen yanıt:
-{"ok":true,"service":"E-Okul Disiplin AI Pro Sync API","version":"1.1.7","wpIntegrated":true,...}
-("wpIntegrated": true ibaresi WordPress üyeliği ile tam entegre olduğunu doğrular.)
+5. MASAÜSTÜ (.exe) UYGULAMASI
+------------------------------------------------------------------------
+ Masaüstü uygulaması canlı web adresini açtığı için yenilikler otomatik gelir.
+ Giriş gerektiğinde program içi giriş ekranı (giris.php) açılır; evrakplus.com
+ kullanıcı adı/e-posta ve şifresi kullanılır.
+
+6. TELEFONA YÜKLEME
+------------------------------------------------------------------------
+ Android/Chrome: Menü > "Uygulamayı yükle" veya programdaki "Uygulamayı Yükle".
+ iPhone/Safari : Paylaş > "Ana Ekrana Ekle".
 
 By Abdullah Yanarateş - Copyright © 2026

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
-import { Menu, Globe, LayoutDashboard, Users, AlertTriangle, Gavel, MoreHorizontal } from 'lucide-react';
+import { Menu, Globe, LayoutDashboard, Users, AlertTriangle, Gavel, MoreHorizontal, History } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import IncidentLog from './components/IncidentLog';
@@ -16,9 +16,13 @@ import HelpBackup from './components/HelpBackup';
 import PenaltyCatalog from './components/PenaltyCatalog';
 import PenaltyRemoval from './components/PenaltyRemoval';
 import About from './components/About';
+import WrittenWarnings from './components/WrittenWarnings';
+import BridgeBanner from './components/BridgeBanner';
 import { StudentProvider } from './context/StudentContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { IncidentProvider } from './context/IncidentContext';
+import { WrittenWarningProvider } from './context/WrittenWarningContext';
+import { initBridgeSync } from './services/bridge';
 import { initPersistenceSync } from './services/persistenceSync';
 import { initCloudSync } from './services/cloudSyncService';
 
@@ -30,14 +34,17 @@ const App = () => {
   useEffect(() => {
     initPersistenceSync();
     initCloudSync();
+    initBridgeSync();
   }, []);
 
   return (
     <StudentProvider>
       <IncidentProvider>
         <SettingsProvider>
+         <WrittenWarningProvider>
           <HashRouter>
             <UpdateNotificationModal />
+            <BridgeBanner />
             <div className="flex bg-[#f3f4f6] min-h-screen font-sans">
               {/* Mobile Header */}
               <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-30 shadow-md">
@@ -69,6 +76,7 @@ const App = () => {
                   <Route path="/students" element={<Students />} />
                   <Route path="/mesem" element={<MesemManagement />} />
                   <Route path="/incidents" element={<IncidentLog />} />
+                  <Route path="/written-warnings" element={<WrittenWarnings />} />
                   <Route path="/penalties" element={<PenaltyCatalog />} />
                   <Route path="/decisions" element={<DecisionAssistant />} />
                   <Route path="/penalty-removal" element={<PenaltyRemoval />} />
@@ -112,6 +120,15 @@ const App = () => {
                   <span className="text-[10px]">Olaylar</span>
                 </NavLink>
                 <NavLink
+                  to="/written-warnings"
+                  className={({ isActive }) => `flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+                    isActive ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <History className="w-5 h-5 mb-0.5" />
+                  <span className="text-[10px]">Uyarı</span>
+                </NavLink>
+                <NavLink
                   to="/decisions"
                   className={({ isActive }) => `flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
                     isActive ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
@@ -131,6 +148,7 @@ const App = () => {
               </div>
             </div>
           </HashRouter>
+         </WrittenWarningProvider>
         </SettingsProvider>
       </IncidentProvider>
     </StudentProvider>

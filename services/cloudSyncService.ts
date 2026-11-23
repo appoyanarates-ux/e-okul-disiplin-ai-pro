@@ -5,6 +5,8 @@
  */
 
 import { triggerPersistenceSync } from './persistenceSync';
+import { markDeleted } from './syncMeta';
+import { isBridgeMode, saveNow, pullNow } from './bridge';
 
 export interface CloudUser {
   username: string;
@@ -80,6 +82,7 @@ export const saveCloudSyncConfig = (patch: Partial<CloudSyncConfig>): CloudSyncC
 
 // Silinen ID'leri takip et (tombstones)
 export const trackDeletedStudentId = (id: string) => {
+  markDeleted('students', id);
   try {
     const raw = localStorage.getItem(DEL_STUDENTS_KEY);
     const list: string[] = raw ? JSON.parse(raw) : [];
@@ -91,6 +94,7 @@ export const trackDeletedStudentId = (id: string) => {
 };
 
 export const trackDeletedIncidentId = (id: string) => {
+  markDeleted('incidents', id);
   try {
     const raw = localStorage.getItem(DEL_INCIDENTS_KEY);
     const list: string[] = raw ? JSON.parse(raw) : [];
@@ -106,6 +110,7 @@ const collectClientSyncPayload = () => {
   try {
     const students = JSON.parse(localStorage.getItem('students') || '[]');
     const incidents = JSON.parse(localStorage.getItem('incidents') || '[]');
+    const writtenWarnings = JSON.parse(localStorage.getItem('writtenWarnings') || '[]');
     const institutionSettings = JSON.parse(localStorage.getItem('institutionSettings') || '{}');
     const boardSettings = JSON.parse(localStorage.getItem('boardSettings') || '[]');
     const gemini_api_key = localStorage.getItem('gemini_api_key') || '';
@@ -115,6 +120,7 @@ const collectClientSyncPayload = () => {
     return {
       students,
       incidents,
+      writtenWarnings,
       institutionSettings,
       boardSettings,
       gemini_api_key,
@@ -145,6 +151,9 @@ const applyServerSyncData = (serverData: any) => {
     }
     if (Array.isArray(serverData.incidents)) {
       localStorage.setItem('incidents', JSON.stringify(serverData.incidents));
+    }
+    if (Array.isArray(serverData.writtenWarnings)) {
+      localStorage.setItem('writtenWarnings', JSON.stringify(serverData.writtenWarnings));
     }
     if (serverData.institutionSettings && typeof serverData.institutionSettings === 'object') {
       localStorage.setItem('institutionSettings', JSON.stringify(serverData.institutionSettings));
@@ -297,6 +306,11 @@ export const logoutCloudAccount = () => {
 let isSyncInProgress = false;
 
 export const performCloudSync = async (): Promise<{ ok: boolean; error?: string; syncedAt?: string }> => {
+  if (isBridgeMode()) {
+    const ok = await saveNow();
+    if (ok) await pullNow();
+    return ok ? { ok: true, syncedAt: new Date().toISOString() } : { ok: false, error: 'Eşitleme yapılamadı.' };
+  }
   const config = getCloudSyncConfig();
   if (!config.user || !config.user.token) {
     return { ok: false, error: 'Bulut hesabı bağlı değil. Lütfen önce giriş yapın.' };
@@ -370,6 +384,7 @@ export const performCloudSync = async (): Promise<{ ok: boolean; error?: string;
 let autoSyncTimer: any = null;
 
 export const triggerAutoCloudSync = () => {
+  if (isBridgeMode()) return;
   const config = getCloudSyncConfig();
   if (!config.user || !config.autoSync) return;
 
@@ -382,6 +397,8 @@ export const triggerAutoCloudSync = () => {
 // Uygulama başlangıcında bulut senkronizasyonunu başlat
 export const initCloudSync = () => {
   if (typeof window === 'undefined') return;
+  // WordPress köprüsü (index.php) etkinse eski bulut eşitlemesi kullanılmaz
+  if (isBridgeMode()) return;
 
   const config = getCloudSyncConfig();
   if (config.user && config.autoSync && navigator.onLine) {

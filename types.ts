@@ -59,6 +59,7 @@ export interface Student {
     removedReason?: string;
   }>;
   customDocuments?: Record<string, string>; // Olay seçilmediğinde kaydedilen evraklar
+  updatedAt?: string; // Son değişiklik zamanı (cihazlar arası eşitleme için)
 }
 
 export interface InvolvedStudent {
@@ -100,6 +101,49 @@ export interface Incident {
   petitionerInfo?: string; // Dilekçe Tarih/Sayı
   mitigatingFactors?: string; // Yaptırımı hafifleten nedenler
   useMitigatingFactors?: boolean; // Tebligat ve Kararda kullanılsın mı?
+  behaviorCode?: string; // Davranış türü anahtarı (yazılı uyarı tekrar kontrolü için)
+  updatedAt?: string; // Son değişiklik zamanı (cihazlar arası eşitleme için)
+}
+
+// --- YAZILI UYARI TAKİP SİSTEMİ ---
+// ÖNEMLİ: Yazılı uyarı bir disiplin cezası DEĞİLDİR. e-Okul'a işlenmez,
+// davranış puanını etkilemez; yalnızca okul içi takip ve belgelendirme içindir.
+export interface WarningAttachment {
+  id: string;
+  name: string;
+  type: string; // image/jpeg, application/pdf ...
+  size: number; // byte
+  uploadedAt: string;
+  storage: 'server' | 'inline';
+  dataUrl?: string; // storage === 'inline' ise (sunucu bağlantısı yokken)
+}
+
+export interface WrittenWarning {
+  id: string;
+  studentId: string;
+  // Kayıt anındaki öğrenci bilgileri (öğrenci listesi değişse de belge bütünlüğü korunur)
+  studentNumber: string;
+  studentName: string;
+  studentGrade: string;
+  date: string; // YYYY-MM-DD
+  time?: string; // HH:mm
+  location?: string;
+  behaviorKey: string; // Aynı davranışı eşleştirmek için anahtar (katalog kodu veya ozel:...)
+  behaviorTitle: string; // Davranışın adı
+  description?: string; // Davranışın ayrıntılı açıklaması
+  warnedBy?: string; // Uyarıyı yapan öğretmen / idareci
+  warnedByTitle?: string;
+  documentNo?: string; // Tutanak sayısı / numarası
+  parentName?: string; // Tutanağı imzalayan veli
+  signedByStudent?: boolean;
+  signedByParent?: boolean;
+  signedAt?: string;
+  relatedIncidentId?: string; // İlişkili olay kaydı (varsa)
+  isRepeat?: boolean; // Kayıt anında aynı davranış için önceki uyarı var mıydı?
+  notes?: string;
+  attachments?: WarningAttachment[]; // İmzalı tutanak taraması vb.
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RegulationArticle {

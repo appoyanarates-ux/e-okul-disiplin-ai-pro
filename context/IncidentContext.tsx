@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Incident, InvolvedStudent } from '../types';
 import { triggerPersistenceSync } from '../services/persistenceSync';
 import { trackDeletedIncidentId } from '../services/cloudSyncService';
+import { nowIso } from '../services/syncMeta';
 
 interface IncidentContextType {
   incidents: Incident[];
@@ -45,11 +46,12 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [incidents]);
 
   const addIncident = (incident: Incident) => {
-    setIncidents(prev => [incident, ...prev]);
+    setIncidents(prev => [{ ...incident, updatedAt: nowIso() }, ...prev]);
   };
 
   const updateIncident = (updatedIncident: Incident) => {
-    setIncidents(prev => prev.map(inc => inc.id === updatedIncident.id ? updatedIncident : inc));
+    const ts = nowIso();
+    setIncidents(prev => prev.map(inc => inc.id === updatedIncident.id ? { ...updatedIncident, updatedAt: ts } : inc));
   };
 
   const updateIncidentStudent = (incidentId: string, studentId: string, data: Partial<InvolvedStudent>) => {
@@ -67,7 +69,8 @@ export const IncidentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return { 
             ...inc, 
             involvedStudents: updatedStudents,
-            status: allDecided ? 'decided' : 'investigating'
+            status: allDecided ? 'decided' : 'investigating',
+            updatedAt: nowIso()
         };
     }));
   };

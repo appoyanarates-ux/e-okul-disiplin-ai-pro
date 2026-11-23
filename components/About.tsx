@@ -267,17 +267,35 @@ const About = () => {
             Sürüm Geçmişi & Özellikler Kataloğu
           </h2>
           <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 w-fit">
-            Aktif Sürüm: v1.1.8
+            Aktif Sürüm: v1.1.9
           </span>
         </div>
 
         <div className="space-y-4">
+          {/* v1.1.9 */}
+          <div className="border border-amber-200 bg-gradient-to-r from-amber-50/70 to-orange-50/40 rounded-xl p-4.5 space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-amber-950 text-sm">v1.1.9</span>
+                <span className="text-[10px] bg-amber-600 text-white font-bold px-2 py-0.5 rounded-full">En Yeni / Canlı Web</span>
+              </div>
+              <span className="text-xs text-slate-500 font-medium">23 Kasım 2026</span>
+            </div>
+            <ul className="text-xs text-slate-700 space-y-1.5 list-disc list-inside leading-relaxed font-medium">
+              <li><strong>Yazılı Uyarı Takip Sistemi:</strong> Öğrenciye verilen her yazılı uyarı kalıcı olarak kaydedilir; öğrenci ve velisine imzalatılan tutanak (tarama/fotoğraf) kayda eklenebilir.</li>
+              <li><strong>Öğrenci Sorgulama ve Uyarı Geçmişi:</strong> Numara veya ad soyadla sorgulama; davranış bazında tekrar sayısı, tarihler ve tutanaklar tek ekranda. Yazılı uyarılar ile disiplin cezaları ayrı bölümlerde gösterilir.</li>
+              <li><strong>Tekrar Eden Davranışta Otomatik Bilgilendirme:</strong> Aynı davranış yeniden kaydedilirken veya olay kaydına fail eklenirken önceki uyarı tarihiyle birlikte "DİKKAT" bilgilendirmesi gösterilir. Program hiçbir kaydı otomatik olarak disiplin cezasına dönüştürmez.</li>
+              <li><strong>Yazılı uyarı disiplin cezası değildir:</strong> e-Okul'a işlenmez, davranış puanını etkilemez; yalnızca okul içi takip ve belgelendirme içindir.</li>
+              <li><strong>evrakplus.com Üyelik Köprüsü:</strong> Program yalnızca evrakplus.com'a giriş yapmış üyelere açılır; veriler üyenin WordPress hesabında saklanır, başka cihazdan girildiğinde kaldığı yerden devam edilir. Eski sürüm verileri otomatik taşınır.</li>
+              <li><strong>Telefona Yükleme (PWA):</strong> Program telefona ve bilgisayara uygulama olarak yüklenebilir; internet kesildiğinde cihazdaki verilerle çalışmaya devam eder.</li>
+            </ul>
+          </div>
+
           {/* v1.1.8 */}
           <div className="border border-indigo-200 bg-gradient-to-r from-indigo-50/60 to-blue-50/40 rounded-xl p-4.5 space-y-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-indigo-950 text-sm">v1.1.8</span>
-                <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">En Yeni / Canlı Web</span>
               </div>
               <span className="text-xs text-slate-500 font-medium">15 Kasım 2026</span>
             </div>

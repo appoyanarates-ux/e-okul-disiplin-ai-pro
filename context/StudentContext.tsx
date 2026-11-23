@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Student } from '../types';
 import { triggerPersistenceSync } from '../services/persistenceSync';
 import { trackDeletedStudentId } from '../services/cloudSyncService';
+import { nowIso, stampIfChanged } from '../services/syncMeta';
 
 interface StudentContextType {
   students: Student[];
@@ -39,14 +40,20 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const setStudents = (newStudents: Student[]) => {
-    setStudentsState(newStudents);
-    localStorage.setItem('students', JSON.stringify(newStudents));
-    triggerPersistenceSync();
+    // Değişen kayıtlara zaman damgası ekle (cihazlar arası eşitlemede hangi kaydın yeni olduğu bilinsin)
+    setStudentsState(prev => {
+      const prevMap = new Map<string, Student>(prev.map(s => [s.id, s] as [string, Student]));
+      const ts = nowIso();
+      const stamped = newStudents.map(s => stampIfChanged(prevMap.get(s.id), s, ts));
+      localStorage.setItem('students', JSON.stringify(stamped));
+      triggerPersistenceSync();
+      return stamped;
+    });
   };
 
   const addStudent = (student: Student) => {
     setStudentsState(prev => {
-        const updated = [...prev, student];
+        const updated = [...prev, { ...student, updatedAt: nowIso() }];
         localStorage.setItem('students', JSON.stringify(updated));
         triggerPersistenceSync();
         return updated;
@@ -65,7 +72,8 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateStudent = (id: string, updatedFields: Partial<Student>) => {
     setStudentsState(prev => {
-        const updated = prev.map(s => s.id === id ? { ...s, ...updatedFields } : s);
+        const ts = nowIso();
+        const updated = prev.map(s => s.id === id ? { ...s, ...updatedFields, updatedAt: ts } : s);
         localStorage.setItem('students', JSON.stringify(updated));
         triggerPersistenceSync();
         return updated;

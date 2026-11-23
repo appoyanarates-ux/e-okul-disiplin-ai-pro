@@ -110,6 +110,7 @@ const Settings = () => {
         boardSettings: JSON.parse(localStorage.getItem('boardSettings') || '[]'),
         students: JSON.parse(localStorage.getItem('students') || '[]'),
         incidents: JSON.parse(localStorage.getItem('incidents') || '[]'),
+        writtenWarnings: JSON.parse(localStorage.getItem('writtenWarnings') || '[]'),
         gemini_api_key: localStorage.getItem('gemini_api_key') || ''
       };
       const res = await window.electronAPI.createBackupNow(data, 'kullanici-manuel');
@@ -134,6 +135,7 @@ const Settings = () => {
         const d = res.data;
         if (d.students) localStorage.setItem('students', JSON.stringify(d.students));
         if (d.incidents) localStorage.setItem('incidents', JSON.stringify(d.incidents));
+        if (d.writtenWarnings) localStorage.setItem('writtenWarnings', JSON.stringify(d.writtenWarnings));
         if (d.institutionSettings) localStorage.setItem('institutionSettings', JSON.stringify(d.institutionSettings));
         if (d.boardSettings) localStorage.setItem('boardSettings', JSON.stringify(d.boardSettings));
         if (d.gemini_api_key) localStorage.setItem('gemini_api_key', d.gemini_api_key);
@@ -363,6 +365,7 @@ const Settings = () => {
           boardSettings: JSON.parse(localStorage.getItem('boardSettings') || '[]'),
           students: JSON.parse(localStorage.getItem('students') || '[]'),
           incidents: JSON.parse(localStorage.getItem('incidents') || '[]'),
+        writtenWarnings: JSON.parse(localStorage.getItem('writtenWarnings') || '[]'),
           gemini_api_key: localStorage.getItem('gemini_api_key') || ''
         }
       };
@@ -430,6 +433,7 @@ const Settings = () => {
                       boardSettings: JSON.parse(localStorage.getItem('boardSettings') || '[]'),
                       students: JSON.parse(localStorage.getItem('students') || '[]'),
                       incidents: JSON.parse(localStorage.getItem('incidents') || '[]'),
+        writtenWarnings: JSON.parse(localStorage.getItem('writtenWarnings') || '[]'),
                       gemini_api_key: localStorage.getItem('gemini_api_key') || ''
                   }
               };
@@ -509,6 +513,7 @@ const Settings = () => {
             boardSettings: localStorage.getItem('boardSettings'),
             students: localStorage.getItem('students'),
             incidents: localStorage.getItem('incidents'),
+            writtenWarnings: localStorage.getItem('writtenWarnings'),
             gemini_api_key: localStorage.getItem('gemini_api_key')
         };
 
@@ -537,6 +542,11 @@ const Settings = () => {
               localStorage.setItem('incidents', JSON.stringify(merged));
             }
 
+            if (migratedObj.writtenWarnings && migratedObj.writtenWarnings.length > 0) {
+              const merged = safeMergeArrays(localStorage.getItem('writtenWarnings'), migratedObj.writtenWarnings);
+              localStorage.setItem('writtenWarnings', JSON.stringify(merged));
+            }
+
             if (migratedObj.apiKey) {
               localStorage.setItem('gemini_api_key', migratedObj.apiKey);
             }
@@ -554,6 +564,7 @@ const Settings = () => {
             if (snapshot.boardSettings !== null) localStorage.setItem('boardSettings', snapshot.boardSettings);
             if (snapshot.students !== null) localStorage.setItem('students', snapshot.students);
             if (snapshot.incidents !== null) localStorage.setItem('incidents', snapshot.incidents);
+            if (snapshot.writtenWarnings !== null) localStorage.setItem('writtenWarnings', snapshot.writtenWarnings);
             if (snapshot.gemini_api_key !== null) localStorage.setItem('gemini_api_key', snapshot.gemini_api_key);
 
             const errMsg = err instanceof Error ? err.message : String(err);

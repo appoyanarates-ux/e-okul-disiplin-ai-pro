@@ -1,0 +1,24 @@
+{
+  "name": "E-Okul Disiplin AI Pro",
+  "short_name": "Disiplin",
+  "description": "Okul disiplin süreçleri, yazılı uyarı takibi ve resmi evrak yönetimi (evrakplus.com)",
+  "lang": "tr",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Yazılı Uyarılar", "short_name": "Uyarılar", "url": "./#/written-warnings", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Olay Kaydı", "short_name": "Olaylar", "url": "./#/incidents", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

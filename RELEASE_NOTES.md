@@ -1,4 +1,4 @@
-# 🚀 E-Okul Disiplin AI Pro - Sürüm 1.1.8 ve Genel Özellik Kataloğu
+# 🚀 E-Okul Disiplin AI Pro - Sürüm 1.1.9 ve Genel Özellik Kataloğu
 
 **Geliştirici & Tasarımcı:** By Abdullah Yanarateş  
 **Resmi Web & İndirme Sayfası:** https://www.evrakplus.com/programlar/yapay-zeka-destekli-disiplin-cezasi-programi-e-okul-disiplin-ai-pro/  
@@ -6,7 +6,17 @@
 
 ---
 
-## 🌟 Sürüm 1.1.8 Yenilikleri (Önemli Güncelleme)
+## 🌟 Sürüm 1.1.9 Yenilikleri (Önemli Güncelleme)
+
+- **Yazılı Uyarı Takip Sistemi:** Öğrenciye verilen her yazılı uyarı kalıcı olarak kaydedilir; öğrenci ve velisine imzalatılan tutanak (tarama/fotoğraf/PDF) kayda eklenebilir ve imza durumları işaretlenir.
+- **Öğrenci Sorgulama ve Uyarı Geçmişi:** Numara veya ad soyadla sorgulama; davranış bazında tekrar sayısı, tarihler ve tutanaklar tek ekranda. Yazılı uyarılar disiplin cezası kayıtlarından ayrı tutulur (e-Okul'a işlenmez, davranış puanını etkilemez).
+- **Tekrar Eden Davranışta Otomatik Bilgilendirme:** Aynı davranış yeniden kaydedilirken veya olay kaydına fail eklenirken önceki uyarı tarihiyle birlikte "DİKKAT" bilgilendirmesi gösterilir.
+- **evrakplus.com Üyelik Köprüsü & Güvenlik:** WordPress üyelik doğrulaması, cihazlar arası kayıt bazında birleştirme (`updatedAt`), eski sürüm verilerinin otomatik taşınması ve güçlendirilmiş senkronizasyon güvenliği.
+- **Telefona ve Bilgisayara Yükleme (PWA):** Manifest, service worker ve simgelerle çevrimdışı çalışma ve uygulama olarak yükleme desteği.
+
+---
+
+## 🌟 Sürüm 1.1.8 Yenilikleri
 
 - **Canlı Web-First Hibrit Mimari:** cPanel üzerinden yayınlanan tüm arayüz, evrak şablonu ve tasarım güncellemeleri masaüstü kullanıcılarına anında yansır.
 - **Karar ve Evrak Modülü Yenilendi:** AI Analiz, Toplantı Yönetimi, Tutanak ve Formlar, Karar & Tebligat sekmeleri hem masaüstünde hem mobilde modern, yüksek kontrastlı ve dokunmatik uyumlu hale getirildi.

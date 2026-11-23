@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Save, Search, Plus, Trash2, Calendar, MapPin, 
   FileText, UserPlus, X, AlertCircle, Clock, ChevronRight, CheckCircle, AlertTriangle, Download, FileSpreadsheet,
@@ -11,6 +11,9 @@ import { useIncidents } from '../context/IncidentContext';
 import { Incident } from '../types';
 import { exportIncidentToPDF, exportIncidentToDocx, exportIncidentsToExcel } from '../services/exportService';
 import { getCurrentAcademicYear, getAcademicYearFromDate } from '../services/academicYear';
+import WarningCheckPanel from './WarningCheckPanel';
+import { useWrittenWarnings } from '../context/WrittenWarningContext';
+import { BEHAVIOR_CATALOG, CUSTOM_PREFIX, detectBehaviorFromText } from '../services/warningCatalog';
 
 // Form State Initializer
 const getEmptyIncident = (): Incident => ({
@@ -55,17 +58,55 @@ const IncidentLog = () => {
 
   const [formData, setFormData] = useState<Incident>(getEmptyIncident());
 
-  // When selection changes, update form data
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { warnings } = useWrittenWarnings();
+  // Yazılı uyarı ekranından "değerlendirme için olay kaydı aç" ile gelindiğinde ön doldurma
+  const prefillRef = useRef<Partial<Incident> | null>(null);
+  const loadedStampRef = useRef<string | undefined>(undefined);
+
+  const customBehaviors = useMemo(() => {
+    const m = new Map<string, string>();
+    warnings.forEach(w => { if (w.behaviorKey.startsWith(CUSTOM_PREFIX)) m.set(w.behaviorKey, w.behaviorTitle); });
+    return [...m.entries()];
+  }, [warnings]);
+
+  useEffect(() => {
+    const p = new URLSearchParams(location.search);
+    if (p.get('new') === '1') {
+      const sid = p.get('student');
+      prefillRef.current = {
+        title: p.get('title') || '',
+        behaviorCode: p.get('behavior') || undefined,
+        involvedStudents: sid ? [{ studentId: sid, role: 'suspect' }] : [],
+      };
+      setSelectedIncidentId(null);
+      setFormData({ ...getEmptyIncident(), code: getNextIncidentCode(), ...prefillRef.current });
+      navigate('/incidents', { replace: true });
+    }
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Seçili olay değiştiğinde (veya kayıt başka cihazdan güncellendiğinde) formu doldur
   useEffect(() => {
     if (selectedIncidentId) {
       const found = incidents.find(i => i.id === selectedIncidentId);
-      if (found) setFormData(found);
-    } else {
-      setFormData({ ...getEmptyIncident(), code: getNextIncidentCode() });
+      if (found && (loadedStampRef.current !== `${found.id}|${found.updatedAt || ''}`)) {
+        loadedStampRef.current = `${found.id}|${found.updatedAt || ''}`;
+        setFormData(found);
+      }
     }
-  }, [selectedIncidentId, incidents, getNextIncidentCode]);
+  }, [selectedIncidentId, incidents]);
+
+  // Yeni olay formu (taslak, arka planda yapılan eşitlemelerde silinmez)
+  useEffect(() => {
+    if (!selectedIncidentId) {
+      loadedStampRef.current = undefined;
+      setFormData(prev => (prev.id === '' && prev.code) ? prev : { ...getEmptyIncident(), code: getNextIncidentCode(), ...(prefillRef.current || {}) });
+    }
+  }, [selectedIncidentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNewIncident = () => {
+    prefillRef.current = null;
     setSelectedIncidentId(null);
     setFormData({ ...getEmptyIncident(), code: getNextIncidentCode() });
     setSuccessMessage(null);
@@ -78,6 +119,7 @@ const IncidentLog = () => {
       setSuccessMessage('Olay kaydı başarıyla güncellendi.');
     } else {
       const newId = Math.random().toString(36).substr(2, 9);
+      prefillRef.current = null;
       addIncident({ ...formData, id: newId });
       setSelectedIncidentId(newId);
       setSuccessMessage('Yeni olay kaydı başarıyla oluşturuldu.');
@@ -380,6 +422,25 @@ const IncidentLog = () => {
                     </div>
                  </div>
 
+                 <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Davranış Türü <span className="normal-case font-medium text-slate-400">(yazılı uyarı geçmişi kontrolü için)</span></label>
+                    <select
+                        value={formData.behaviorCode || ''}
+                        onChange={(e) => setFormData({ ...formData, behaviorCode: e.target.value || undefined })}
+                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                    >
+                        <option value="">{(() => { const g = detectBehaviorFromText(`${formData.title} ${formData.description}`); return g ? `Otomatik tahmin: ${g.title}` : 'Belirtilmedi (olay adından tahmin edilir)'; })()}</option>
+                        <optgroup label="Davranışlar">
+                          {BEHAVIOR_CATALOG.map(b => <option key={b.key} value={b.key}>{b.title}</option>)}
+                        </optgroup>
+                        {customBehaviors.length > 0 && (
+                          <optgroup label="Yazılı uyarılarda kullanılan diğer davranışlar">
+                            {customBehaviors.map(([key, title]) => <option key={key} value={key}>{title}</option>)}
+                          </optgroup>
+                        )}
+                    </select>
+                 </div>
+
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tarih</label>
@@ -561,6 +622,8 @@ const IncidentLog = () => {
                         </tbody>
                      </table>
                   </div>
+
+                  <WarningCheckPanel incident={formData} students={students} />
 
                   <div className="mt-4 p-3 bg-yellow-50 border border-yellow-100 rounded-lg flex items-start gap-3">
                      <AlertCircle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />

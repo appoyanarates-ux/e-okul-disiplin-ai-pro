@@ -3,6 +3,7 @@ import { Institution, BoardMember } from '../types';
 import { getCurrentAcademicYear } from '../services/academicYear';
 import { triggerPersistenceSync } from '../services/persistenceSync';
 import { cleanApiKey } from '../services/geminiService';
+import { touchSetting } from '../services/syncMeta';
 
 interface SettingsContextType {
   institution: Institution;
@@ -87,12 +88,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateInstitution = (data: Institution) => {
     setInstitution(data);
     localStorage.setItem('institutionSettings', JSON.stringify(data));
+    touchSetting('institutionSettings');
     triggerPersistenceSync();
   };
 
   const updateBoardMembers = (data: BoardMember[]) => {
     setBoardMembers(data);
     localStorage.setItem('boardSettings', JSON.stringify(data));
+    touchSetting('boardSettings');
     triggerPersistenceSync();
   };
 
@@ -105,6 +108,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localStorage.removeItem('gemini_api_key');
       localStorage.removeItem('gemini_preferred_model');
     }
+    touchSetting('gemini_api_key');
     triggerPersistenceSync();
   };
 
@@ -112,6 +116,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setApiKey('');
     localStorage.removeItem('gemini_api_key');
     localStorage.removeItem('gemini_preferred_model');
+    touchSetting('gemini_api_key');
     triggerPersistenceSync();
   };
 

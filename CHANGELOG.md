@@ -4,6 +4,26 @@
 
 Proje Sahibi ve Geliştiricisi: **By Abdullah Yanarateş**
 
+## [1.1.9] - 2026-11-23
+
+### 📝 Yazılı Uyarı Takip Sistemi
+- Öğrenciye verilen her yazılı uyarı kalıcı kaydedilir (no, ad soyad, sınıf, tarih, davranış, açıklama, tutanak sayısı, veli, uyaran).
+- Öğrenci ve velisine imzalatılan tutanak (fotoğraf/PDF) kayda eklenebilir; imza durumları işaretlenir.
+- Numara veya ad soyadla sorgulama; davranış bazında tekrar sayısı, tarihler ve tutanaklar tek ekranda.
+- Aynı davranış tekrarlandığında "DİKKAT" bilgilendirmesi (önceki uyarı tarihleriyle). Program kaydı otomatik disiplin cezasına dönüştürmez.
+- Olay kaydında "Davranış Türü" alanı ve fail öğrenciler için otomatik yazılı uyarı geçmişi kontrolü.
+- Yazılı uyarılar disiplin cezası kayıtlarından ayrı tutulur; e-Okul'a işlenmez, davranış puanını etkilemez.
+
+### 🔐 evrakplus.com Üyelik Köprüsü
+- index.php: yalnızca giriş yapmış WordPress üyeleri; veriler üyenin hesabında `disiplin_data` alanında.
+- Cihazlar arası kayıt bazında birleştirme (updatedAt), eski `wp_user_<ID>.json` ve tarayıcı verilerinin otomatik taşınması, migrate.php toplu taşıma aracı.
+- Güvenlik: sync-api.php'de tahmin edilebilir `syncKey` ile erişim kaldırıldı.
+
+### 📱 PWA
+- Manifest, service worker, simgeler; telefona yükleme ve çevrimdışı çalışma.
+
+---
+
 ## [1.1.6] - 2026-11-13
 
 ### 🔑 Api Key Güncellemeleri

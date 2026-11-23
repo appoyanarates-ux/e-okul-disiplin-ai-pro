@@ -6,8 +6,27 @@ import { Student } from '../types';
 import { useStudents } from '../context/StudentContext';
 import { useIncidents } from '../context/IncidentContext';
 import { useSettings } from '../context/SettingsContext';
+import { useWrittenWarnings } from '../context/WrittenWarningContext';
 import { exportStudentToPDF, exportStudentToDocx, exportStudentsToExcel, exportStudentsToDocx } from '../services/exportService';
 import { parseStudentFile, ParsedStudentWithStats, ParseFileResult, countExtractedFields } from '../services/studentFileParser';
+
+// Öğrenci detayında yazılı uyarı geçmişine kısayol (yazılı uyarılar disiplin cezası değildir)
+const StudentWarningLink = ({ studentId }: { studentId: string }) => {
+  const { warnings } = useWrittenWarnings();
+  const list = warnings.filter(w => w.studentId === studentId);
+  const groups = new Map<string, number>();
+  list.forEach(w => groups.set(w.behaviorKey, (groups.get(w.behaviorKey) || 0) + 1));
+  const repeated = [...groups.values()].some(c => c >= 2);
+  return (
+    <Link
+      to={`/written-warnings?student=${encodeURIComponent(studentId)}`}
+      className={`px-2.5 py-1.5 rounded flex items-center gap-1.5 text-xs font-semibold transition-colors border ${repeated ? 'bg-red-600/80 hover:bg-red-600 border-red-400 text-white' : 'bg-amber-600/70 hover:bg-amber-600 border-amber-400/60 text-white'}`}
+      title="Yazılı uyarı geçmişi"
+    >
+      <AlertTriangle className="w-3.5 h-3.5" /> Yazılı Uyarı{list.length ? ` (${list.length})` : ''}{repeated ? ' • TEKRAR' : ''}
+    </Link>
+  );
+};
 
 const Students = () => {
   const { students, setStudents, addStudent, removeStudent, updateStudent } = useStudents();
@@ -1001,6 +1020,7 @@ const Students = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                        <StudentWarningLink studentId={selectedStudent.id} />
                         <button 
                             onClick={() => exportStudentToDocx(selectedStudent, incidents, institution, boardMembers)}
                             className="text-slate-300 hover:text-white px-2.5 py-1.5 bg-blue-700/60 hover:bg-blue-600 rounded flex items-center gap-1.5 text-xs font-semibold transition-colors border border-blue-500/50 cursor-pointer"

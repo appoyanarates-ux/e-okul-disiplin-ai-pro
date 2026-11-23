@@ -3,13 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, AlertTriangle, Gavel, BarChart3, 
   BookOpen, Settings, ChevronDown, ChevronRight, LifeBuoy, Scale, Info, Wifi, WifiOff, AlertCircle, RotateCcw, X,
-  Briefcase, FileSpreadsheet, Cloud, RefreshCw, Globe, ExternalLink
+  Briefcase, FileSpreadsheet, Cloud, RefreshCw, Globe, ExternalLink, History, LogOut, Smartphone
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 import { useStudents } from '../context/StudentContext';
 import { getCloudSyncConfig, performCloudSync } from '../services/cloudSyncService';
 import { CloudSyncModal } from './CloudSyncModal';
+import { getBridge, getBridgeStatus, logoutBridge } from '../services/bridge';
+import { canPromptInstall, isIos, isStandalone, promptInstall } from '../services/pwa';
+import { useWrittenWarnings } from '../context/WrittenWarningContext';
 
 interface MenuItem {
   title: string;
@@ -33,6 +36,28 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
   const [cloudConfig, setCloudConfig] = useState(getCloudSyncConfig());
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const bridge = getBridge();
+  const [bridgeState, setBridgeState] = useState(getBridgeStatus());
+  const [installable, setInstallable] = useState(canPromptInstall());
+  const { warnings } = useWrittenWarnings();
+  const warningCount = warnings.length;
+
+  useEffect(() => {
+    const onInstall = () => setInstallable(canPromptInstall());
+    window.addEventListener('pwa-install-changed', onInstall);
+    return () => window.removeEventListener('pwa-install-changed', onInstall);
+  }, []);
+
+  const handleInstall = async () => {
+    if (canPromptInstall()) {
+      await promptInstall();
+    } else if (isIos()) {
+      alert('iPhone / iPad\'e yüklemek için: Safari\'de alttaki Paylaş (⬆︎) düğmesine dokunun ve "Ana Ekrana Ekle"yi seçin.');
+    } else {
+      alert('Tarayıcınızın menüsünden (⋮) "Uygulamayı yükle" veya "Ana ekrana ekle" seçeneğini kullanabilirsiniz.');
+    }
+  };
+  const showInstall = Boolean(bridge) && !isStandalone() && !window.electronAPI && (installable || isIos() || /android/i.test(navigator.userAgent));
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -44,6 +69,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
 
     const handleSyncStatus = (e: any) => {
       setIsSyncingCloud(e.detail?.status === 'syncing');
+      if (e.detail?.bridge) setBridgeState(getBridgeStatus());
     };
 
     window.addEventListener('online', handleOnline);
@@ -131,6 +157,14 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
         title: 'Olaylar',
         icon: AlertTriangle,
         path: '/incidents'
+      }
+    },
+    {
+      key: 'written-warnings',
+      items: {
+        title: 'Yazılı Uyarılar',
+        icon: History,
+        path: '/written-warnings'
       }
     },
     {
@@ -235,6 +269,13 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
               <menu.items.icon className={`w-5 h-5 ${isDirectActive ? 'text-blue-200' : 'text-slate-500'}`} />
               <span>{menu.items.title}</span>
             </div>
+            {menu.key === 'written-warnings' && warningCount > 0 && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                isDirectActive ? 'bg-white text-amber-700' : 'bg-slate-800 text-amber-300 border border-slate-700'
+              }`}>
+                {warningCount}
+              </span>
+            )}
             {menu.key === 'mesem' && mesemCount > 0 && (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                 isDirectActive ? 'bg-white text-blue-900' : 'bg-slate-800 text-blue-300 border border-slate-700'
@@ -337,6 +378,24 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
             <p className="px-3 text-xs font-bold text-slate-600 uppercase mb-2 tracking-wider">Sistem</p>
             {bottomMenuItems.map(renderMenuItem)}
              
+            {showInstall && (
+              <button
+                onClick={handleInstall}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium text-emerald-300 hover:bg-slate-800 hover:text-emerald-200"
+              >
+                <Smartphone className="w-5 h-5" />
+                <span>Uygulamayı Yükle</span>
+              </button>
+            )}
+            {bridge ? (
+              <button
+                onClick={() => logoutBridge()}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              >
+                <LogOut className="w-5 h-5 text-slate-500" />
+                <span>Çıkış Yap</span>
+              </button>
+            ) : (
             <button
               onClick={() => setIsSyncModalOpen(true)}
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100"
@@ -356,6 +415,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 </span>
               )}
             </button>
+            )}
 
             <Link
               to="/about"
@@ -375,6 +435,26 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
         {/* User Info / Footer */}
         <div className="bg-slate-950 border-t border-slate-800">
            {/* Cloud Sync Status Strip */}
+           {bridge ? (
+           <div className="px-3.5 py-2 bg-slate-900/90 border-t border-slate-800/80 flex items-center justify-between text-[11px]" title={bridgeState.lastSyncedAt ? `Son eşitleme: ${new Date(bridgeState.lastSyncedAt).toLocaleString('tr-TR')}` : ''}>
+             <div className="flex items-center gap-2 text-slate-300 min-w-0">
+               <Cloud className={`w-3.5 h-3.5 shrink-0 ${bridgeState.status === 'error' || bridgeState.status === 'auth' ? 'text-red-400' : bridgeState.status === 'offline' ? 'text-slate-500' : 'text-sky-400'}`} />
+               <div className="min-w-0">
+                 <div className="truncate max-w-[140px] font-medium">{bridge.user.displayName || bridge.user.login}</div>
+                 <div className="text-[9.5px] text-slate-500 truncate">
+                   {bridgeState.status === 'syncing' ? 'Kaydediliyor…' : bridgeState.status === 'offline' ? 'Çevrimdışı – cihazda saklanıyor' : bridgeState.status === 'auth' ? 'Oturum gerekli' : bridgeState.status === 'error' ? 'Kayıt hatası' : 'evrakplus.com hesabına kayıtlı'}
+                 </div>
+               </div>
+             </div>
+             <button
+               title="Şimdi eşitle"
+               onClick={() => performCloudSync()}
+               className="p-1 hover:text-white text-slate-400 rounded transition-colors"
+             >
+               <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin text-blue-400' : ''}`} />
+             </button>
+           </div>
+           ) : (
            <div 
              onClick={() => setIsSyncModalOpen(true)}
              className="px-3.5 py-2 bg-slate-900/90 border-t border-slate-800/80 flex items-center justify-between cursor-pointer hover:bg-slate-850 transition-colors text-[11px]"
@@ -398,6 +478,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                </button>
              )}
            </div>
+           )}
 
            <div className={`px-4 py-2 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider ${status.colorClass}`}>
               {status.icon}
@@ -409,17 +490,17 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
               </div>
               <div className="flex-1 overflow-hidden">
                   <p className="text-xs font-bold text-slate-200 truncate">By Abdullah Yanarateş</p>
-                  <p className="text-[10px] text-slate-400 truncate">E-Okul Disiplin AI Pro v1.1.8</p>
+                  <p className="text-[10px] text-slate-400 truncate">E-Okul Disiplin AI Pro v1.1.9</p>
                   <p className="text-[10px] text-emerald-400 font-bold truncate flex items-center gap-1 mt-0.5">
                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-                     Güncelleme Test: Canlı Aktif
+                     v1.1.9 • Yazılı Uyarı Takibi
                   </p>
               </div>
            </div>
         </div>
       </div>
 
-      <CloudSyncModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} />
+      {!bridge && <CloudSyncModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} />}
     </>
   );
 };
